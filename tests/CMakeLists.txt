@@ -10,4 +10,5 @@ target_link_libraries(run_tests
     gtest_main
 )
 
-add_test(NAME riscv_tests COMMAND run_tests)
+include(GoogleTest)
+gtest_discover_tests(run_tests)
