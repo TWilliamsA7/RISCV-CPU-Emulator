@@ -6,6 +6,7 @@ target_link_libraries(run_tests
     cpu
     core
     memory
+    isa
     gtest
     gtest_main
 )

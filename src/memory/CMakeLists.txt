@@ -1,5 +1,5 @@
 add_library(memory
-    # Insert .cpp files
+    memory.cpp
 )
 
 target_include_directories(memory PUBLIC

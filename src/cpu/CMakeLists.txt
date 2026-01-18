@@ -1,5 +1,5 @@
 add_library(cpu
-    # Insert .cpp files
+    execute.cpp
 )
 
 target_include_directories(cpu PUBLIC

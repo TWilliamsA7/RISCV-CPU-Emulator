@@ -1,5 +1,5 @@
 add_library(core
-    # Insert .cpp files
+    core.cpp
 )
 
 target_include_directories(core PUBLIC
