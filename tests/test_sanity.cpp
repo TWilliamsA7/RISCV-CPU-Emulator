@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "core/state.h"
+#include "core/state.hpp"
 
 TEST(Sanity, BuildWorks) {
     core::CpuState state;

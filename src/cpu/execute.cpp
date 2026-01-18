@@ -1,7 +1,7 @@
 // src/cpu/execute.cpp
 
-#include "core/state.h"
-#include "isa/rv32i.h"
+#include "core/state.hpp"
+#include "isa/rv32i.hpp"
 
 namespace cpu {
 
