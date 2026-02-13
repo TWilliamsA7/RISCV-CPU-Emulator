@@ -12,17 +12,17 @@ struct StepResult {
     bool trap;
 };
 
-struct ArchitecturalState {
-    uint32_t pc;
-    uint32_t x[32];
-    Memory memory;
-};
-
 class CPU {
     public:
+        CPU(Memory& mem);
         StepResult step();
-        const ArchitecturalState& state() const;
+        
+        uint32_t pc() const;
+        uint32_t reg(size_t idx) const;
 
     private:
-        ArchitecturalState _state;
+        uint32_t pc_;
+        uint32_t x_[32];
+
+        Memory& memory_;
 };
