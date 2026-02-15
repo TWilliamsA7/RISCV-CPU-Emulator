@@ -1,8 +1,6 @@
 // src/cpu/cpu.cpp
 
 #include "cpu/cpu.hpp"
-#include "cpu/decode.hpp"
-#include "cpu/execute.hpp"
 #include "memory/memory.hpp"
 
 #include <algorithm>
