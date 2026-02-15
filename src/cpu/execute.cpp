@@ -139,35 +139,57 @@ void CPU::execSRAI(const DecodedInstr& i) {
 }
 
 void CPU::execLW(const DecodedInstr& i) {
-
+    uint32_t a = r[i.rs1] + i.imm;
+    writeReg(i.rd, memory_.read32(a));
+    pc_ += 4;
 }
 
 void CPU::execLH(const DecodedInstr& i) {
-
+    uint32_t a = r[i.rs1]  + i.imm;
+    int16_t half = memory_.read16(a);       
+    int32_t s = static_cast<int32_t>(half);
+    writeReg(i.rd, static_cast<uint32_t>(s));
+    pc_ += 4;
 }
 
 void CPU::execLHU(const DecodedInstr& i) {
-
+    uint32_t a = r[i.rs1]  + i.imm;
+    uint32_t u = static_cast<uint32_t>(memory_.read16(a));
+    writeReg(i.rd, u);
+    pc_ += 4;
 }
 
 void CPU::execLB(const DecodedInstr& i) {
-
+    uint32_t a = r[i.rs1]  + i.imm;
+    int8_t byte = memory_.read8(a);       
+    int32_t s = static_cast<int32_t>(byte);
+    writeReg(i.rd, static_cast<uint32_t>(s));
+    pc_ += 4;
 }
 
 void CPU::execLBU(const DecodedInstr& i) {
-
+    uint32_t a = r[i.rs1] + i.imm;
+    uint32_t u = static_cast<uint32_t>(memory_.read8(a));
+    writeReg(i.rd, u);
+    pc_ += 4;
 }
 
 void CPU::execSW(const DecodedInstr& i) {
-
+    uint32_t a = r[i.rs1] + i.imm;
+    memory_.write32(a, r[i.rs2]);
+    pc_ += 4;
 }
 
 void CPU::execSH(const DecodedInstr& i) {
-
+    uint32_t a = r[i.rs1] + i.imm;
+    memory_.write16(a, static_cast<uint16_t>(r[i.rs2]));
+    pc_ += 4;
 }
 
 void CPU::execSB(const DecodedInstr& i) {
-
+    uint32_t a = r[i.rs1] + i.imm;
+    memory_.write8(a, static_cast<uint8_t>(r[i.rs2]));
+    pc_ += 4;
 }
 
 void CPU::execBEQ(const DecodedInstr& i) {
