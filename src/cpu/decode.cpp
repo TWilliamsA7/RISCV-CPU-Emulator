@@ -6,6 +6,7 @@ static inline uint32_t get_bits(uint32_t x, int hi, int lo) {
     return (x >> lo) & ((1u << (hi - lo + 1)) - 1);
 }
 
+
 static inline int32_t sign_extend(uint32_t value, int bits) {
     uint32_t mask = 1u << (bits - 1);
     return (value ^ mask) - mask;
@@ -84,6 +85,7 @@ DecodedInstr decode(uint32_t instr) {
             d.rs2 = 0;
             break;
         }
+
         case 0x03: { // Loads
             d.imm = sign_extend(get_bits(instr, 31, 20), 12);
             switch (funct3) {

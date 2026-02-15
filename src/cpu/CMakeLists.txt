@@ -1,5 +1,6 @@
 add_library(cpu
     execute.cpp
+    decode.cpp
 )
 
 target_include_directories(cpu PUBLIC
