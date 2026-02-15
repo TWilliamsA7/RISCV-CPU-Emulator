@@ -77,7 +77,7 @@ DecodedInstr decode(uint32_t instr) {
                     break;
 
                 case 0x6: d.kind = InstrKind::ORI;  break;
-                
+
                 case 0x7: d.kind = InstrKind::ANDI; break;
             }
             break;
@@ -85,9 +85,11 @@ DecodedInstr decode(uint32_t instr) {
         case 0x03: { // Loads
             d.imm = sign_extend(get_bits(instr, 31, 20), 12);
             switch (funct3) {
-                case 0x2:
-                    d.kind = InstrKind::LW;
-                    break;
+                case 0x0: d.kind = InstrKind::LB; break;
+                case 0x1: d.kind = InstrKind::LH; break;
+                case 0x2: d.kind = InstrKind::LW; break;
+                case 0x4: d.kind = InstrKind::LBU; break;
+                case 0x5: d.kind = InstrKind::LHU; break;
             }
             break;
         }
