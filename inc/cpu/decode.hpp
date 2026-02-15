@@ -4,8 +4,8 @@
 #include <cstdint>
 
 enum class InstrKind {
-    ADD, SUB, AND, OR, XOR, SLL, SLT, SLTU, SRL, SRA,
-    ADDI, ANDI, ORI, XORI,
+    ADD, SUB, AND, OR, XOR, SLL, SLT, SLTU, SRL, SRA, // R-type Instructions
+    ADDI, ANDI, ORI, XORI, SLTI, SLTIU, SLLI, SRLI, SRAI, // I-type Instructions
     LW, SW,
     BEQ, BNE,
     JAL, JALR,

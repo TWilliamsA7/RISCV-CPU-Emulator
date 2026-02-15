@@ -33,21 +33,13 @@ DecodedInstr decode(uint32_t instr) {
                         d.kind = InstrKind::SUB;
                     break;
 
-                case 0x1:
-                    d.kind = InstrKind::SLL;
-                    break;
+                case 0x1: d.kind = InstrKind::SLL; break;
 
-                case 0x2:
-                    d.kind = InstrKind::SLT;
-                    break;
+                case 0x2: d.kind = InstrKind::SLT; break;
 
-                case 0x3:
-                    d.kind = InstrKind::SLTU;
-                    break;
+                case 0x3: d.kind = InstrKind::SLTU; break;
 
-                case 0x4:
-                    d.kind = InstrKind::XOR;
-                    break;
+                case 0x4: d.kind = InstrKind::XOR; break;
 
                 case 0x5:
                     if (funct7 == 0x00)
@@ -56,13 +48,9 @@ DecodedInstr decode(uint32_t instr) {
                         d.kind = InstrKind::SRA;
                     break;
 
-                case 0x7:
-                    d.kind = InstrKind::AND;
-                    break;
+                case 0x7: d.kind = InstrKind::AND; break;
 
-                case 0x6:
-                    d.kind = InstrKind::OR;
-                    break;
+                case 0x6: d.kind = InstrKind::OR; break;
 
             }
             break;
@@ -72,9 +60,25 @@ DecodedInstr decode(uint32_t instr) {
             d.imm = sign_extend(get_bits(instr, 31, 20), 12);
             switch (funct3) {
                 case 0x0: d.kind = InstrKind::ADDI; break;
-                case 0x7: d.kind = InstrKind::ANDI; break;
-                case 0x6: d.kind = InstrKind::ORI;  break;
+
+                case 0x1: d.kind = InstrKind::SLLI; break;
+
+                case 0x2: d.kind = InstrKind::SLTI; break;
+
+                case 0x3: d.kind = InstrKind::SLTIU;  break;
+
                 case 0x4: d.kind = InstrKind::XORI; break;
+
+                case 0x5:
+                    if (funct7 == 0x00)
+                        d.kind = InstrKind::SRLI;
+                    else if (funct7 == 0x20)
+                        d.kind = InstrKind::SRAI;
+                    break;
+
+                case 0x6: d.kind = InstrKind::ORI;  break;
+                
+                case 0x7: d.kind = InstrKind::ANDI; break;
             }
             break;
         }
