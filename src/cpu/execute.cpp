@@ -2,8 +2,51 @@
 
 #include "cpu/cpu.hpp"
 
-void CPU::execute(const DecodedInstr& i) {
+const std::array<CPU::ExecFn, static_cast<size_t>(InstrKind::COUNT)> CPU::dispatch_ = {
+    &CPU::execADD,
+    &CPU::execSUB,
+    &CPU::execAND,
+    &CPU::execOR,
+    &CPU::execXOR,
+    &CPU::execSLL,
+    &CPU::execSRL,
+    &CPU::execSRA,
+    &CPU::execSLT,
+    &CPU::execSLTU,
+    &CPU::execADDI,
+    &CPU::execANDI,
+    &CPU::execORI,
+    &CPU::execXORI,
+    &CPU::execSLTI,
+    &CPU::execSLTIU,
+    &CPU::execSLLI,
+    &CPU::execSRLI,
+    &CPU::execSRAI,
+    &CPU::execLW,
+    &CPU::execLH,
+    &CPU::execLHU,
+    &CPU::execLB,
+    &CPU::execLBU,
+    &CPU::execSW,
+    &CPU::execSH,
+    &CPU::execSB,
+    &CPU::execBEQ,
+    &CPU::execBNE,
+    &CPU::execBLT,
+    &CPU::execBGE,
+    &CPU::execBLTU,
+    &CPU::execBGEU,
+    &CPU::execJAL,
+    &CPU::execJALR,
+    &CPU::execLUI,
+    &CPU::execAUIPC,
+    &CPU::execINVALID,
+};
 
+
+void CPU::execute(const DecodedInstr& i) {
+    auto idx = static_cast<size_t>(i.kind);
+    (this->*dispatch_[idx])(i);
 }
 
 void CPU::execADD(const DecodedInstr& i) {
@@ -256,4 +299,8 @@ void CPU::execLUI(const DecodedInstr& i) {
 void CPU::execAUIPC(const DecodedInstr& i) {
     writeReg(i.rd, static_cast<uint32_t>(pc_ + i.imm));
     pc_ += 4;
+}
+
+void CPU::execINVALID(const DecodedInstr& i) {
+    halted = true;
 }

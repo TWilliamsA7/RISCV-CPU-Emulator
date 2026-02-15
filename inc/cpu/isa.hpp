@@ -11,7 +11,8 @@ enum class InstrKind {
     BEQ, BNE, BLT, BGE, BLTU, BGEU, // Branches
     JAL, JALR, // Jumps
     LUI, AUIPC, // Upper immediates
-    INVALID
+    INVALID, 
+    COUNT
 };
 
 struct DecodedInstr {

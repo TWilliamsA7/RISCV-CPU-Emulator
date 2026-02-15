@@ -3,6 +3,7 @@
 #pragma once
 
 #include <cstdint>
+#include <array>
 #include "cpu/isa.hpp"
 #include "memory/memory.hpp"
 
@@ -20,6 +21,7 @@ class CPU {
         
         uint32_t pc() const;
         uint32_t reg(size_t idx) const;
+        bool isHalted() const;
         
         static DecodedInstr decode(uint32_t instr);
 
@@ -29,10 +31,16 @@ class CPU {
 
         Memory& memory_;
 
+        bool halted = false;
 
         void inline writeReg(uint8_t rd, uint32_t value);
         
         void execute(const DecodedInstr& i);
+
+        // === Execution Dispath === //
+
+        using ExecFn = void (CPU::*)(const DecodedInstr&);
+        static const std::array<ExecFn, static_cast<size_t>(InstrKind::COUNT)> dispatch_;
 
         // === Execution Helper Functions === //
 
@@ -73,5 +81,6 @@ class CPU {
         void execJALR(const DecodedInstr& i);
         void execLUI(const DecodedInstr& i);
         void execAUIPC(const DecodedInstr& i);
+        void execINVALID(const DecodedInstr& i);
 
 };

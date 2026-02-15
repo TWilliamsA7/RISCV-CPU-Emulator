@@ -27,4 +27,8 @@ uint32_t CPU::reg(size_t idx) const {
     return r[idx];
 }
 
+bool CPU::isHalted() const {
+    return halted;
+}
+
 
