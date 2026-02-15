@@ -118,6 +118,10 @@ DecodedInstr decode(uint32_t instr) {
             switch (funct3) {
                 case 0x0: d.kind = InstrKind::BEQ; break;
                 case 0x1: d.kind = InstrKind::BNE; break;
+                case 0x4: d.kind = InstrKind::BLT; break;
+                case 0x5: d.kind = InstrKind::BGE; break;
+                case 0x6: d.kind = InstrKind::BLTU; break;
+                case 0x7: d.kind = InstrKind::BGEU; break;
             }
 
             break;

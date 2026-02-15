@@ -8,7 +8,7 @@ enum class InstrKind {
     ADDI, ANDI, ORI, XORI, SLTI, SLTIU, SLLI, SRLI, SRAI, // I-type Instructions
     LW, LB, LH, LBU, LHU, // Loads
     SW, SH, SB, // Stores
-    BEQ, BNE,
+    BEQ, BNE, BLT, BGE, BLTU, BGEU, // Branches
     JAL, JALR,
     LUI, AUIPC,
     INVALID
