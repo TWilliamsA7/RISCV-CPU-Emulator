@@ -1,4 +1,4 @@
-// inc/cpu/decode.hpp
+// inc/cpu/isa.hpp
 
 #pragma once
 #include <cstdint>
@@ -23,5 +23,3 @@ struct DecodedInstr {
 
     int32_t imm = 0;
 };
-
-DecodedInstr decode(uint32_t instr);

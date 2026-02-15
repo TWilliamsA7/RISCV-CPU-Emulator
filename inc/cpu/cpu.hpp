@@ -1,8 +1,9 @@
 // inc/cpu/cpu.hpp
 
 #pragma once
-#include <cstdint>
 
+#include <cstdint>
+#include "cpu/isa.hpp"
 #include "memory/memory.hpp"
 
 struct StepResult {
@@ -19,6 +20,8 @@ class CPU {
         
         uint32_t pc() const;
         uint32_t reg(size_t idx) const;
+        
+        static DecodedInstr decode(uint32_t instr);
 
     private:
         uint32_t pc_;

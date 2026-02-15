@@ -1,6 +1,6 @@
 // src/cpu/decode.cpp
 
-#include "cpu/decode.hpp"
+#include "cpu/cpu.hpp"
 
 static inline uint32_t get_bits(uint32_t x, int hi, int lo) {
     return (x >> lo) & ((1u << (hi - lo + 1)) - 1);
@@ -13,7 +13,7 @@ static inline int32_t sign_extend(uint32_t value, int bits) {
 }
 
 
-DecodedInstr decode(uint32_t instr) {
+DecodedInstr CPU::decode(uint32_t instr) {
     DecodedInstr d;
     
     uint32_t opcode = get_bits(instr, 6, 0);

@@ -1,12 +1,12 @@
 // tests/cpu/decodeTests.cpp
 
 #include <gtest/gtest.h>
-#include "cpu/decode.hpp"
+#include "cpu/cpu.hpp"
 
 TEST(Decode, DecodeAdd) {
     uint32_t  instr = 0x003100B3;
 
-    auto d = decode(instr);
+    auto d = CPU::decode(instr);
 
     EXPECT_EQ(d.kind, InstrKind::ADD);
     EXPECT_EQ(d.rd, 1);
@@ -18,7 +18,7 @@ TEST(Decode, DecodeAdd) {
 TEST(Decode, DecodeSub) {
     uint32_t  instr = 0x407303B3;
 
-    auto d = decode(instr);
+    auto d = CPU::decode(instr);
 
     EXPECT_EQ(d.kind, InstrKind::SUB);
     EXPECT_EQ(d.rd, 7);
@@ -30,7 +30,7 @@ TEST(Decode, DecodeSub) {
 TEST(Decode, DecodeAddI) {
     uint32_t  instr = 0xFFF10093;
 
-    auto d = decode(instr);
+    auto d = CPU::decode(instr);
 
     EXPECT_EQ(d.kind, InstrKind::ADDI);
     EXPECT_EQ(d.rd, 1);
@@ -41,7 +41,7 @@ TEST(Decode, DecodeAddI) {
 TEST(Decode, DecodeLW) {
     uint32_t  instr = 0x00822183;
 
-    auto d = decode(instr);
+    auto d = CPU::decode(instr);
 
     EXPECT_EQ(d.kind, InstrKind::LW);
     EXPECT_EQ(d.rd, 3);
@@ -52,7 +52,7 @@ TEST(Decode, DecodeLW) {
 TEST(Decode, DecodeSW) {
     uint32_t  instr = 0x00322423;
 
-    auto d = decode(instr);
+    auto d = CPU::decode(instr);
 
     EXPECT_EQ(d.kind, InstrKind::SW);
     EXPECT_EQ(d.rd, 0);
@@ -64,7 +64,7 @@ TEST(Decode, DecodeSW) {
 TEST(Decode, DecodeBEQ) {
     uint32_t  instr = 0x00208863;
 
-    auto d = decode(instr);
+    auto d = CPU::decode(instr);
 
     EXPECT_EQ(d.kind, InstrKind::BEQ);
     EXPECT_EQ(d.rs1, 1);
@@ -75,7 +75,7 @@ TEST(Decode, DecodeBEQ) {
 TEST(Decode, DecodeLUI) {
     uint32_t  instr = 0x123452B7;
 
-    auto d = decode(instr);
+    auto d = CPU::decode(instr);
 
     EXPECT_EQ(d.kind, InstrKind::LUI);
     EXPECT_EQ(d.rd, 5);
@@ -85,7 +85,7 @@ TEST(Decode, DecodeLUI) {
 TEST(Decode, DecodeJAL) {
     uint32_t  instr = 0x020000EF;
 
-    auto d = decode(instr);
+    auto d = CPU::decode(instr);
 
     EXPECT_EQ(d.kind, InstrKind::JAL);
     EXPECT_EQ(d.rd, 1);
@@ -95,7 +95,7 @@ TEST(Decode, DecodeJAL) {
 TEST(Decode, DecodeInvalid) {
     uint32_t  instr = 0x0;
 
-    auto d = decode(instr);
+    auto d = CPU::decode(instr);
 
     EXPECT_EQ(d.kind, InstrKind::INVALID);
 }
