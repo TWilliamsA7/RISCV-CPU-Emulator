@@ -5,7 +5,7 @@
 
 enum class InstrKind {
     ADD, SUB, AND, OR, XOR,
-    ADDI, ANDI, ORI,
+    ADDI, ANDI, ORI, XORI,
     LW, SW,
     BEQ, BNE,
     JAL, JALR,

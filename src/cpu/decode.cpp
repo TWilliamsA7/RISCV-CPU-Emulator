@@ -50,10 +50,21 @@ DecodedInstr decode(uint32_t instr) {
 
         case 0x13: { // Immediate ALU
             d.imm = sign_extend(get_bits(instr, 31, 20), 12);
+            switch (funct3) {
+                case 0x0: d.kind = InstrKind::ADDI; break;
+                case 0x7: d.kind = InstrKind::ANDI; break;
+                case 0x6: d.kind = InstrKind::ORI;  break;
+                case 0x4: d.kind = InstrKind::XORI; break;
+            }
             break;
         }
         case 0x03: { // Loads
             d.imm = sign_extend(get_bits(instr, 31, 20), 12);
+            switch (funct3) {
+                case 0x2:
+                    d.kind = InstrKind::LW;
+                    break;
+            }
             break;
         }
 
@@ -61,6 +72,11 @@ DecodedInstr decode(uint32_t instr) {
             uint32_t imm_u = (get_bits(instr, 31, 25) << 5) | get_bits(instr, 11, 7);
             d.imm = sign_extend(imm_u, 12);
 
+            switch (funct3) {
+                case 0x2:
+                    d.kind = InstrKind::SW;
+                    break;
+            }
             break;
         }
 
@@ -72,6 +88,12 @@ DecodedInstr decode(uint32_t instr) {
                 (get_bits(instr, 11, 8)  << 1);
 
             d.imm = sign_extend(imm_u, 13);
+
+            switch (funct3) {
+                case 0x0: d.kind = InstrKind::BEQ; break;
+                case 0x1: d.kind = InstrKind::BNE; break;
+            }
+
             break;
         }
 
@@ -83,6 +105,7 @@ DecodedInstr decode(uint32_t instr) {
                 (get_bits(instr, 30, 21) << 1);
 
             d.imm = sign_extend(imm_u, 21);
+            d.kind = InstrKind::JAL;
             break;
      
         }
@@ -94,6 +117,7 @@ DecodedInstr decode(uint32_t instr) {
 
         case 0x37: { // LUI
             d.imm = get_bits(instr, 31, 12) << 12;
+            d.kind = InstrKind::LUI;
             break;
         }
 
@@ -103,6 +127,7 @@ DecodedInstr decode(uint32_t instr) {
         }   
  
         default:
+            d.kind = InstrKind::INVALID;
             break;
     }
 
