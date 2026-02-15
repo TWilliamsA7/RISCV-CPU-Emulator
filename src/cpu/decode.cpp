@@ -99,9 +99,9 @@ DecodedInstr decode(uint32_t instr) {
             d.imm = sign_extend(imm_u, 12);
 
             switch (funct3) {
-                case 0x2:
-                    d.kind = InstrKind::SW;
-                    break;
+                case 0x0: d.kind = InstrKind::SB; break;
+                case 0x1: d.kind = InstrKind::SH; break;
+                case 0x2: d.kind = InstrKind::SW; break;
             }
             break;
         }
