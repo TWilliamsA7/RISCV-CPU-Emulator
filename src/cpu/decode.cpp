@@ -53,6 +53,7 @@ DecodedInstr decode(uint32_t instr) {
                 case 0x6: d.kind = InstrKind::OR; break;
 
             }
+            d.imm = 0;
             break;
         }
 
@@ -80,6 +81,7 @@ DecodedInstr decode(uint32_t instr) {
 
                 case 0x7: d.kind = InstrKind::ANDI; break;
             }
+            d.rs2 = 0;
             break;
         }
         case 0x03: { // Loads
@@ -103,6 +105,7 @@ DecodedInstr decode(uint32_t instr) {
                 case 0x1: d.kind = InstrKind::SH; break;
                 case 0x2: d.kind = InstrKind::SW; break;
             }
+            d.rd = 0;
             break;
         }
 
@@ -123,7 +126,7 @@ DecodedInstr decode(uint32_t instr) {
                 case 0x6: d.kind = InstrKind::BLTU; break;
                 case 0x7: d.kind = InstrKind::BGEU; break;
             }
-
+            d.rd = 0;
             break;
         }
 
@@ -136,23 +139,29 @@ DecodedInstr decode(uint32_t instr) {
 
             d.imm = sign_extend(imm_u, 21);
             d.kind = InstrKind::JAL;
+            d.rs1 = d.rs2 = 0;
             break;
      
         }
 
         case 0x67: { // JALR
             d.imm = sign_extend(get_bits(instr, 31, 20), 12);
+            d.kind = InstrKind::JALR;
+            d.rs1 = d.rs2 = 0;
             break;
         }
 
         case 0x37: { // LUI
             d.imm = get_bits(instr, 31, 12) << 12;
             d.kind = InstrKind::LUI;
+            d.rs1 = d.rs2 = 0;
             break;
         }
 
         case 0x17: { // AUIPC
             d.imm = get_bits(instr, 31, 12) << 12;
+            d.kind = InstrKind::AUIPC;
+            d.rs1 = d.rs2 = 0;
             break;
         }   
  

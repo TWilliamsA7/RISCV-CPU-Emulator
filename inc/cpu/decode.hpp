@@ -9,8 +9,8 @@ enum class InstrKind {
     LW, LB, LH, LBU, LHU, // Loads
     SW, SH, SB, // Stores
     BEQ, BNE, BLT, BGE, BLTU, BGEU, // Branches
-    JAL, JALR,
-    LUI, AUIPC,
+    JAL, JALR, // Jumps
+    LUI, AUIPC, // Upper immediates
     INVALID
 };
 
