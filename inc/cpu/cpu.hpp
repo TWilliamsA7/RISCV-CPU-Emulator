@@ -11,6 +11,7 @@ struct StepResult {
     uint32_t pc_before;
     uint32_t pc_after;
     uint32_t instruction;
+    DecodedInstr dInstr;
     bool trap;
 };
 
