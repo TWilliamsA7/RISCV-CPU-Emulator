@@ -23,10 +23,28 @@ DecodedInstr decode(uint32_t instr) {
     d.rs1 = get_bits(instr, 19, 15);
     d.rs2 = get_bits(instr, 24, 20);
 
-    switch (opcode)
-    {
+    switch (opcode) {
         case 0x33: { // Register ALU
+            switch (funct3) {
+                case 0x0:
+                    if (funct7 == 0x00)
+                        d.kind = InstrKind::ADD;
+                    else if (funct7 == 0x20)
+                        d.kind = InstrKind::SUB;
+                    break;
 
+                case 0x7:
+                    d.kind = InstrKind::AND;
+                    break;
+
+                case 0x6:
+                    d.kind = InstrKind::OR;
+                    break;
+
+                case 0x4:
+                    d.kind = InstrKind::XOR;
+                    break;
+            }
             break;
         }
 
