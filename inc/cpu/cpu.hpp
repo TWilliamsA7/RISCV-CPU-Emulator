@@ -25,10 +25,12 @@ class CPU {
 
     private:
         uint32_t pc_;
-        uint32_t x_[32];
+        uint32_t r[32];
 
         Memory& memory_;
 
+
+        void inline writeReg(uint8_t rd, uint32_t value);
         
         void execute(const DecodedInstr& i);
 
