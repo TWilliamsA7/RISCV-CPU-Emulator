@@ -33,6 +33,29 @@ DecodedInstr decode(uint32_t instr) {
                         d.kind = InstrKind::SUB;
                     break;
 
+                case 0x1:
+                    d.kind = InstrKind::SLL;
+                    break;
+
+                case 0x2:
+                    d.kind = InstrKind::SLT;
+                    break;
+
+                case 0x3:
+                    d.kind = InstrKind::SLTU;
+                    break;
+
+                case 0x4:
+                    d.kind = InstrKind::XOR;
+                    break;
+
+                case 0x5:
+                    if (funct7 == 0x00)
+                        d.kind = InstrKind::SRL;
+                    else if (funct7 == 0x20)
+                        d.kind = InstrKind::SRA;
+                    break;
+
                 case 0x7:
                     d.kind = InstrKind::AND;
                     break;
@@ -41,9 +64,6 @@ DecodedInstr decode(uint32_t instr) {
                     d.kind = InstrKind::OR;
                     break;
 
-                case 0x4:
-                    d.kind = InstrKind::XOR;
-                    break;
             }
             break;
         }
