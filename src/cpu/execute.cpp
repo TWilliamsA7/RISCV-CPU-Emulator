@@ -193,41 +193,67 @@ void CPU::execSB(const DecodedInstr& i) {
 }
 
 void CPU::execBEQ(const DecodedInstr& i) {
-
+    if (r[i.rs1] == r[i.rs2])
+        pc_ += i.imm;
+    else
+        pc_ += 4;
 }
 
 void CPU::execBNE(const DecodedInstr& i) {
-
+    if (r[i.rs1] != r[i.rs2])
+        pc_ += i.imm;
+    else
+        pc_ += 4;
 }
 
 void CPU::execBLT(const DecodedInstr& i) {
-
+    int32_t r1 = static_cast<int32_t>(r[i.rs1]);
+    int32_t r2 = static_cast<int32_t>(r[i.rs2]);
+    if (r1 < r2)
+        pc_ += i.imm;
+    else
+        pc_ += 4;
 }
 
 void CPU::execBGE(const DecodedInstr& i) {
-
+    int32_t r1 = static_cast<int32_t>(r[i.rs1]);
+    int32_t r2 = static_cast<int32_t>(r[i.rs2]);
+    if (r1 >= r2)
+        pc_ += i.imm;
+    else
+        pc_ += 4;
 }
 
 void CPU::execBLTU(const DecodedInstr& i) {
-
+    if (r[i.rs1] < r[i.rs2])
+        pc_ += i.imm;
+    else
+        pc_ += 4;
 }
 
 void CPU::execBGEU(const DecodedInstr& i) {
-
+    if (r[i.rs1] >= r[i.rs2])
+        pc_ += i.imm;
+    else
+        pc_ += 4;
 }
 
 void CPU::execJAL(const DecodedInstr& i) {
-
+    writeReg(i.rd, pc_ + 4);
+    pc_ += i.imm;
 }
 
 void CPU::execJALR(const DecodedInstr& i) {
-
+    writeReg(i.rd, pc_ + 4);
+    pc_ = (r[i.rs1] + i.imm) &~ 1;
 }
 
 void CPU::execLUI(const DecodedInstr& i) {
-
+    writeReg(i.rd, static_cast<uint32_t>(i.imm));
+    pc_ += 4;
 }
 
 void CPU::execAUIPC(const DecodedInstr& i) {
-
+    writeReg(i.rd, static_cast<uint32_t>(pc_ + i.imm));
+    pc_ += 4;
 }
