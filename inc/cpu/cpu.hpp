@@ -4,7 +4,7 @@
 
 #include <cstdint>
 #include <array>
-#include "cpu/isa.hpp"
+#include "isa/isa.hpp"
 #include "memory/memory.hpp"
 
 struct StepResult {
