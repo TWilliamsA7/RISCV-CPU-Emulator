@@ -11,6 +11,7 @@
 class CPU {
     public:
         CPU(Memory& mem);
+        CPU(Memory& mem, bool trace_enabled);
         StepResult step();
         
         uint32_t pc() const;
@@ -28,6 +29,7 @@ class CPU {
         StepResult sr;
         void clearStep();
         
+        bool trace_enabled_ = false;
         bool halted = false;
         
         void writeReg(uint8_t rd, uint32_t value);

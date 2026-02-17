@@ -10,6 +10,10 @@ CPU::CPU(Memory& mem) : pc_(0), memory_(mem) {
     std::fill(std::begin(r), std::end(r), 0);
 }
 
+CPU::CPU(Memory& mem, bool trace_enabled) : pc_(0), memory_(mem), trace_enabled_(trace_enabled) {
+    std::fill(std::begin(r), std::end(r), 0);
+}
+
 
 StepResult CPU::step() {
     clearStep();
@@ -19,6 +23,7 @@ StepResult CPU::step() {
     sr.dInstr = di;
     execute(di);
     sr.pc_after = pc_;
+    if (trace_enabled_) printTrace();
     return sr;
 }
 
