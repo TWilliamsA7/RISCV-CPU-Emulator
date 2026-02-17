@@ -280,7 +280,7 @@ void CPU::printTrace() const {
             << " -> "
             << hex32(mw.new_val)
             << "\t("
-            << mw.size
+            << static_cast<unsigned int>(mw.size)
             << "B)\n";
     }
 }

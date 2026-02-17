@@ -28,9 +28,32 @@ TEST_F(CPUTest, HandleADDI) {
 
 }
 
-TEST_F(CPUTest, HandleInvalid) {
+TEST_F(CPUTest, HandleSW) {
 
     // addi x1, x0, 18
+    // sw x1, 36(x0)
+
+    loadProgram({ 
+        0x93, 0x00, 0x20, 0x01,
+        0x23, 0x22, 0x10, 0x02
+    });
+
+    // Load register
+    cpu.step();
+
+    // Write to memory
+    StepResult sr = cpu.step();
+
+    EXPECT_EQ(sr.dInstr.kind, InstrKind::SW);
+    EXPECT_EQ(sr.pc_before, 4);
+    EXPECT_EQ(sr.pc_after, 8);
+    EXPECT_TRUE(sr.mem_write.has_value());
+    EXPECT_EQ(mem.read32(0x24), 18);
+}
+
+TEST_F(CPUTest, HandleInvalid) {
+
+    // addi x0, x0, 18
     loadProgram({ 0x00, 0x00, 0x00, 0x00 });
 
     StepResult sr = cpu.step();

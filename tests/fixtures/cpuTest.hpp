@@ -6,7 +6,7 @@
 class CPUTest : public ::testing::Test {
     protected:
         Memory mem{100};
-        CPU cpu{mem};
+        CPU cpu{mem, true};
 
         void loadProgram(const std::vector<uint8_t>& program) {
             mem.loadBinary(program, 0x0);
