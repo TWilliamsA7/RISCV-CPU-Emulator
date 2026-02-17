@@ -2,6 +2,7 @@ add_library(cpu
     cpu.cpp
     execute.cpp
     decode.cpp
+    trace.cpp
 )
 
 target_include_directories(cpu PUBLIC

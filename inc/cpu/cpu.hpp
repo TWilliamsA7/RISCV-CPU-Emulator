@@ -16,9 +16,10 @@ class CPU {
         uint32_t pc() const;
         uint32_t reg(size_t idx) const;
         bool isHalted() const;
+        void printTrace() const;
         
         
-        private:
+    private:
         uint32_t pc_;
         uint32_t r[32];
         
