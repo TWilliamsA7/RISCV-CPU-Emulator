@@ -1,4 +1,5 @@
 add_library(cpu
+    cpu.cpp
     execute.cpp
     decode.cpp
 )

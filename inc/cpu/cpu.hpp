@@ -24,22 +24,22 @@ class CPU {
         uint32_t reg(size_t idx) const;
         bool isHalted() const;
         
-        static DecodedInstr decode(uint32_t instr);
-
-    private:
+        
+        private:
         uint32_t pc_;
         uint32_t r[32];
-
-        Memory& memory_;
-
-        bool halted = false;
-
-        void inline writeReg(uint8_t rd, uint32_t value);
         
+        Memory& memory_;
+        
+        bool halted = false;
+        
+        void writeReg(uint8_t rd, uint32_t value);
+        
+        static DecodedInstr decode(uint32_t instr);
         void execute(const DecodedInstr& i);
-
+        
         // === Execution Dispath === //
-
+        
         using ExecFn = void (CPU::*)(const DecodedInstr&);
         static const std::array<ExecFn, static_cast<size_t>(InstrKind::COUNT)> dispatch_;
 
