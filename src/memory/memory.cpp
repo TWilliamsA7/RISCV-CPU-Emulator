@@ -32,15 +32,15 @@ void Memory::write8(uint32_t addr, uint8_t val) {
 void Memory::write16(uint32_t addr, uint16_t val) {
     checkAddress(addr, 2);
     data_[addr] = val & 0xFF;
-    data_[addr] = (val >> 8) & 0xFF;
+    data_[addr + 1] = (val >> 8) & 0xFF;
 }
 
 void Memory::write32(uint32_t addr, uint32_t val) {
     checkAddress(addr, 4);
     data_[addr] = val & 0xFF;
-    data_[addr] = (val >> 8) & 0xFF;
-    data_[addr] = (val >> 16) & 0xFF;
-    data_[addr] = (val >> 24) & 0xFF;
+    data_[addr + 1] = (val >> 8) & 0xFF;
+    data_[addr + 2] = (val >> 16) & 0xFF;
+    data_[addr + 3] = (val >> 24) & 0xFF;
 }
 
 size_t Memory::size() const { return data_.size(); }
