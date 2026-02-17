@@ -12,7 +12,7 @@ CPU::CPU(Memory& mem) : pc_(0), memory_(mem) {
 
 
 StepResult CPU::step() {
-    StepResult sr;
+    clearStep();
     sr.pc_before = pc_;
     sr.instruction = memory_.read32(pc_);
     DecodedInstr di = decode(sr.instruction);
@@ -20,6 +20,15 @@ StepResult CPU::step() {
     execute(di);
     sr.pc_after = pc_;
     return sr;
+}
+
+void CPU::clearStep() {
+    sr.dInstr = DecodedInstr{},
+    sr.pc_before = 0;
+    sr.pc_after = 0;
+    sr.instruction = 0x0;
+    sr.mem_write.reset();
+    sr.reg_write.reset();
 }
 
 void CPU::writeReg(uint8_t rd, uint32_t value) {

@@ -6,14 +6,7 @@
 #include <array>
 #include "isa/isa.hpp"
 #include "memory/memory.hpp"
-
-struct StepResult {
-    uint32_t pc_before;
-    uint32_t pc_after;
-    uint32_t instruction;
-    DecodedInstr dInstr;
-    bool trap;
-};
+#include "core/state.hpp"
 
 class CPU {
     public:
@@ -30,6 +23,9 @@ class CPU {
         uint32_t r[32];
         
         Memory& memory_;
+
+        StepResult sr;
+        void clearStep();
         
         bool halted = false;
         
