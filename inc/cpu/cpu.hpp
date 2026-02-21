@@ -22,7 +22,11 @@ class CPU {
 
 
         bool isHalted() const;
+
+        // === Trace Functions === //
+
         void printTrace() const;
+        void dumpRegisters() const;
         void addBreakpoint(uint32_t addr);
         void removeBreakpoint(uint32_t addr);
         

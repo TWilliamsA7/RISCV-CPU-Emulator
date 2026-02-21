@@ -284,6 +284,18 @@ void CPU::printTrace() const {
     }
 }
 
+void CPU::dumpRegisters() const {
+    std::cout << "REGISTERS" << "\n";
+    for (int i = 0; i < 32; i++) {
+        std::cout
+            << "\tREG\t"
+            << regStr(i)
+            << ": "
+            << hex32(r[i])
+            << "\n";
+    }
+}
+
 void CPU::addBreakpoint(uint32_t addr) {
     breakpoints_.insert(addr);
 }
