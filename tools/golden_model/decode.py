@@ -23,29 +23,34 @@ def decode(instr):
         "funct7": funct7,
         "imm": None,
         "type": None,
+        "key": None
     }
 
     # R-type
     if opcode == 0x33:
         decoded["type"] = "R"
+        decoded["key"] = (opcode, funct3, funct7)
 
     # I-type arithmetic
     elif opcode == 0x13:
         imm = sign_extend((instr >> 20) & 0xFFF, 12)
         decoded["imm"] = imm
         decoded["type"] = "I"
+        decoded["key"] = (opcode, funct3, funct7)
 
     # Load
     elif opcode == 0x03:
         imm = sign_extend((instr >> 20) & 0xFFF, 12)
         decoded["imm"] = imm
         decoded["type"] = "LOAD"
+        decoded["key"] = (opcode, funct3, None)
 
     # Store
     elif opcode == 0x23:
         imm = ((instr >> 7) & 0x1F) | (((instr >> 25) & 0x7F) << 5)
         decoded["imm"] = sign_extend(imm, 12)
         decoded["type"] = "STORE"
+        decoded["key"] = (opcode, funct3, None)
 
     # Branch
     elif opcode == 0x63:
@@ -57,6 +62,7 @@ def decode(instr):
         )
         decoded["imm"] = sign_extend(imm, 13)
         decoded["type"] = "BRANCH"
+        decoded["key"] = (opcode, funct3, None)
 
     # JAL
     elif opcode == 0x6F:
@@ -68,23 +74,28 @@ def decode(instr):
         )
         decoded["imm"] = sign_extend(imm, 21)
         decoded["type"] = "JAL"
+        decoded["key"] = (opcode, None, None)
 
     elif opcode == 0x67:
         imm = sign_extend((instr >> 20) & 0xFFF, 12)
         decoded["imm"] = imm
         decoded["type"] = "JALR"
+        decoded["key"] = (opcode, None, None)
 
     elif opcode == 0x37:
         imm = instr & 0xFFFFF000
         decoded["imm"] = imm
         decoded["type"] = "LUI"
+        decoded["key"] = (opcode, None, None)
 
     elif opcode == 0x17:
         imm = instr & 0xFFFFF000
         decoded["imm"] = imm
         decoded["type"] = "AUIPC"
+        decoded["key"] = (opcode, None, None)
 
     else:
         decoded["type"] = "INVALID"
+        decoded["key"] = (None, None, None)
 
     return decoded
