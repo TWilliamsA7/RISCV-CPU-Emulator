@@ -7,7 +7,7 @@
 #include <iostream>
 #include <sstream>
 
-static std::string hex32(uint32_t v) {
+std::string CPU::hex32(uint32_t v) const {
     std::ostringstream oss;
     oss << std::hex << std::setw(8) << std::setfill('0') << v;
     return oss.str();
@@ -246,7 +246,6 @@ static std::string disasm(const DecodedInstr& di) {
     return oss.str();
 }
 
-
 void CPU::printTrace() const {
     std::cout 
         << "PC=" << hex32(sr.pc_before)
@@ -283,4 +282,12 @@ void CPU::printTrace() const {
             << static_cast<unsigned int>(mw.size)
             << "B)\n";
     }
+}
+
+void CPU::addBreakpoint(uint32_t addr) {
+    breakpoints_.insert(addr);
+}
+
+void CPU::removeBreakpoint(uint32_t addr) {
+    breakpoints_.erase(addr);
 }

@@ -3,6 +3,7 @@
 #pragma once
 
 #include <cstdint>
+#include <unordered_set>
 #include <array>
 #include "isa/isa.hpp"
 #include "memory/memory.hpp"
@@ -12,13 +13,18 @@ class CPU {
     public:
         CPU(Memory& mem);
         CPU(Memory& mem, bool trace_enabled);
+
+        void run();
         StepResult step();
         
         uint32_t pc() const;
         uint32_t reg(size_t idx) const;
+
+
         bool isHalted() const;
         void printTrace() const;
-        
+        void addBreakpoint(uint32_t addr);
+        void removeBreakpoint(uint32_t addr);
         
     private:
         uint32_t pc_;
@@ -31,9 +37,12 @@ class CPU {
         
         bool trace_enabled_ = false;
         bool halted = false;
-        
+        std::unordered_set<uint32_t> breakpoints_;
+
         void writeReg(uint8_t rd, uint32_t value);
         
+        // === Execute and Decode === //
+
         static DecodedInstr decode(uint32_t instr);
         void execute(const DecodedInstr& i);
         
@@ -82,5 +91,8 @@ class CPU {
         void execLUI(const DecodedInstr& i);
         void execAUIPC(const DecodedInstr& i);
         void execINVALID(const DecodedInstr& i);
+
+        // === Miscellaneous Helper functions === //
+        std::string hex32(uint32_t v) const;
 
 };

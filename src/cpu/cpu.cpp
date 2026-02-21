@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <iostream>
 
 CPU::CPU(Memory& mem) : pc_(0), memory_(mem) {
     std::fill(std::begin(r), std::end(r), 0);
@@ -12,6 +13,17 @@ CPU::CPU(Memory& mem) : pc_(0), memory_(mem) {
 
 CPU::CPU(Memory& mem, bool trace_enabled) : pc_(0), memory_(mem), trace_enabled_(trace_enabled) {
     std::fill(std::begin(r), std::end(r), 0);
+}
+
+void CPU::run() {
+    while (!halted) {
+        if (breakpoints_.contains(pc_)) {
+            std::cout << "Breakpoint hit at PC=" << hex32(pc_) << "\n";
+            break;
+        }
+
+        step();
+    }
 }
 
 
