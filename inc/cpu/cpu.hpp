@@ -15,6 +15,7 @@ class CPU {
         CPU(Memory& mem, bool trace_enabled);
 
         void run();
+        void run(uint32_t count);
         StepResult step();
         
         uint32_t pc() const;

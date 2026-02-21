@@ -26,6 +26,12 @@ void CPU::run() {
     }
 }
 
+void CPU::run(uint32_t count) {
+    for (uint32_t i = 0; i < count && !halted; i++) {
+        step();
+    }
+}
+
 
 StepResult CPU::step() {
     clearStep();
