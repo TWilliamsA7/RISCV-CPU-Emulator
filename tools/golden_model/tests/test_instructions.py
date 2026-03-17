@@ -79,6 +79,30 @@ def test_beq_not_taken():
     assert cpu.pc == 4
 
 
+def test_bne_taken():
+    mem = Memory(64)
+    cpu = CPU(mem)
+
+    cpu.regs[1] = 5
+    mem.write32(0, 0x00009463)
+
+    cpu.step()
+
+    assert cpu.pc == 8
+
+
+def test_bne_not_taken():
+    mem = Memory(64)
+    cpu = CPU(mem)
+
+    cpu.regs[1] = 0
+    mem.write32(0, 0x00009463)
+
+    cpu.step()
+
+    assert cpu.pc == 4
+
+
 def test_jal():
     mem = Memory(64)
     cpu = CPU(mem)
@@ -105,3 +129,17 @@ def test_jalr():
 
     assert cpu.regs[2] == 4
     assert cpu.pc == 20
+
+
+def test_x0_invariant():
+    mem = Memory(64)
+    cpu = CPU(mem)
+
+    cpu.regs[0] = 123
+
+    # addi x0, x0, 5
+    mem.write32(0, 0x00500013)
+
+    cpu.step()
+
+    assert cpu.regs[0] == 0
