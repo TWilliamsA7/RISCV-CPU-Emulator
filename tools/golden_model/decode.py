@@ -29,6 +29,7 @@ def decode(instr):
     # R-type
     if opcode == 0x33:
         decoded["type"] = "R"
+        funct7 = funct7 if funct3 == 0x0 or funct3 == 0x5 else None
         decoded["key"] = (opcode, funct3, funct7)
 
     # I-type arithmetic
@@ -36,6 +37,7 @@ def decode(instr):
         imm = sign_extend((instr >> 20) & 0xFFF, 12)
         decoded["imm"] = imm
         decoded["type"] = "I"
+        funct7 = funct7 if funct3 == 0x5 else None
         decoded["key"] = (opcode, funct3, funct7)
 
     # Load
