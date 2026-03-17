@@ -1,4 +1,9 @@
 # Build files
 build/
 
+# Python Virtual Environment
+.venv
+__pycache__/
+
+# Project Planning
 plan.md

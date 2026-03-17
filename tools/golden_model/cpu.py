@@ -1,7 +1,7 @@
 # cpu.py
 
-from decode import decode
-from instructions.rv32i import INSTRUCTION_SET
+from golden_model.decode import decode
+from golden_model.instructions.rv32i import INSTRUCTION_SET
 
 class CPU:
     def __init__(self, memory):
