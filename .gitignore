@@ -4,6 +4,11 @@ build/
 # Python Virtual Environment
 .venv
 __pycache__/
+.pytest_cache
 
 # Project Planning
 plan.md
+
+# Binaries
+*.bin
+*.elf
