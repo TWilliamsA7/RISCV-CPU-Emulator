@@ -1,5 +1,6 @@
 from testgen.generators.instruction import choose_instruction
 from testgen.constraints import *
+from testgen.encode import encode
 
 def generate_program(instrs, coverage, length=100):
     program = []
@@ -25,6 +26,6 @@ def generate_program(instrs, coverage, length=100):
             case 0x6F:
                 imm = gen_jump_offset()
 
-        program.append((instr, rd, rs1, rs2, imm))
+        program.append(encode(instr, rd=rd, rs1=rs1, rs2=rs2, imm=imm))
 
     return program

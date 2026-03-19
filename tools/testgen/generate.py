@@ -1,5 +1,7 @@
+import os
 from argparse import ArgumentParser
 from testgen.encode import Instr, encode
+
 
 def main():
 
@@ -18,6 +20,24 @@ def main():
         print(f"Could not generate program binary at {args.filename}")
     else:
         print(f"Generated binary at {args.filename}")
+
+
+def write_binary(program: list, filename="test.bin"):
+    try:
+        program = generate_program()
+
+        with open(filename, "wb") as f:
+            for instr in program:
+                f.write(instr.to_bytes(4, "little"))
+    except:
+        print(f"Could not generate program binary at {filename}")
+
+
+def remove_binary(filename="test.bin"):
+    try:
+        os.remove(filename)
+    except:
+        print(f"Could not remove file '{filename}'")
 
 
 def generate_program():
