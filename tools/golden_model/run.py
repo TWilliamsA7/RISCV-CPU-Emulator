@@ -1,17 +1,25 @@
 # run.py
 
-from memory import Memory
-from cpu import CPU
-from trace import print_trace
+import sys
 
+from golden_model.cpu import CPU
+from golden_model.memory import Memory
+from golden_model.trace import print_trace
 
 def main():
-    mem = Memory(1024)
+
+    if len(sys.argv) < 2:
+        print("Usage: python run.py [Path to program binary]")
+        exit(1)
+
+    mem = Memory(4096)
     cpu = CPU(mem)
 
-    for _ in range(10):
+    mem.loadBinary(sys.argv[1])
+
+    for _ in range(1024):
         result = cpu.step()
-        print_trace(result, "TODO_DISASM")
+        print_trace(result)
 
 
 if __name__ == "__main__":
