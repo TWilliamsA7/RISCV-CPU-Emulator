@@ -2,7 +2,7 @@
 
 #pragma once
 #include <cstdint>
-
+#include <string>
 #include <vector>
 #include <cstdint>
 
@@ -18,6 +18,7 @@ class Memory {
         void write16(uint32_t addr, uint16_t val);
         void write32(uint32_t addr, uint32_t val);
 
+        void loadBinary(const std::string& filePath, uint32_t startAddr);
         void loadBinary(const std::vector<uint8_t>& program, uint32_t startAddr);
         void reset();
 
