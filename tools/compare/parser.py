@@ -1,6 +1,6 @@
 import re
 
-def parse_trace(file_path):
+def parse_trace_file(file_path):
     entries = []
     current = {}
 
@@ -23,6 +23,35 @@ def parse_trace(file_path):
 
             elif line.startswith("MEM"):
                 current["mem"].append(line)
+
+    if current:
+        entries.append(current)
+
+    return entries
+
+
+def parse_trace(trace: str):
+    entries = []
+    current = {}
+
+    for line in trace:
+        line = line.strip()
+
+        if line.startswith("PC="):
+            if current:
+                entries.append(current)
+            current = {"reg": [], "mem": []}
+
+            m = re.match(r"PC=(0x[0-9a-f]+)\s+INST=(0x[0-9a-f]+).*NPC=(0x[0-9a-f]+)", line)
+            current["pc"] = m.group(1)
+            current["instr"] = m.group(2)
+            current["npc"] = m.group(3)
+
+        elif line.startswith("REG"):
+            current["reg"].append(line)
+
+        elif line.startswith("MEM"):
+            current["mem"].append(line)
 
     if current:
         entries.append(current)
