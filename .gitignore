@@ -7,7 +7,7 @@ __pycache__/
 .pytest_cache
 
 # Project Planning
-plan.md
+plans/
 
 # Binaries
 *.bin
