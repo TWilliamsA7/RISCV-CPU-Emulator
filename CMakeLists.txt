@@ -35,6 +35,10 @@ if(BUILD_TESTS)
     FetchContent_MakeAvailable(googletest)
 endif()
 
+if(WIN32)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -static-libgcc -static-libstdc++")
+endif()
+
 add_subdirectory(src)
 
 if(BUILD_TESTS)
