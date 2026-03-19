@@ -14,7 +14,7 @@ def generate_program(instrs, coverage, length=100):
 
         imm = None
 
-        match instr[0]:
+        match instr.value[0]:
             case 0x23 | 0x13 | 0x03 | 0x67 if instr.name not in ["SLLI", "SRLI", "SRAI"]:
                 imm = gen_imm_i()
             case 0x13:

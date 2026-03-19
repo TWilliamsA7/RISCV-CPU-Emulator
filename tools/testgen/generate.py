@@ -1,6 +1,7 @@
 import os
 from argparse import ArgumentParser
 from testgen.encode import Instr, encode
+from testgen.generators.program import generate_program
 
 
 def main():
@@ -24,12 +25,13 @@ def main():
 
 def write_binary(program: list, filename="temp/test.bin"):
     try:
-        program = generate_program()
+        os.makedirs("temp", exist_ok=True)
 
         with open(filename, "wb") as f:
             for instr in program:
                 f.write(instr.to_bytes(4, "little"))
-    except:
+    except Exception as e:
+        print(f"An exception occurred: {type(e).__name__} - {e}")
         print(f"Could not generate program binary at {filename}")
 
 
@@ -38,16 +40,6 @@ def remove_binary(filename="temp/test.bin"):
         os.remove(filename)
     except:
         print(f"Could not remove file '{filename}'")
-
-
-def generate_program():
-    program = []
-    
-    program.append(encode(Instr.ADDI, rd=1, rs1=0, imm=5))
-    program.append(encode(Instr.ADDI, rd=2, rs1=1, imm=10))
-    program.append(encode(Instr.ADD, rd=3, rs1=1, rs2=2))
-
-    return program
 
 if __name__ == "__main__":
     main()

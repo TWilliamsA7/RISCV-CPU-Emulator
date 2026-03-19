@@ -2,8 +2,8 @@ from testgen.isa import Instr
 
 def encode(instr: Instr, rd=None, rs1=None, rs2=None, imm=None):
     opcode = instr.value[0]
-    funct3 = instr.value[1]
-    funct7 = instr.value[2]
+    funct3 = instr.value[1] or 0x0
+    funct7 = instr.value[2] or 0x0
 
     match opcode:
         case 0x33: # R-type
