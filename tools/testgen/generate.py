@@ -22,7 +22,7 @@ def main():
         print(f"Generated binary at {args.filename}")
 
 
-def write_binary(program: list, filename="test.bin"):
+def write_binary(program: list, filename="temp/test.bin"):
     try:
         program = generate_program()
 
@@ -33,7 +33,7 @@ def write_binary(program: list, filename="test.bin"):
         print(f"Could not generate program binary at {filename}")
 
 
-def remove_binary(filename="test.bin"):
+def remove_binary(filename="temp/test.bin"):
     try:
         os.remove(filename)
     except:
