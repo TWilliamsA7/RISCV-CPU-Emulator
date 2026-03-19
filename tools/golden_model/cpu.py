@@ -31,6 +31,7 @@ class CPU:
             "pc_after": self.pc,
             "reg_write": reg_write,
             "mem_write": mem_write,
+            "decoded": decoded
         }
 
     
