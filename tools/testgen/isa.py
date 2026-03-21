@@ -50,3 +50,50 @@ INSTRUCTIONS_SIZE_MAP = {
     "SH": 2,
     "SW": 4
 }
+
+def compute_alu(instr, a, b):
+    if instr in {Instr.ADD, Instr.ADDI}:
+        return a + b
+
+    if instr in {Instr.SUB}:
+        return a - b
+
+    if instr in {Instr.AND, Instr.ANDI}:
+        return a & b
+
+    if instr in {Instr.OR, Instr.ORI}:
+        return a | b
+
+    if instr in {Instr.XOR, Instr.XORI}:
+        return a ^ b
+
+    if instr in {Instr.SLL, Instr.SLLI}:
+        return a << (b & 0x1F)
+
+    if instr in {Instr.SRL, Instr.SRLI}:
+        return (a % (1 << 32)) >> (b & 0x1F)
+
+    if instr in {Instr.SRA, Instr.SRAI}:
+        return a >> (b & 0x1F)
+
+    if instr in {Instr.SLT, Instr.SLTI}:
+        return int(a < b)
+
+    if instr in {Instr.SLTU, Instr.SLTIU}:
+        return int((a & 0xFFFFFFFF) < (b & 0xFFFFFFFF))
+
+    return 0
+
+def compute_load_address(base, imm):
+    addr = base + imm
+    return addr
+
+
+def compute_upper(instr, imm):
+    if instr == Instr.LUI:
+        return imm
+
+    if instr == Instr.AUIPC:
+        return imm  # ignoring PC for simplicity
+
+    return 0
