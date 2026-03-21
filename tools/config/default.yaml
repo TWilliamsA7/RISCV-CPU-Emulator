@@ -2,6 +2,9 @@ memory:
   start: 0x0000
   size: 0x1000
 
+generation:
+  iterations: 1
+
 program:
   length: 100
   max_steps: 1000

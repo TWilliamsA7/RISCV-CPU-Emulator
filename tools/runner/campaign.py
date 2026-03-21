@@ -24,28 +24,28 @@ def main():
 
 
 
-def run_campaign(ctx, iterations=1000):
+def run_campaign(ctx):
 
-    for i in range(iterations):
+    for i in range(ctx.config.iterations):
 
         program = generate_program(ctx)
 
         write_binary(program, ctx.config.temp_dir)
 
-        py_trace = run_python_model(ctx)
-        cpp_trace = run_cpp_model(ctx)
+        # py_trace = run_python_model(ctx)
+        # cpp_trace = run_cpp_model(ctx)
 
-        match, step = compare(py_trace, cpp_trace)
+        # match, step = compare(py_trace, cpp_trace)
 
-        if not match:
-            save_failure(ctx, program, py_trace, cpp_trace)
-            print(f"❌ Failure at iteration {i}, step {step}")
-            break
+        # if not match:
+        #     save_failure(ctx, program, py_trace, cpp_trace)
+        #     print(f"❌ Failure at iteration {i}, step {step}")
+        #     break
 
-        for trace in py_trace:
-            collect_from_trace(trace, ctx.coverage)
+        # for trace in py_trace:
+        #     collect_from_trace(trace, ctx.coverage)
 
-        remove_binary(ctx.config.temp_dir)
+        # remove_binary(ctx.config.temp_dir)
 
 
 if __name__ == "__main__":

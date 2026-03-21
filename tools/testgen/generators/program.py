@@ -6,14 +6,14 @@ from testgen.isa import INSTRUCTIONS, Instr, INSTRUCTIONS_SIZE_MAP
 def generate_program(ctx):
     program = []
 
-    for _ in range(ctx.config.program_length):
+    for i in range(ctx.config.program_length):
         instr = choose_instruction(INSTRUCTIONS, ctx.coverage)
-        entry = generate_instruction(ctx, instr)
+        entry = generate_instruction(ctx, instr, i)
         program.append(entry)
 
     return program
 
-def generate_instruction(ctx, instr):
+def generate_instruction(ctx, instr, idx):
     state = ctx.state
 
     rd = gen_reg()
@@ -39,7 +39,7 @@ def generate_instruction(ctx, instr):
 
         case 0x63:  # BRANCH
             try:
-                rs1, rs2 = gen_branch(ctx)
+                rs1, rs2, imm = gen_branch(ctx, ctx.config.memory_start + (idx * 4))
             except RuntimeError:
                 instr = Instr.INVALID
 

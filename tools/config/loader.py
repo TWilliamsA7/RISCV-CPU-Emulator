@@ -17,3 +17,5 @@ class Config:
 
         self.temp_dir     = data["output"]["temp_dir"]
         self.failure_dir  = data["output"]["failure_dir"]
+
+        self.iterations = data["generation"]["iterations"]
