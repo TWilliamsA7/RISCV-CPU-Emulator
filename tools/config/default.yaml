@@ -10,10 +10,6 @@ execution:
   python_model: "golden_model.run"
   cpp_model: "./../build/src/riscv-emulator"
 
-generation:
-  bias_branches: true
-  enforce_alignment: true
-
 output:
   temp_dir: "temp"
   failure_dir: "failures"
