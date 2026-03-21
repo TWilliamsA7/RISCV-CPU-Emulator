@@ -25,3 +25,16 @@ class CoverageModel:
 
     def get_weight(self, instr_name):
         return 1 / (1 + self.instr_count[instr_name])
+
+
+def print_coverage(cov):
+    print("\n=== COVERAGE REPORT ===")
+
+    for instr, count in cov.instr_count.items():
+        print(f"{instr}: {count}")
+
+    print("\nBranch Taken:")
+    print(cov.branch_taken)
+
+    print("\nBranch Not Taken:")
+    print(cov.branch_not_taken)
