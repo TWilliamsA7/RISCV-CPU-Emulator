@@ -41,3 +41,12 @@ class Instr(Enum):
     INVALID = (None, None, None)
 
 INSTRUCTIONS = list(Instr)
+
+INSTRUCTIONS_SIZE_MAP = {
+    "LB": 1,
+    "LH": 2,
+    "LW": 4,
+    "SB": 1,
+    "SH": 2,
+    "SW": 4
+}
