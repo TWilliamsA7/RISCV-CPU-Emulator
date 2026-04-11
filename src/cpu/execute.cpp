@@ -364,5 +364,6 @@ void CPU::execAUIPC(const DecodedInstr& i) {
 }
 
 void CPU::execINVALID(const DecodedInstr& i) {
-    halted = true;
+    // halted = true;
+    pc_ += 4;
 }

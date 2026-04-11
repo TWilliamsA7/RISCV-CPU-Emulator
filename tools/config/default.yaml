@@ -11,7 +11,7 @@ program:
 
 execution:
   python_model: "golden_model.run"
-  cpp_model: "./../build/src/riscv-emulator"
+  cpp_model: "./../build/src/riscv_emulator.exe"
 
 output:
   temp_dir: "temp"

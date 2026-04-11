@@ -26,7 +26,7 @@ def generate_instruction(ctx, instr, idx):
         case 0x03:  # LOAD
             try: 
                 access_size = INSTRUCTIONS_SIZE_MAP[instr.name]
-                rs1, imm = gen_valid_address(ctx, access_size)
+                rs1, imm = gen_valid_address(ctx, access_size, unsigned="U" in instr.name)
             except RuntimeError:
                 instr = Instr.INVALID
 
@@ -45,15 +45,21 @@ def generate_instruction(ctx, instr, idx):
 
         case 0x6F:  # JAL
             try:
-                rs1, imm = gen_jalr(ctx)
+                rs1, imm = gen_jal(ctx, ctx.config.memory_start + (idx * 4))
             except RuntimeError:
                 instr = Instr.INVALID
 
         case 0x13 if instr.name in ["SLLI", "SRLI", "SRAI"]:
             imm = gen_shift_imm()
 
-        case 0x13 | 0x67:
+        case 0x13:
             imm = gen_imm_i()
+
+        case 0x67:
+            try:
+                rs1, imm = gen_jalr(ctx)
+            except RuntimeError:
+                instr = Instr.INVALID
 
         case 0x37 | 0x17:
             imm = gen_imm_u()
