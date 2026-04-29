@@ -106,6 +106,14 @@ class CPU {
         void execCSRRWI(const DecodedInstr& i);
         void execCSRRSI(const DecodedInstr& i);
         void execCSRRCI(const DecodedInstr& i);
+        void execMUL(const DecodedInstr& i);
+        void execMULH(const DecodedInstr& i);
+        void execMULHSU(const DecodedInstr& i);
+        void execMULHU(const DecodedInstr& i);
+        void execDIV(const DecodedInstr& i);
+        void execDIVU(const DecodedInstr& i);
+        void execREM(const DecodedInstr& i);
+        void execREMU(const DecodedInstr& i);
         void execINVALID(const DecodedInstr& i);
 
         // === Miscellaneous Helper functions === //

@@ -14,6 +14,8 @@ enum class InstrKind {
     ECALL, EBREAK, // System calls
     FENCE, // Memory fence
     CSRRW, CSRRS, CSRRC, CSRRWI, CSRRSI, CSRRCI, // CSR Instructions
+    MUL, MULH, MULHSU, MULHU, // Multiply instructions
+    DIV, DIVU, REM, REMU, // Divide instructions
     INVALID, 
     COUNT
 };
