@@ -50,6 +50,14 @@ const std::array<CPU::ExecFn, static_cast<size_t>(InstrKind::COUNT)> CPU::dispat
     &CPU::execCSRRWI,
     &CPU::execCSRRSI,
     &CPU::execCSRRCI,
+    &CPU::execMUL,
+    &CPU::execMULH,
+    &CPU::execMULHSU,
+    &CPU::execMULHU,
+    &CPU::execDIV,
+    &CPU::execDIVU,
+    &CPU::execREM,
+    &CPU::execREMU,
     &CPU::execINVALID,
 };
 
@@ -421,7 +429,7 @@ void CPU::execCSRRC(const DecodedInstr& i) {
 }
 
 void CPU::execCSRRWI(const DecodedInstr& i) {
-    pc_ += 4;
+
 }
 
 void CPU::execCSRRSI(const DecodedInstr& i) {
@@ -431,6 +439,99 @@ void CPU::execCSRRSI(const DecodedInstr& i) {
 void CPU::execCSRRCI(const DecodedInstr& i) {
     pc_ += 4;
 }
+
+void CPU::execMUL(const DecodedInstr& i) {
+    uint32_t o = (uint32_t)regs_[i.rd];
+    int64_t res = (int64_t)(int32_t)regs_[i.rs1] * (int64_t)(int32_t)regs_[i.rs2];
+    writeReg(i.rd, (uint32_t)(res & 0xFFFFFFFF));
+    sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
+    pc_ += 4;
+}
+
+void CPU::execMULH(const DecodedInstr& i) {
+    uint32_t o = (uint32_t)regs_[i.rd];
+    int64_t res = (int64_t)(int32_t)regs_[i.rs1] * (int64_t)(int32_t)regs_[i.rs2];
+    writeReg(i.rd, (uint32_t)(res >> 32));
+    sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
+    pc_ += 4;
+}
+
+void CPU::execMULHSU(const DecodedInstr& i) {
+    uint32_t o = (uint32_t)regs_[i.rd];
+    uint64_t res = (uint64_t)regs_[i.rs1] * (uint64_t)regs_[i.rs2];
+    writeReg(i.rd, (uint32_t)(res >> 32));
+    sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
+    pc_ += 4;
+}
+
+void CPU::execMULHU(const DecodedInstr& i) {
+    uint32_t o = (uint32_t)regs_[i.rd];
+    uint64_t res = (uint64_t)regs_[i.rs1] * (uint64_t)regs_[i.rs2];
+    writeReg(i.rd, (uint32_t)(res & 0xFFFFFFFF));
+    sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
+    pc_ += 4;
+}
+
+void CPU::execDIV(const DecodedInstr& i) {
+    int32_t dividend = (int32_t)regs_[i.rs1];
+    int32_t divisor = (int32_t)regs_[i.rs2];
+    uint32_t o = (uint32_t)regs_[i.rd];
+
+    if (divisor == 0) {
+        writeReg(i.rd, 0xFFFFFFFF);
+    } else if (dividend == INT32_MIN && divisor == -1) {
+        writeReg(i.rd, dividend);
+    } else {
+        writeReg(i.rd, (uint32_t)(dividend / divisor));
+    }
+    sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
+    pc_ += 4;
+}
+
+void CPU::execDIVU(const DecodedInstr& i) {
+    uint32_t dividend = (uint32_t)regs_[i.rs1];
+    uint32_t divisor = (uint32_t)regs_[i.rs2];
+    uint32_t o = (uint32_t)regs_[i.rd];
+
+    if (divisor == 0) {
+        writeReg(i.rd, 0xFFFFFFFF);
+    } else {
+        writeReg(i.rd, (uint32_t)(dividend / divisor));
+    }
+    sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
+    pc_ += 4;
+}
+
+void CPU::execREM(const DecodedInstr& i) {
+    int32_t dividend = (int32_t)regs_[i.rs1];
+    int32_t divisor = (int32_t)regs_[i.rs2];
+    uint32_t o = (uint32_t)regs_[i.rd];
+
+    if (divisor == 0) {
+        writeReg(i.rd, dividend);
+    } else if (dividend == INT32_MIN && divisor == -1) {
+        writeReg(i.rd, 0);
+    } else {
+        writeReg(i.rd, (uint32_t)(dividend % divisor));
+    }
+    sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
+    pc_ += 4;
+}
+
+void CPU::execREMU(const DecodedInstr& i) {
+    uint32_t dividend = (uint32_t)regs_[i.rs1];
+    uint32_t divisor = (uint32_t)regs_[i.rs2];
+    uint32_t o = (uint32_t)regs_[i.rd];
+
+    if (divisor == 0) {
+        writeReg(i.rd, dividend);
+    } else {
+        writeReg(i.rd, (uint32_t)(dividend % divisor));
+    }
+    sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
+    pc_ += 4;
+}
+
 
 void CPU::execINVALID(const DecodedInstr& i) {
     pc_ += 4;

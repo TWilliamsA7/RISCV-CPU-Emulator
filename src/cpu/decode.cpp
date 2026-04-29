@@ -33,27 +33,60 @@ DecodedInstr CPU::decode(uint32_t instr) {
                         d.kind = InstrKind::ADD;
                     else if (funct7 == 0x20)
                         d.kind = InstrKind::SUB;
+                    else if (funct7 == 0x01)
+                        d.kind = InstrKind::MUL;
                     break;
 
-                case 0x1: d.kind = InstrKind::SLL; break;
+                case 0x1: 
+                    if (funct7 == 0x01)
+                        d.kind = InstrKind::MULH;
+                    else
+                        d.kind = InstrKind::SLL; 
+                    break;
 
-                case 0x2: d.kind = InstrKind::SLT; break;
+                case 0x2: 
+                    if (funct7 == 0x01)
+                        d.kind = InstrKind::MULHSU;
+                    else
+                        d.kind = InstrKind::SLT; 
+                    break;
 
-                case 0x3: d.kind = InstrKind::SLTU; break;
+                case 0x3:
+                    if (funct7 == 0x01)
+                        d.kind = InstrKind::MULHU;
+                    else
+                        d.kind = InstrKind::SLTU; 
+                    break;
 
-                case 0x4: d.kind = InstrKind::XOR; break;
+                case 0x4:
+                    if (funct7 == 0x01)
+                        d.kind = InstrKind::DIV;
+                    else
+                        d.kind = InstrKind::XOR; 
+                    break;
 
                 case 0x5:
                     if (funct7 == 0x00)
                         d.kind = InstrKind::SRL;
                     else if (funct7 == 0x20)
                         d.kind = InstrKind::SRA;
+                    else if (funct7 == 0x1)
+                        d.kind = InstrKind::DIVU;
                     break;
 
-                case 0x7: d.kind = InstrKind::AND; break;
+                case 0x7:
+                    if (funct7 == 0x01)
+                        d.kind = InstrKind::REM;
+                    else
+                        d.kind = InstrKind::AND; 
+                    break;
 
-                case 0x6: d.kind = InstrKind::OR; break;
-
+                case 0x6:
+                    if (funct7 == 0x01)
+                        d.kind = InstrKind::REMU;
+                    else
+                        d.kind = InstrKind::OR; 
+                    break;
             }
             d.imm = 0;
             break;
