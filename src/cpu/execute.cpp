@@ -1,6 +1,7 @@
 // src/cpu/execute.cpp
 
 #include "cpu/cpu.hpp"
+#include <iostream>
 
 const std::array<CPU::ExecFn, static_cast<size_t>(InstrKind::COUNT)> CPU::dispatch_ = {
     &CPU::execADD,
@@ -373,6 +374,13 @@ void CPU::execAUIPC(const DecodedInstr& i) {
 }
 
 void CPU::execECALL(const DecodedInstr& i) {
+    uint32_t syscall_id = regs_[17]; // a7
+    if (syscall_id == 93) { // SYS_exit
+        std::cout << "Program exited via ECALL with code: " << regs_[10] << std::endl;
+        halted = true;
+    } else {
+        std::cout << "Unhandled ECALL: " << syscall_id << std::endl;
+    }
     pc_ += 4;
 }
 
@@ -385,6 +393,11 @@ void CPU::execFENCE(const DecodedInstr& i) {
 }
 
 void CPU::execCSRRW(const DecodedInstr& i) {
+    uint32_t csr_addr = i.imm;
+    uint32_t old_val = csrs_[csr_addr];
+    
+    csrs_[csr_addr] = regs_[i.rs1];
+    writeReg(i.rd, old_val);
     pc_ += 4;
 }
 

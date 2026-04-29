@@ -34,6 +34,7 @@ class CPU {
     private:
         uint32_t pc_;
         std::array<uint32_t, 32> regs_;
+        std::array<uint32_t, 4096> csrs_;
         
         Bus& bus_;
 

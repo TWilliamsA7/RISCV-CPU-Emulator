@@ -9,6 +9,7 @@
 
 CPU::CPU (Bus& bus) : bus_(bus), pc_(0x80000000) {
     regs_.fill(0);
+    csrs_.fill(0);
 }
 
 void CPU::run() {
@@ -36,6 +37,7 @@ StepResult CPU::step() {
     DecodedInstr di = decode(sr.instruction);
     sr.dInstr = di;
     execute(di);
+    csrs_[0xB00]++;
     sr.pc_after = pc_;
     if (trace_enabled_) printTrace();
     return sr;
