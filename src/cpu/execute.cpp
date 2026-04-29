@@ -354,9 +354,10 @@ void CPU::execJAL(const DecodedInstr& i) {
 
 void CPU::execJALR(const DecodedInstr& i) {
     uint32_t o = regs_[i.rd];
+    uint32_t next_pc = (regs_[i.rs1] + i.imm) &~ 1;
     writeReg(i.rd, pc_ + 4);
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
-    pc_ = (regs_[i.rs1] + i.imm) &~ 1;
+    pc_ = next_pc;
 }
 
 void CPU::execLUI(const DecodedInstr& i) {
@@ -402,10 +403,20 @@ void CPU::execCSRRW(const DecodedInstr& i) {
 }
 
 void CPU::execCSRRS(const DecodedInstr& i) {
+    uint32_t csr_addr = i.imm;
+    uint32_t old_val = csrs_[csr_addr];
+    
+    csrs_[csr_addr] = regs_[i.rs1] | i.rs1;
+    writeReg(i.rd, old_val);
     pc_ += 4;
 }
 
 void CPU::execCSRRC(const DecodedInstr& i) {
+    uint32_t csr_addr = i.imm;
+    uint32_t old_val = csrs_[csr_addr];
+    
+    csrs_[csr_addr] = regs_[i.rs1] & ~i.rs1;
+    writeReg(i.rd, old_val);
     pc_ += 4;
 }
 

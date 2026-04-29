@@ -150,7 +150,6 @@ DecodedInstr CPU::decode(uint32_t instr) {
         case 0x67: { // JALR
             d.imm = sign_extend(get_bits(instr, 31, 20), 12);
             d.kind = InstrKind::JALR;
-            d.rs1 = d.rs2 = 0;
             break;
         }
 
