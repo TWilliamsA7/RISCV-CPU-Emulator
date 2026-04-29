@@ -238,6 +238,90 @@ static std::string disasm(const DecodedInstr& di) {
                 << di.imm;
             break;
 
+        case InstrKind::ECALL:
+            oss << "ECALL";
+            break;
+            
+        case InstrKind::EBREAK:
+            oss << "EBREAK ";
+            break;
+        
+        case InstrKind::FENCE:
+            oss << "FENCE ";
+            break;
+
+        case InstrKind::CSRRW:
+            oss << "CSRRW ";
+            break;
+
+        case InstrKind::CSRRS:
+            oss << "CSRRS ";
+            break;
+            
+        case InstrKind::CSRRC:
+            oss << "CSRRC ";
+            break;
+
+        case InstrKind::CSRRWI:
+            oss << "CSRRWI ";
+            break;
+
+        case InstrKind::CSRRSI:
+            oss << "CSRRSI ";
+            break;
+
+        case InstrKind::CSRRCI:
+            oss << "CSRRCI ";
+            break;
+
+        case InstrKind::MUL:
+            oss << "MUL " << regStr(di.rd) << ","
+                << regStr(di.rs1) << ","
+                << regStr(di.rs2);
+            break;
+
+        case InstrKind::MULH:
+            oss << "MULH " << regStr(di.rd) << ","
+                << regStr(di.rs1) << ","
+                << regStr(di.rs2);
+            break;
+
+        case InstrKind::MULHSU:
+            oss << "MULHSU " << regStr(di.rd) << ","
+                << regStr(di.rs1) << ","
+                << regStr(di.rs2);
+            break;
+
+        case InstrKind::MULHU:
+            oss << "MULHU " << regStr(di.rd) << ","
+                << regStr(di.rs1) << ","
+                << regStr(di.rs2);
+            break;
+
+        case InstrKind::DIV:
+            oss << "DIV " << regStr(di.rd) << ","
+                << regStr(di.rs1) << ","
+                << regStr(di.rs2);
+            break;
+
+        case InstrKind::DIVU:
+            oss << "DIVU " << regStr(di.rd) << ","
+                << regStr(di.rs1) << ","
+                << regStr(di.rs2);
+            break;
+
+        case InstrKind::REM:
+            oss << "REM " << regStr(di.rd) << ","
+                << regStr(di.rs1) << ","
+                << regStr(di.rs2);
+            break;
+
+        case InstrKind::REMU:
+            oss << "REMU " << regStr(di.rd) << ","
+                << regStr(di.rs1) << ","
+                << regStr(di.rs2);
+            break;
+
         default:
             oss << "INVALID";
             break;
