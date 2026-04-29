@@ -40,6 +40,15 @@ const std::array<CPU::ExecFn, static_cast<size_t>(InstrKind::COUNT)> CPU::dispat
     &CPU::execJALR,
     &CPU::execLUI,
     &CPU::execAUIPC,
+    &CPU::execECALL,
+    &CPU::execEBREAK,
+    &CPU::execFENCE,
+    &CPU::execCSRRW,
+    &CPU::execCSRRS,
+    &CPU::execCSRRC,
+    &CPU::execCSRRWI,
+    &CPU::execCSRRSI,
+    &CPU::execCSRRCI,
     &CPU::execINVALID,
 };
 
@@ -363,7 +372,42 @@ void CPU::execAUIPC(const DecodedInstr& i) {
     pc_ += 4;
 }
 
+void CPU::execECALL(const DecodedInstr& i) {
+    pc_ += 4;
+}
+
+void CPU::execEBREAK(const DecodedInstr& i) {
+    pc_ += 4;
+}
+
+void CPU::execFENCE(const DecodedInstr& i) {
+    pc_ += 4;
+}
+
+void CPU::execCSRRW(const DecodedInstr& i) {
+    pc_ += 4;
+}
+
+void CPU::execCSRRS(const DecodedInstr& i) {
+    pc_ += 4;
+}
+
+void CPU::execCSRRC(const DecodedInstr& i) {
+    pc_ += 4;
+}
+
+void CPU::execCSRRWI(const DecodedInstr& i) {
+    pc_ += 4;
+}
+
+void CPU::execCSRRSI(const DecodedInstr& i) {
+    pc_ += 4;
+}
+
+void CPU::execCSRRCI(const DecodedInstr& i) {
+    pc_ += 4;
+}
+
 void CPU::execINVALID(const DecodedInstr& i) {
-    // halted = true;
     pc_ += 4;
 }

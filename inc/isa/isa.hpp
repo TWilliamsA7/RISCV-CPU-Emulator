@@ -11,6 +11,9 @@ enum class InstrKind {
     BEQ, BNE, BLT, BGE, BLTU, BGEU, // Branches
     JAL, JALR, // Jumps
     LUI, AUIPC, // Upper immediates
+    ECALL, EBREAK, // System calls
+    FENCE, // Memory fence
+    CSRRW, CSRRS, CSRRC, CSRRWI, CSRRSI, CSRRCI, // CSR Instructions
     INVALID, 
     COUNT
 };
@@ -23,4 +26,5 @@ struct DecodedInstr {
     uint8_t rs2 = 0;
 
     int32_t imm = 0;
+    uint16_t csr = 0;
 };

@@ -94,6 +94,15 @@ class CPU {
         void execJALR(const DecodedInstr& i);
         void execLUI(const DecodedInstr& i);
         void execAUIPC(const DecodedInstr& i);
+        void execECALL(const DecodedInstr& i);
+        void execEBREAK(const DecodedInstr& i);
+        void execFENCE(const DecodedInstr& i);
+        void execCSRRW(const DecodedInstr& i);
+        void execCSRRS(const DecodedInstr& i);
+        void execCSRRC(const DecodedInstr& i);
+        void execCSRRWI(const DecodedInstr& i);
+        void execCSRRSI(const DecodedInstr& i);
+        void execCSRRCI(const DecodedInstr& i);
         void execINVALID(const DecodedInstr& i);
 
         // === Miscellaneous Helper functions === //

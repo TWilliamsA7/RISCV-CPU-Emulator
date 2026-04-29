@@ -20,6 +20,7 @@ DecodedInstr CPU::decode(uint32_t instr) {
     uint32_t funct3 = get_bits(instr, 14, 12);
     uint32_t funct7 = get_bits(instr, 31, 25);
 
+    d.kind = InstrKind::INVALID;
     d.rd  = get_bits(instr, 11, 7);
     d.rs1 = get_bits(instr, 19, 15);
     d.rs2 = get_bits(instr, 24, 20);
@@ -166,6 +167,58 @@ DecodedInstr CPU::decode(uint32_t instr) {
             d.rs1 = d.rs2 = 0;
             break;
         }   
+
+        case 0x0F: { // FENCE
+            if (funct3 == 0x0) {
+                d.kind = InstrKind::FENCE;
+                d.rd = get_bits(instr, 11, 7);
+                d.rs1 = get_bits(instr, 19, 15);
+                d.imm = get_bits(instr, 31, 20);
+            }
+            break;
+        }
+
+        case 0x73: { // CSR and SYSTEM
+
+            d.rd  = get_bits(instr, 11, 7);
+            d.rs1 = get_bits(instr, 19, 15);
+            d.csr = get_bits(instr, 31, 20);
+
+            uint32_t funct12 = get_bits(instr, 31, 20);
+
+            switch (funct3) {
+                case 0x0: {
+                    if (funct12 == 0x0)
+                        d.kind = InstrKind::ECALL;
+                    else if (funct12 == 0x1)
+                        d.kind = InstrKind::EBREAK;
+                    break;
+                }   
+
+                case 0x1:
+                    d.kind = InstrKind::CSRRW;
+                    break;
+                case 0x2:
+                    d.kind = InstrKind::CSRRS;
+                    break;
+                case 0x3:
+                    d.kind = InstrKind::CSRRC;
+                    break;
+                case 0x5:
+                    d.kind = InstrKind::CSRRWI;
+                    d.imm = d.rs1;
+                    break;
+                case 0x6:
+                    d.kind = InstrKind::CSRRSI;
+                    d.imm = d.rs1;
+                    break;
+                case 0x7:
+                    d.kind = InstrKind::CSRRCI;
+                    d.imm = d.rs1;
+                    break;
+            }
+            break;
+        }
  
         default:
             d.kind = InstrKind::INVALID;
