@@ -30,6 +30,11 @@ void load_elf(const std::string& filename, Bus& bus, CPU& cpu) {
             for (uint32_t j = 0; j < phdr.p_filesz; ++j) {
                 bus.write8(phdr.p_paddr + j, buffer[j]);
             }
+
+            for (uint32_t j = phdr.p_filesz; j < phdr.p_memsz; ++j) {
+                bus.write8(phdr.p_paddr + j, 0);
+            }
+
             file.seekg(current_pos);
         }
     }

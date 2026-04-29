@@ -39,7 +39,7 @@ StepResult CPU::step() {
     execute(di);
     csrs_[0xB00]++;
     sr.pc_after = pc_;
-    if (trace_enabled_) printTrace();
+    if (true) printTrace();
     return sr;
 }
 
