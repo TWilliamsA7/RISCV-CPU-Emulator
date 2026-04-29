@@ -6,13 +6,12 @@
 #include <unordered_set>
 #include <array>
 #include "isa/isa.hpp"
-#include "memory/memory.hpp"
+#include "bus/bus.hpp"
 #include "core/state.hpp"
 
 class CPU {
     public:
-        CPU(Memory& mem);
-        CPU(Memory& mem, bool trace_enabled);
+        CPU(Bus& bus);
 
         void run();
         void run(uint32_t count);
@@ -33,9 +32,9 @@ class CPU {
         
     private:
         uint32_t pc_;
-        uint32_t r[32];
+        std::array<uint32_t, 32> regs_;
         
-        Memory& memory_;
+        Bus& bus_;
 
         StepResult sr;
         void clearStep();

@@ -291,7 +291,7 @@ void CPU::dumpRegisters() const {
             << "\tREG\t"
             << regStr(i)
             << ": "
-            << hex32(r[i])
+            << hex32(regs_[i])
             << "\n";
     }
 }
