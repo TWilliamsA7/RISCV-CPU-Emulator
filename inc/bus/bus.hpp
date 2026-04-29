@@ -3,9 +3,11 @@
 #include <cstdint>
 #include <vector>
 
-// Interface for reading writing to perhiperals
+// Interface for reading and writing to perhiperals
 class Bus {
     public:
+
+        Bus();
 
         // Starting point of DRAM addresses
         static constexpr uint32_t DRAM_BASE = 0x80000000;

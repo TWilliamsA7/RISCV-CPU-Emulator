@@ -2,6 +2,10 @@
 
 #include "bus/bus.hpp"
 
+Bus::Bus() {
+    dram_ = std::vector<uint8_t>(Bus::DRAM_SIZE, 0);
+}
+
 uint8_t Bus::read8(uint32_t addr) const {
     if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
