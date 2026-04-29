@@ -12,4 +12,5 @@ target_include_directories(cpu PUBLIC
 target_link_libraries(cpu PUBLIC
     core 
     isa
+    bus
 )
