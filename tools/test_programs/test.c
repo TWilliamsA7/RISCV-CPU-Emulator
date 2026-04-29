@@ -1,7 +1,7 @@
 // test.c
 
 int main() {
-    int a = 10;
-    int b = 20;
-    return a + b;
+    int a = 6;
+    int b = 7;
+    return a * b + 9;
 }

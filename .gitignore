@@ -12,3 +12,6 @@ plans/
 # Binaries
 *.bin
 *.elf
+
+# Command Visualization
+out.txt
