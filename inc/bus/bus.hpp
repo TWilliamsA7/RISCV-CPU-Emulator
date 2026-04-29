@@ -1,5 +1,7 @@
 // inc/bus/bus.hpp
 
+#pragma once
+
 #include <cstdint>
 #include <vector>
 

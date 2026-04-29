@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <unordered_set>
 #include <array>
+#include <string>
 #include "isa/isa.hpp"
 #include "bus/bus.hpp"
 #include "core/state.hpp"

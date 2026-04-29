@@ -1,5 +1,7 @@
 // inc/elf/elf.hpp
 
+#pragma once
+
 #include "cpu/cpu.hpp"
 #include "bus/bus.hpp"
 
