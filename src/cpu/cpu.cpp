@@ -55,6 +55,8 @@ void CPU::writeReg(uint8_t rd, uint32_t value) {
         regs_[rd] = value;
 }
 
+void CPU::setPC(uint32_t pc) { pc_ = pc; }
+
 uint32_t CPU::pc() const { return pc_; }
 
 uint32_t CPU::reg(size_t idx) const {

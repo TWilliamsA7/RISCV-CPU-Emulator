@@ -17,6 +17,7 @@ class CPU {
         void run(uint32_t count);
         StepResult step();
         
+        void setPC(uint32_t pc);
         uint32_t pc() const;
         uint32_t reg(size_t idx) const;
 
