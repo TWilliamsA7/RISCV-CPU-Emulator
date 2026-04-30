@@ -21,28 +21,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Dependencies
 include(FetchContent)
 
-# Setup GoogleTest
-if(BUILD_TESTS AND NOT USE_SYSTEM_DEPENDENCIES)
-    FetchContent_Declare(
-        googletest
-        GIT_REPOSITORY https://github.com/google/googletest.git
-        GIT_TAG        v1.14.0 
-    )
-    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-endif()
-
-if(BUILD_TESTS)
-    FetchContent_MakeAvailable(googletest)
-endif()
-
 if(WIN32)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -static-libgcc -static-libstdc++")
 endif()
 
 add_subdirectory(src)
-
-if(BUILD_TESTS)
-    include(CTest)
-    enable_testing()
-    add_subdirectory(tests)
-endif()
