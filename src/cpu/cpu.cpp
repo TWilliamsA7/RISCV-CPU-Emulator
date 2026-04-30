@@ -10,6 +10,7 @@
 CPU::CPU (Bus& bus) : bus_(bus), pc_(0x80000000) {
     regs_.fill(0);
     csrs_.fill(0);
+    csrs_[0xF11] = 0xF00DFACE;
 }
 
 void CPU::run() {
@@ -52,6 +53,8 @@ StepResult CPU::step() {
     csrs_[0xC00] = csrs_[0xB00];
     csrs_[0xC80] = csrs_[0xB80];
 
+    csrs_[0xB02]++; // minstret
+    if (csrs_[0xB02] == 0) csrs_[0xB82]++; // minstret h
 
     sr.pc_after = pc_;
     if (true) printTrace();
@@ -71,6 +74,30 @@ void CPU::clearStep() {
 void CPU::writeReg(uint8_t rd, uint32_t value) {
     if (rd != 0)
         regs_[rd] = value;
+}
+
+void CPU::writeCSR(uint16_t addr, uint32_t val) {
+    // Check bits [11:10]. If they are 11 (0xCxx), it's Read-Only
+    if ((addr >> 10) == 0x3) {
+        return; 
+    }
+
+    switch (addr) {
+        case 0x300: // mstatus
+            // Only allow writing to supported bits (like MIE)
+            csrs_[0x300] = val & 0x00001888; 
+            break;
+        case 0x305: // mtvec
+            // Only allow valid modes (0 or 1)
+            if ((val & 0x3) <= 1) csrs_[0x305] = val;
+            break;
+        case 0x341: // mepc
+            csrs_[0x341] = val & ~0x1; // Force alignment
+            break;
+        default:
+            csrs_[addr] = val;
+            break;
+    }
 }
 
 void CPU::setPC(uint32_t pc) { pc_ = pc; }

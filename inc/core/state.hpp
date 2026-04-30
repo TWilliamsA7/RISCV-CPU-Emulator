@@ -20,7 +20,7 @@ struct MemWrite {
 };
 
 struct CsrWrite {
-    uint32_t addr;
+    uint16_t addr;
     uint32_t old_val;
     uint32_t new_val;
 };

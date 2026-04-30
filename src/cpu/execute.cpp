@@ -402,11 +402,11 @@ void CPU::execFENCE(const DecodedInstr& i) {
 }
 
 void CPU::execCSRRW(const DecodedInstr& i) {
-    uint32_t csr_addr = i.csr & 0xFFF;
+    uint16_t csr_addr = i.csr & 0xFFF;
     uint32_t old_val = csrs_[csr_addr];
     uint32_t o = regs_[i.rd];
     
-    csrs_[csr_addr] = regs_[i.rs1];
+    writeCSR(csr_addr, regs_[i.rs1]);
     writeReg(i.rd, old_val);
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
     sr.csr_write = CsrWrite{ csr_addr, old_val,  csrs_[csr_addr] };
@@ -414,12 +414,12 @@ void CPU::execCSRRW(const DecodedInstr& i) {
 }
 
 void CPU::execCSRRS(const DecodedInstr& i) {
-    uint32_t csr_addr = i.csr & 0xFFF;
+    uint16_t csr_addr = i.csr & 0xFFF;
     uint32_t old_val = csrs_[csr_addr];
     uint32_t o = regs_[i.rd];
     
     if (i.rs1 != 0) {
-        csrs_[csr_addr] = old_val | regs_[i.rs1];
+        writeCSR(csr_addr, old_val | regs_[i.rs1]);
     }
     writeReg(i.rd, old_val);
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
@@ -428,12 +428,12 @@ void CPU::execCSRRS(const DecodedInstr& i) {
 }
 
 void CPU::execCSRRC(const DecodedInstr& i) {
-    uint32_t csr_addr = i.csr & 0xFFF;
+    uint16_t csr_addr = i.csr & 0xFFF;
     uint32_t old_val = csrs_[csr_addr];
     uint32_t o = regs_[i.rd];
 
     if (i.rs1 != 0) {
-        csrs_[csr_addr] = old_val & ~regs_[i.rs1];
+        writeCSR(csr_addr, old_val & ~regs_[i.rs1]);
     }
     writeReg(i.rd, old_val);
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
@@ -442,14 +442,13 @@ void CPU::execCSRRC(const DecodedInstr& i) {
 }
 
 void CPU::execCSRRWI(const DecodedInstr& i) {
-    uint32_t csr_addr = i.csr & 0xFFF;
+    uint16_t csr_addr = i.csr & 0xFFF;
     uint32_t old_val = csrs_[csr_addr];
     uint32_t uimm = i.rs1;
     uint32_t o = regs_[i.rd];
 
     writeReg(i.rd, old_val);
-
-    csrs_[csr_addr] = uimm;
+    writeCSR(csr_addr, uimm);
 
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
     sr.csr_write = CsrWrite{ csr_addr, old_val,  csrs_[csr_addr] };
@@ -458,7 +457,7 @@ void CPU::execCSRRWI(const DecodedInstr& i) {
 }
 
 void CPU::execCSRRSI(const DecodedInstr& i) {
-    uint32_t csr_addr = i.csr & 0xFFF;
+    uint16_t csr_addr = i.csr & 0xFFF;
     uint32_t old_val = csrs_[csr_addr];
     uint32_t uimm = i.rs1;
     uint32_t o = regs_[i.rd];
@@ -467,7 +466,7 @@ void CPU::execCSRRSI(const DecodedInstr& i) {
 
     
     if (uimm != 0) {
-        csrs_[csr_addr] = old_val | uimm;
+        writeCSR(csr_addr, old_val | uimm);
     }
 
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
@@ -477,7 +476,7 @@ void CPU::execCSRRSI(const DecodedInstr& i) {
 }
 
 void CPU::execCSRRCI(const DecodedInstr& i) {
-    uint32_t csr_addr = i.csr & 0xFFF;
+    uint16_t csr_addr = i.csr & 0xFFF;
     uint32_t old_val = csrs_[csr_addr];
     uint32_t uimm = i.rs1;
     uint32_t o = regs_[i.rd];
@@ -486,7 +485,7 @@ void CPU::execCSRRCI(const DecodedInstr& i) {
 
     
     if (uimm != 0) {
-        csrs_[csr_addr] = old_val & ~uimm;
+        writeCSR(csr_addr, old_val & ~uimm);
     }
     
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };

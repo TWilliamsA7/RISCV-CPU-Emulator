@@ -47,6 +47,7 @@ class CPU {
         std::unordered_set<uint32_t> breakpoints_;
 
         void writeReg(uint8_t rd, uint32_t value);
+        void writeCSR(uint16_t addr, uint32_t val);
         
         // === Execute and Decode === //
 
