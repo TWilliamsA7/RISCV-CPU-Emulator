@@ -19,6 +19,12 @@ struct MemWrite {
     uint8_t size; // 1, 2, or 4 bytes
 };
 
+struct CsrWrite {
+    uint32_t addr;
+    uint32_t old_val;
+    uint32_t new_val;
+};
+
 struct StepResult {
     uint32_t pc_before;
     uint32_t instruction;
@@ -27,4 +33,5 @@ struct StepResult {
 
     std::optional<RegWrite> reg_write;
     std::optional<MemWrite> mem_write;
+    std::optional<CsrWrite> csr_write;
 };

@@ -37,7 +37,22 @@ StepResult CPU::step() {
     DecodedInstr di = decode(sr.instruction);
     sr.dInstr = di;
     execute(di);
+    
+    // Cycle counting
+    // mcycle
+    uint32_t low_before = csrs_[0xB00]; 
     csrs_[0xB00]++;
+    
+    // If mcycle wrapped around to 0, increment mcycleh
+    if (csrs_[0xB00] < low_before) {
+        csrs_[0xB80]++;
+    }
+
+    // The 'cycle' (0xC00) and 'cycleh' (0xC80) are read-only views of mcycle
+    csrs_[0xC00] = csrs_[0xB00];
+    csrs_[0xC80] = csrs_[0xB80];
+
+
     sr.pc_after = pc_;
     if (true) printTrace();
     return sr;
@@ -50,6 +65,7 @@ void CPU::clearStep() {
     sr.instruction = 0x0;
     sr.mem_write.reset();
     sr.reg_write.reset();
+    sr.csr_write.reset();
 }
 
 void CPU::writeReg(uint8_t rd, uint32_t value) {
