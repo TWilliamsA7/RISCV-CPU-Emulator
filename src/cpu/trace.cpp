@@ -366,6 +366,21 @@ void CPU::printTrace() const {
             << static_cast<unsigned int>(mw.size)
             << "B)\n";
     }
+
+    if (sr.csr_write.has_value()) {
+        const CsrWrite& cw = sr.csr_write.value();
+
+        std::cout
+            << "\tCSR\t"
+             << "["
+            << hex32(cw.addr)
+            << "]: "
+            << ": "
+            << hex32(cw.old_val)
+            << " -> "
+            << hex32(cw.new_val)
+            << "\n";
+    }
 }
 
 void CPU::dumpRegisters() const {
