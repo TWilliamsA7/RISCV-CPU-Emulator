@@ -15,6 +15,3 @@ plans/
 
 # Command Visualization
 out.txt
-
-# Official Validation Binaries
-official_tests/
