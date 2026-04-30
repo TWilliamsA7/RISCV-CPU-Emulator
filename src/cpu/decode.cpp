@@ -213,7 +213,6 @@ DecodedInstr CPU::decode(uint32_t instr) {
         case 0x73: { // CSR and SYSTEM
 
             d.rd  = get_bits(instr, 11, 7);
-            d.rs1 = get_bits(instr, 19, 15);
             d.csr = get_bits(instr, 31, 20);
 
             uint32_t funct12 = get_bits(instr, 31, 20);
