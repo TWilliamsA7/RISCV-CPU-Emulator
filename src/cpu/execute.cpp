@@ -512,7 +512,11 @@ void CPU::execMULH(const DecodedInstr& i) {
 
 void CPU::execMULHSU(const DecodedInstr& i) {
     uint32_t o = (uint32_t)regs_[i.rd];
-    uint64_t res = (uint64_t)regs_[i.rs1] * (uint64_t)regs_[i.rs2];
+
+    int64_t s1 = (int32_t) regs_[i.rs1];
+    uint64_t s2 = (uint32_t) regs_[i.rs2];
+
+    uint64_t res = s1 * (int64_t) s2;
     writeReg(i.rd, (uint32_t)(res >> 32));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
     pc_ += 4;
@@ -521,7 +525,7 @@ void CPU::execMULHSU(const DecodedInstr& i) {
 void CPU::execMULHU(const DecodedInstr& i) {
     uint32_t o = (uint32_t)regs_[i.rd];
     uint64_t res = (uint64_t)regs_[i.rs1] * (uint64_t)regs_[i.rs2];
-    writeReg(i.rd, (uint32_t)(res & 0xFFFFFFFF));
+    writeReg(i.rd, (uint32_t)(res >> 32));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
     pc_ += 4;
 }
