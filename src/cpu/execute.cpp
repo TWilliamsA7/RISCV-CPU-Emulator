@@ -10,10 +10,10 @@ const std::array<CPU::ExecFn, static_cast<size_t>(InstrKind::COUNT)> CPU::dispat
     &CPU::execOR,
     &CPU::execXOR,
     &CPU::execSLL,
-    &CPU::execSRL,
-    &CPU::execSRA,
     &CPU::execSLT,
     &CPU::execSLTU,
+    &CPU::execSRL,
+    &CPU::execSRA,
     &CPU::execADDI,
     &CPU::execANDI,
     &CPU::execORI,
@@ -268,9 +268,8 @@ void CPU::execLHU(const DecodedInstr& i) {
 void CPU::execLB(const DecodedInstr& i) {
     uint32_t o = regs_[i.rd];
     uint32_t a = regs_[i.rs1]  + i.imm;
-    int8_t byte = bus_.read8(a);       
-    int32_t s = static_cast<int32_t>(byte);
-    writeReg(i.rd, static_cast<uint32_t>(s));
+    int8_t byte = static_cast<int8_t>(bus_.read8(a));
+    writeReg(i.rd, static_cast<uint32_t>(static_cast<int32_t>(byte)));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
     pc_ += 4;
 }
