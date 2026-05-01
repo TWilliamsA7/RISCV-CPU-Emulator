@@ -324,6 +324,7 @@ static std::string disasm(const DecodedInstr& di) {
 
         case InstrKind::MRET:
             oss << "MRET ";
+            break;
 
         default:
             oss << "INVALID";

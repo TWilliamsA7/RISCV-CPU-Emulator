@@ -601,6 +601,8 @@ void CPU::execMRET(const DecodedInstr& i) {
     // Set MIE to MPIE, then set MPIE to 1
     mstatus = (mstatus & ~(1 << 3)) | (mpie << 3);
     mstatus |= (1 << 7);
+
+    sr.csr_write = CsrWrite{ 0x300, csrs_[0x300],  mstatus };
     writeCSR(0x300, mstatus);
 }
 
