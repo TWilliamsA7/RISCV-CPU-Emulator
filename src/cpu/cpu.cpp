@@ -10,7 +10,7 @@
 CPU::CPU (Bus& bus) : bus_(bus), pc_(0x80000000) {
     regs_.fill(0);
     csrs_.fill(0);
-    csrs_[0xF11] = 0xF00DFACE;
+    csrs_[CSR::MVENDORID] = 0xF00DFACE;
 }
 
 void CPU::run() {
@@ -76,10 +76,30 @@ void CPU::writeReg(uint8_t rd, uint32_t value) {
         regs_[rd] = value;
 }
 
+uint32_t CPU::readCSR(uint16_t addr) {
+    switch (addr) {
+        case CSR::MTVEC: return csrs_[CSR::MTVEC];
+        case CSR::MSTATUS: return csrs_[CSR::MSTATUS];
+        case CSR::MCAUSE: return csrs_[CSR::MCAUSE];
+        case CSR::MEPC: return csrs_[CSR::MEPC];
+        case CSR::MTVAL: return csrs_[CSR::MTVAL];
+        case CSR::MCYCLE: return csrs_[CSR::MCYCLE];
+        case CSR::MCYCLEH: return csrs_[CSR::MCYCLEH];
+        case CSR::CYCLE: return csrs_[CSR::CYCLE];
+        case CSR::CYCLEH: return csrs_[CSR::CYCLEH];
+        case CSR::MINSTRET: return csrs_[CSR::MINSTRET];
+        case CSR::MINSTRETH: return csrs_[CSR::MINSTRETH];
+        case CSR::MVENDORID: return csrs_[CSR::MVENDORID];
+        default:
+            trap(2, sr.instruction);
+            return 0;
+    }
+}
+
 void CPU::writeCSR(uint16_t addr, uint32_t val) {
     // Check bits [11:10]. If they are 11 (0xCxx), it's Read-Only
     if ((addr >> 10) == 0x3) {
-        return; 
+        trap(2, sr.instruction); 
     }
 
     switch (addr) {
@@ -95,7 +115,7 @@ void CPU::writeCSR(uint16_t addr, uint32_t val) {
             csrs_[CSR::MEPC] = val & ~0x1; // Force alignment
             break;
         default:
-            csrs_[addr] = val;
+            trap(2, sr.instruction);
             break;
     }
 }
@@ -117,6 +137,7 @@ void CPU::trap(uint32_t cause, uint32_t tval) {
     mstatus |= (mie << 7);
     mstatus &= ~(1 << 3);
 
+    mstatus &= ~(0x3 << 11);
     mstatus |= (3 << 11);
     csrs_[CSR::MSTATUS] = mstatus;
 

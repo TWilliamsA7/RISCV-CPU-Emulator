@@ -383,18 +383,23 @@ void CPU::execAUIPC(const DecodedInstr& i) {
 }
 
 void CPU::execECALL(const DecodedInstr& i) {
-    uint32_t syscall_id = regs_[17]; // a7
-    if (syscall_id == 93) { // SYS_exit
-        std::cout << "Program exited via ECALL with code: " << regs_[10] << std::endl;
-        halted = true;
+    // Assuming 'M' for priviledge mode
+    uint32_t cause = 11;
+
+    if (csrs_[CSR::MTVEC] == 0) {
+        if (regs_[17] == 93) {
+            std::cout << "Progam exit via ECALL with code: " << regs_[10] << std::endl;
+            halted = true;
+        } else {
+            std::cout << "Unhandled ECALL: " << regs_[17] << std::endl;
+        }
     } else {
-        std::cout << "Unhandled ECALL: " << syscall_id << std::endl;
+        trap(cause, 0);
     }
-    pc_ += 4;
 }
 
 void CPU::execEBREAK(const DecodedInstr& i) {
-    pc_ += 4;
+    trap(3, 0);
 }
 
 void CPU::execFENCE(const DecodedInstr& i) {
@@ -403,7 +408,7 @@ void CPU::execFENCE(const DecodedInstr& i) {
 
 void CPU::execCSRRW(const DecodedInstr& i) {
     uint16_t csr_addr = i.csr & 0xFFF;
-    uint32_t old_val = csrs_[csr_addr];
+    uint32_t old_val = readCSR(csr_addr);
     uint32_t o = regs_[i.rd];
     
     writeCSR(csr_addr, regs_[i.rs1]);
@@ -415,7 +420,7 @@ void CPU::execCSRRW(const DecodedInstr& i) {
 
 void CPU::execCSRRS(const DecodedInstr& i) {
     uint16_t csr_addr = i.csr & 0xFFF;
-    uint32_t old_val = csrs_[csr_addr];
+    uint32_t old_val = readCSR(csr_addr);
     uint32_t o = regs_[i.rd];
     
     if (i.rs1 != 0) {
@@ -429,7 +434,7 @@ void CPU::execCSRRS(const DecodedInstr& i) {
 
 void CPU::execCSRRC(const DecodedInstr& i) {
     uint16_t csr_addr = i.csr & 0xFFF;
-    uint32_t old_val = csrs_[csr_addr];
+    uint32_t old_val = readCSR(csr_addr);
     uint32_t o = regs_[i.rd];
 
     if (i.rs1 != 0) {
@@ -443,7 +448,7 @@ void CPU::execCSRRC(const DecodedInstr& i) {
 
 void CPU::execCSRRWI(const DecodedInstr& i) {
     uint16_t csr_addr = i.csr & 0xFFF;
-    uint32_t old_val = csrs_[csr_addr];
+    uint32_t old_val = readCSR(csr_addr);
     uint32_t uimm = i.rs1;
     uint32_t o = regs_[i.rd];
 
@@ -458,7 +463,7 @@ void CPU::execCSRRWI(const DecodedInstr& i) {
 
 void CPU::execCSRRSI(const DecodedInstr& i) {
     uint16_t csr_addr = i.csr & 0xFFF;
-    uint32_t old_val = csrs_[csr_addr];
+    uint32_t old_val = readCSR(csr_addr);
     uint32_t uimm = i.rs1;
     uint32_t o = regs_[i.rd];
 
@@ -477,7 +482,7 @@ void CPU::execCSRRSI(const DecodedInstr& i) {
 
 void CPU::execCSRRCI(const DecodedInstr& i) {
     uint16_t csr_addr = i.csr & 0xFFF;
-    uint32_t old_val = csrs_[csr_addr];
+    uint32_t old_val = readCSR(csr_addr);
     uint32_t uimm = i.rs1;
     uint32_t o = regs_[i.rd];
 
@@ -592,16 +597,16 @@ void CPU::execREMU(const DecodedInstr& i) {
 
 
 void CPU::execMRET(const DecodedInstr& i) {
-    pc_ = csrs_[0x341]; // mepc
+    pc_ = readCSR(CSR::MEPC);
 
     // 2. Handle mstatus bit manipulation
-    uint32_t mstatus = csrs_[0x300];
+    uint32_t mstatus = readCSR(CSR::MSTATUS);
     uint32_t mpie = (mstatus >> 7) & 1;
     // Set MIE to MPIE, then set MPIE to 1
     mstatus = (mstatus & ~(1 << 3)) | (mpie << 3);
     mstatus |= (1 << 7);
 
-    sr.csr_write = CsrWrite{ 0x300, csrs_[0x300],  mstatus };
+    sr.csr_write = CsrWrite{ 0x300, readCSR(CSR::MSTATUS),  mstatus };
     writeCSR(0x300, mstatus);
 }
 

@@ -50,6 +50,7 @@ class CPU {
 
         void writeReg(uint8_t rd, uint32_t value);
         void writeCSR(uint16_t addr, uint32_t val);
+        uint32_t readCSR(uint16_t addr);
 
         // === Trap == //
 
@@ -139,6 +140,7 @@ class CPU {
             CYCLEH = 0xC80,
             MINSTRET = 0xB02,
             MINSTRETH = 0xB82,
+            MVENDORID = 0xF11,
         };
 };
 
