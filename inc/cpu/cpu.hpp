@@ -46,8 +46,14 @@ class CPU {
         bool halted = false;
         std::unordered_set<uint32_t> breakpoints_;
 
+        // === Write Operations === //
+
         void writeReg(uint8_t rd, uint32_t value);
         void writeCSR(uint16_t addr, uint32_t val);
+
+        // === Trap == //
+
+        void trap(uint32_t cause, uint32_t tval);
         
         // === Execute and Decode === //
 
@@ -121,4 +127,18 @@ class CPU {
         // === Miscellaneous Helper functions === //
         std::string hex32(uint32_t v) const;
 
+        enum CSR {
+            MTVEC = 0x305,
+            MSTATUS = 0x300,
+            MCAUSE = 0x342,
+            MEPC = 0x341,
+            MTVAL = 0x343,
+            MCYCLE = 0xB00,
+            MCYCLEH = 0xB80,
+            CYCLE = 0xC00,
+            CYCLEH = 0xC80,
+            MINSTRET = 0xB02,
+            MINSTRETH = 0xB82,
+        };
 };
+
