@@ -41,20 +41,20 @@ StepResult CPU::step() {
     
     // Cycle counting
     // mcycle
-    uint32_t low_before = csrs_[0xB00]; 
-    csrs_[0xB00]++;
+    uint32_t low_before = csrs_[CSR::MCYCLE]; 
+    csrs_[CSR::MCYCLE]++;
     
     // If mcycle wrapped around to 0, increment mcycleh
-    if (csrs_[0xB00] < low_before) {
-        csrs_[0xB80]++;
+    if (csrs_[CSR::MCYCLE] < low_before) {
+        csrs_[CSR::MCYCLEH]++;
     }
 
     // The 'cycle' (0xC00) and 'cycleh' (0xC80) are read-only views of mcycle
-    csrs_[0xC00] = csrs_[0xB00];
-    csrs_[0xC80] = csrs_[0xB80];
+    csrs_[CSR::CYCLE] = csrs_[CSR::MCYCLE];
+    csrs_[CSR::CYCLEH] = csrs_[CSR::MCYCLEH];
 
-    csrs_[0xB02]++; // minstret
-    if (csrs_[0xB02] == 0) csrs_[0xB82]++; // minstret h
+    csrs_[CSR::MINSTRET]++; // minstret
+    if (csrs_[CSR::MINSTRET] == 0) csrs_[CSR::MINSTRETH]++; // minstret h
 
     sr.pc_after = pc_;
     if (true) printTrace();
@@ -83,22 +83,58 @@ void CPU::writeCSR(uint16_t addr, uint32_t val) {
     }
 
     switch (addr) {
-        case 0x300: // mstatus
+        case CSR::MSTATUS:
             // Only allow writing to supported bits (like MIE)
-            csrs_[0x300] = val & 0x00001888; 
+            csrs_[CSR::MSTATUS] = val & 0x00001888; 
             break;
-        case 0x305: // mtvec
+        case CSR::MTVEC:
             // Only allow valid modes (0 or 1)
-            if ((val & 0x3) <= 1) csrs_[0x305] = val;
+            if ((val & 0x3) <= 1) csrs_[CSR::MTVEC] = val;
             break;
-        case 0x341: // mepc
-            csrs_[0x341] = val & ~0x1; // Force alignment
+        case CSR::MEPC:
+            csrs_[CSR::MEPC] = val & ~0x1; // Force alignment
             break;
         default:
             csrs_[addr] = val;
             break;
     }
 }
+
+void CPU::trap(uint32_t cause, uint32_t tval) {
+    // Save problematic PC
+    csrs_[CSR::MEPC] = pc_;
+    
+    // Save cause (MSB is 0 for exceptions, 1 for interrupts)
+    csrs_[CSR::MCAUSE] = cause;
+
+    // Save additional trap info
+    csrs_[CSR::MTVAL] = tval;
+
+    uint32_t mstatus = csrs_[CSR::MSTATUS];
+    uint32_t mie = (mstatus >> 3) & 1;
+
+    mstatus &= ~(1 << 7);
+    mstatus |= (mie << 7);
+    mstatus &= ~(1 << 3);
+
+    mstatus |= (3 << 11);
+    csrs_[CSR::MSTATUS] = mstatus;
+
+    // Jump to trap handler
+    uint32_t mtvec = csrs_[CSR::MTVEC];
+    uint32_t mode = mtvec & 0x3;
+    uint32_t base = mtvec & ~0x3;
+
+    if (mode == 0) { 
+        // Direct mode
+        pc_ = base;
+    } else {
+        // Vectored mode (Used for interrupts)
+        pc_ = base + (cause & 0x7FFFFFFF) * 4;
+    }
+
+}
+
 
 void CPU::setPC(uint32_t pc) { pc_ = pc; }
 

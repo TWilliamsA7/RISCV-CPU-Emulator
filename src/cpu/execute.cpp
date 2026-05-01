@@ -607,5 +607,5 @@ void CPU::execMRET(const DecodedInstr& i) {
 
 
 void CPU::execINVALID(const DecodedInstr& i) {
-    pc_ += 4;
+    trap(2, sr.instruction);
 }
