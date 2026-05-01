@@ -76,14 +76,14 @@ DecodedInstr CPU::decode(uint32_t instr) {
 
                 case 0x7:
                     if (funct7 == 0x01)
-                        d.kind = InstrKind::REM;
+                        d.kind = InstrKind::REMU;
                     else
                         d.kind = InstrKind::AND; 
                     break;
 
                 case 0x6:
                     if (funct7 == 0x01)
-                        d.kind = InstrKind::REMU;
+                        d.kind = InstrKind::REM;
                     else
                         d.kind = InstrKind::OR; 
                     break;
