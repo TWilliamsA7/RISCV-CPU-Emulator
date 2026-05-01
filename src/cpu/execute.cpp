@@ -599,7 +599,7 @@ void CPU::execREMU(const DecodedInstr& i) {
 
 
 void CPU::execMRET(const DecodedInstr& i) {
-    pc_ = readCSR(CSR::MEPC) + 4;
+    pc_ = readCSR(CSR::MEPC);
 
     // 2. Handle mstatus bit manipulation
     uint32_t mstatus = readCSR(CSR::MSTATUS);

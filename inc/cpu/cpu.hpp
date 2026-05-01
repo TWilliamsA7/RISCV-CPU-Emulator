@@ -54,6 +54,7 @@ class CPU {
 
         // === Trap == //
 
+        void checkInterrupts();
         void trap(uint32_t cause, uint32_t tval);
         
         // === Execute and Decode === //
@@ -141,6 +142,8 @@ class CPU {
             MINSTRET = 0xB02,
             MINSTRETH = 0xB82,
             MVENDORID = 0xF11,
+            MIP = 0x344,
+            MIE = 0x304,
         };
 };
 

@@ -33,11 +33,13 @@ void CPU::run(uint32_t count) {
 
 StepResult CPU::step() {
     clearStep();
+
     sr.pc_before = pc_;
     sr.instruction = bus_.read32(pc_);
     DecodedInstr di = decode(sr.instruction);
     sr.dInstr = di;
     execute(di);
+    //checkInterrupts();
     
     // Cycle counting
     // mcycle
@@ -115,6 +117,12 @@ void CPU::writeCSR(uint16_t addr, uint32_t val) {
         case CSR::MEPC:
             csrs_[CSR::MEPC] = val & ~0x1; // Force alignment
             break;
+        case CSR::MIP: {
+            uint32_t mask = (1 << 1) | (1 << 0); 
+            csrs_[CSR::MIP] = (csrs_[CSR::MIP] & ~mask) | (val & mask);
+            break;
+        }
+        
         default:
             csrs_[addr] = val;
             break;
@@ -157,6 +165,26 @@ void CPU::trap(uint32_t cause, uint32_t tval) {
 
 }
 
+void CPU::checkInterrupts() {
+    uint32_t mstatus = csrs_[CSR::MSTATUS];
+    bool mie_glob = (mstatus >> 3) & 1;
+    uint32_t pending = csrs_[CSR::MIP] & csrs_[CSR::MIE];
+
+    if (mie_glob && pending != 0) {
+        // Define the architectural priority: External > Software > Timer
+        // We check Machine mode bits (11, 3, 7) then Supervisor (9, 1, 5)
+        static const int priority[] = { 11, 3, 7, 9, 1, 5 };
+
+        for (int irq_bit : priority) {
+            if ((pending >> irq_bit) & 1) {
+                // Trigger trap with bit 31 set (0x80000000) 
+                // and the exception code as the bit index
+                trap(0x80000000 | irq_bit, 0); 
+                return; // Only handle one interrupt per step
+            }
+        }
+    }
+}
 
 void CPU::setPC(uint32_t pc) { pc_ = pc; }
 
