@@ -115,6 +115,7 @@ class CPU {
         void execDIVU(const DecodedInstr& i);
         void execREM(const DecodedInstr& i);
         void execREMU(const DecodedInstr& i);
+        void execMRET(const DecodedInstr& i);
         void execINVALID(const DecodedInstr& i);
 
         // === Miscellaneous Helper functions === //

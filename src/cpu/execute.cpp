@@ -58,6 +58,7 @@ const std::array<CPU::ExecFn, static_cast<size_t>(InstrKind::COUNT)> CPU::dispat
     &CPU::execDIVU,
     &CPU::execREM,
     &CPU::execREMU,
+    &CPU::execMRET,
     &CPU::execINVALID,
 };
 
@@ -588,6 +589,19 @@ void CPU::execREMU(const DecodedInstr& i) {
     }
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
     pc_ += 4;
+}
+
+
+void CPU::execMRET(const DecodedInstr& i) {
+    pc_ = csrs_[0x341]; // mepc
+
+    // 2. Handle mstatus bit manipulation
+    uint32_t mstatus = csrs_[0x300];
+    uint32_t mpie = (mstatus >> 7) & 1;
+    // Set MIE to MPIE, then set MPIE to 1
+    mstatus = (mstatus & ~(1 << 3)) | (mpie << 3);
+    mstatus |= (1 << 7);
+    writeCSR(0x300, mstatus);
 }
 
 

@@ -322,6 +322,9 @@ static std::string disasm(const DecodedInstr& di) {
                 << regStr(di.rs2);
             break;
 
+        case InstrKind::MRET:
+            oss << "MRET ";
+
         default:
             oss << "INVALID";
             break;
