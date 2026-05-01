@@ -383,18 +383,20 @@ void CPU::execAUIPC(const DecodedInstr& i) {
 }
 
 void CPU::execECALL(const DecodedInstr& i) {
-    // Assuming 'M' for priviledge mode
-    uint32_t cause = 11;
+if (regs_[17] == 93) { 
+        std::cout << "Program exit via ECALL with code: " << regs_[10] << std::endl;
+        halted = true;
+        return;
+    }
 
-    if (csrs_[CSR::MTVEC] == 0) {
-        if (regs_[17] == 93) {
-            std::cout << "Progam exit via ECALL with code: " << regs_[10] << std::endl;
-            halted = true;
-        } else {
-            std::cout << "Unhandled ECALL: " << regs_[17] << std::endl;
-        }
-    } else {
+    // 2. If it's not a syscall, or a different syscall, check for a trap handler
+    uint32_t cause = 11; // Machine Mode ECALL
+    
+    if (csrs_[CSR::MTVEC] != 0) {
         trap(cause, 0);
+    } else {
+        std::cout << "Unhandled ECALL: a7=" << regs_[17] << " @ PC=" << std::hex << pc_ << std::endl;
+        halted = true; 
     }
 }
 
@@ -597,7 +599,7 @@ void CPU::execREMU(const DecodedInstr& i) {
 
 
 void CPU::execMRET(const DecodedInstr& i) {
-    pc_ = readCSR(CSR::MEPC);
+    pc_ = readCSR(CSR::MEPC) + 4;
 
     // 2. Handle mstatus bit manipulation
     uint32_t mstatus = readCSR(CSR::MSTATUS);
@@ -605,6 +607,7 @@ void CPU::execMRET(const DecodedInstr& i) {
     // Set MIE to MPIE, then set MPIE to 1
     mstatus = (mstatus & ~(1 << 3)) | (mpie << 3);
     mstatus |= (1 << 7);
+    mstatus &= ~(0x3 << 11);
 
     sr.csr_write = CsrWrite{ 0x300, readCSR(CSR::MSTATUS),  mstatus };
     writeCSR(0x300, mstatus);

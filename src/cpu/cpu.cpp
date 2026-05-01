@@ -77,23 +77,24 @@ void CPU::writeReg(uint8_t rd, uint32_t value) {
 }
 
 uint32_t CPU::readCSR(uint16_t addr) {
-    switch (addr) {
-        case CSR::MTVEC: return csrs_[CSR::MTVEC];
-        case CSR::MSTATUS: return csrs_[CSR::MSTATUS];
-        case CSR::MCAUSE: return csrs_[CSR::MCAUSE];
-        case CSR::MEPC: return csrs_[CSR::MEPC];
-        case CSR::MTVAL: return csrs_[CSR::MTVAL];
-        case CSR::MCYCLE: return csrs_[CSR::MCYCLE];
-        case CSR::MCYCLEH: return csrs_[CSR::MCYCLEH];
-        case CSR::CYCLE: return csrs_[CSR::CYCLE];
-        case CSR::CYCLEH: return csrs_[CSR::CYCLEH];
-        case CSR::MINSTRET: return csrs_[CSR::MINSTRET];
-        case CSR::MINSTRETH: return csrs_[CSR::MINSTRETH];
-        case CSR::MVENDORID: return csrs_[CSR::MVENDORID];
-        default:
-            trap(2, sr.instruction);
-            return 0;
-    }
+    // switch (addr) {
+    //     case CSR::MTVEC: return csrs_[CSR::MTVEC];
+    //     case CSR::MSTATUS: return csrs_[CSR::MSTATUS];
+    //     case CSR::MCAUSE: return csrs_[CSR::MCAUSE];
+    //     case CSR::MEPC: return csrs_[CSR::MEPC];
+    //     case CSR::MTVAL: return csrs_[CSR::MTVAL];
+    //     case CSR::MCYCLE: return csrs_[CSR::MCYCLE];
+    //     case CSR::MCYCLEH: return csrs_[CSR::MCYCLEH];
+    //     case CSR::CYCLE: return csrs_[CSR::CYCLE];
+    //     case CSR::CYCLEH: return csrs_[CSR::CYCLEH];
+    //     case CSR::MINSTRET: return csrs_[CSR::MINSTRET];
+    //     case CSR::MINSTRETH: return csrs_[CSR::MINSTRETH];
+    //     case CSR::MVENDORID: return csrs_[CSR::MVENDORID];
+    //     default:
+    //         trap(2, sr.instruction);
+    //         return 0;
+    // }
+    return csrs_[addr];
 }
 
 void CPU::writeCSR(uint16_t addr, uint32_t val) {
@@ -115,7 +116,7 @@ void CPU::writeCSR(uint16_t addr, uint32_t val) {
             csrs_[CSR::MEPC] = val & ~0x1; // Force alignment
             break;
         default:
-            trap(2, sr.instruction);
+            csrs_[addr] = val;
             break;
     }
 }
