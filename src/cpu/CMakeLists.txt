@@ -13,4 +13,5 @@ target_link_libraries(cpu PUBLIC
     core 
     isa
     bus
+    clint
 )

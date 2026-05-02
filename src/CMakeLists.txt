@@ -5,7 +5,8 @@ add_subdirectory(isa)
 add_subdirectory(platform)
 add_subdirectory(bus)
 add_subdirectory(elf)
+add_subdirectory(clint)
 
 add_executable(riscv_emulator main.cpp)
 
-target_link_libraries(riscv_emulator PRIVATE cpu core memory elf bus)
+target_link_libraries(riscv_emulator PRIVATE cpu core memory elf bus clint)
