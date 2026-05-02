@@ -379,7 +379,6 @@ void CPU::printTrace() const {
              << "["
             << hex32(cw.addr)
             << "]: "
-            << ": "
             << hex32(cw.old_val)
             << " -> "
             << hex32(cw.new_val)

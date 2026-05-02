@@ -54,6 +54,7 @@ class CPU {
 
         // === Trap == //
 
+        bool exception_occurred_ = false;
         void checkInterrupts();
         void trap(uint32_t cause, uint32_t tval);
         

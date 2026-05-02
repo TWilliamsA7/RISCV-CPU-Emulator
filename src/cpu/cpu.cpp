@@ -33,14 +33,14 @@ void CPU::run(uint32_t count) {
 
 StepResult CPU::step() {
     clearStep();
+    exception_occurred_ = false;
 
     sr.pc_before = pc_;
     sr.instruction = bus_.read32(pc_);
     DecodedInstr di = decode(sr.instruction);
     sr.dInstr = di;
     execute(di);
-    //checkInterrupts();
-    
+
     // Cycle counting
     // mcycle
     uint32_t low_before = csrs_[CSR::MCYCLE]; 
@@ -55,11 +55,19 @@ StepResult CPU::step() {
     csrs_[CSR::CYCLE] = csrs_[CSR::MCYCLE];
     csrs_[CSR::CYCLEH] = csrs_[CSR::MCYCLEH];
 
-    csrs_[CSR::MINSTRET]++; // minstret
-    if (csrs_[CSR::MINSTRET] == 0) csrs_[CSR::MINSTRETH]++; // minstret h
+    if (!exception_occurred_) {
+        csrs_[CSR::MINSTRET]++;
+        if (csrs_[CSR::MINSTRET] == 0)
+            csrs_[CSR::MINSTRETH]++;
+    }
 
     sr.pc_after = pc_;
     if (true) printTrace();
+
+    if (exception_occurred_ == false) {
+        checkInterrupts();
+    }
+
     return sr;
 }
 
@@ -79,30 +87,19 @@ void CPU::writeReg(uint8_t rd, uint32_t value) {
 }
 
 uint32_t CPU::readCSR(uint16_t addr) {
-    // switch (addr) {
-    //     case CSR::MTVEC: return csrs_[CSR::MTVEC];
-    //     case CSR::MSTATUS: return csrs_[CSR::MSTATUS];
-    //     case CSR::MCAUSE: return csrs_[CSR::MCAUSE];
-    //     case CSR::MEPC: return csrs_[CSR::MEPC];
-    //     case CSR::MTVAL: return csrs_[CSR::MTVAL];
-    //     case CSR::MCYCLE: return csrs_[CSR::MCYCLE];
-    //     case CSR::MCYCLEH: return csrs_[CSR::MCYCLEH];
-    //     case CSR::CYCLE: return csrs_[CSR::CYCLE];
-    //     case CSR::CYCLEH: return csrs_[CSR::CYCLEH];
-    //     case CSR::MINSTRET: return csrs_[CSR::MINSTRET];
-    //     case CSR::MINSTRETH: return csrs_[CSR::MINSTRETH];
-    //     case CSR::MVENDORID: return csrs_[CSR::MVENDORID];
-    //     default:
-    //         trap(2, sr.instruction);
-    //         return 0;
-    // }
-    return csrs_[addr];
+    uint32_t val = csrs_[addr];
+    if (addr == CSR::MIP || addr == CSR::MIE) {
+        // Force bits 1, 5, 9 to zero if S-mode isn't implemented
+        return val & ((1 << 11) | (1 << 7) | (1 << 3));
+    }
+    return val;
 }
 
 void CPU::writeCSR(uint16_t addr, uint32_t val) {
     // Check bits [11:10]. If they are 11 (0xCxx), it's Read-Only
     if ((addr >> 10) == 0x3) {
         trap(2, sr.instruction); 
+        return;
     }
 
     switch (addr) {
@@ -117,11 +114,6 @@ void CPU::writeCSR(uint16_t addr, uint32_t val) {
         case CSR::MEPC:
             csrs_[CSR::MEPC] = val & ~0x1; // Force alignment
             break;
-        case CSR::MIP: {
-            uint32_t mask = (1 << 1) | (1 << 0); 
-            csrs_[CSR::MIP] = (csrs_[CSR::MIP] & ~mask) | (val & mask);
-            break;
-        }
         
         default:
             csrs_[addr] = val;
@@ -130,6 +122,10 @@ void CPU::writeCSR(uint16_t addr, uint32_t val) {
 }
 
 void CPU::trap(uint32_t cause, uint32_t tval) {
+    exception_occurred_ = true;
+
+    std::cout << "TRAP | CAUSE: " << cause << " VAL: " << tval << "\n";
+
     // Save problematic PC
     csrs_[CSR::MEPC] = pc_;
     
@@ -155,12 +151,14 @@ void CPU::trap(uint32_t cause, uint32_t tval) {
     uint32_t mode = mtvec & 0x3;
     uint32_t base = mtvec & ~0x3;
 
-    if (mode == 0) { 
-        // Direct mode
-        pc_ = base;
-    } else {
-        // Vectored mode (Used for interrupts)
+    bool is_interrupt = (cause >> 31) & 1;
+
+    if (mode == 1 && is_interrupt) { 
+        // Vectored mode: only for interrupts
         pc_ = base + (cause & 0x7FFFFFFF) * 4;
+    } else {
+        // Direct mode: for ALL exceptions and mode 0 interrupts
+        pc_ = base;
     }
 
 }
@@ -168,19 +166,14 @@ void CPU::trap(uint32_t cause, uint32_t tval) {
 void CPU::checkInterrupts() {
     uint32_t mstatus = csrs_[CSR::MSTATUS];
     bool mie_glob = (mstatus >> 3) & 1;
-    uint32_t pending = csrs_[CSR::MIP] & csrs_[CSR::MIE];
+    uint32_t pending = readCSR(CSR::MIP) & readCSR(CSR::MIE);
 
     if (mie_glob && pending != 0) {
-        // Define the architectural priority: External > Software > Timer
-        // We check Machine mode bits (11, 3, 7) then Supervisor (9, 1, 5)
         static const int priority[] = { 11, 3, 7, 9, 1, 5 };
-
         for (int irq_bit : priority) {
             if ((pending >> irq_bit) & 1) {
-                // Trigger trap with bit 31 set (0x80000000) 
-                // and the exception code as the bit index
-                trap(0x80000000 | irq_bit, 0); 
-                return; // Only handle one interrupt per step
+                trap(0x80000000 | irq_bit, 0);
+                return;
             }
         }
     }
