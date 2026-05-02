@@ -9,8 +9,9 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    Bus bus;
-    CPU cpu(bus);
+    Clint clint;
+    Bus bus = Bus(clint);
+    CPU cpu(bus, clint);
 
     load_elf(argv[1], bus, cpu);
 

@@ -2,7 +2,7 @@
 
 #include "bus/bus.hpp"
 
-Bus::Bus() {
+Bus::Bus(Clint& clint) : clint_(clint) {
     dram_ = std::vector<uint8_t>(Bus::DRAM_SIZE, 0);
 }
 
@@ -23,6 +23,9 @@ uint16_t Bus::read16(uint32_t addr) const {
 }
 
 uint32_t Bus::read32(uint32_t addr) const {
+
+    if (addr >= Clint::BASE && addr < Clint::BASE + Clint::SIZE)
+        return clint_.read32(addr - Clint::BASE);
     if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
         return dram_[offset] | (dram_[offset+1] << 8) | (dram_[offset+2] << 16) | (dram_[offset+3] << 24);
@@ -46,7 +49,9 @@ void Bus::write16(uint32_t addr, uint16_t val) {
 }
 
 void Bus::write32(uint32_t addr, uint32_t val) {
-    if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
+    if (addr >= Clint::BASE && addr < Clint::BASE + Clint::SIZE) {
+        clint_.write32(addr - Clint::BASE, val);
+    } else if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
         dram_[offset] = val & 0xFF;
         dram_[offset + 1] = (val >> 8) & 0xFF;

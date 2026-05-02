@@ -4,12 +4,13 @@
 
 #include <cstdint>
 #include <vector>
+#include "clint/clint.hpp"
 
 // Interface for reading and writing to perhiperals
 class Bus {
     public:
 
-        Bus();
+        Bus(Clint& clint);
 
         // Starting point of DRAM addresses
         static constexpr uint32_t DRAM_BASE = 0x80000000;
@@ -39,4 +40,7 @@ class Bus {
 
         // Dynamic Random Access Memory
         std::vector<uint8_t> dram_;
+
+        // CLINT: Core Local Interruptor
+        Clint& clint_;
 };

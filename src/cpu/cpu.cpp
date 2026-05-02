@@ -7,7 +7,7 @@
 #include <cassert>
 #include <iostream>
 
-CPU::CPU (Bus& bus) : bus_(bus), pc_(0x80000000) {
+CPU::CPU (Bus& bus, Clint& clint) : bus_(bus), clint_(clint), pc_(0x80000000) {
     regs_.fill(0);
     csrs_.fill(0);
     csrs_[CSR::MVENDORID] = 0xF00DFACE;
@@ -61,6 +61,21 @@ StepResult CPU::step() {
             csrs_[CSR::MINSTRETH]++;
     }
 
+    // Tick CLINT and reflect into MIP
+    clint_.tick();
+
+    // MSIP -> MIP bit 3
+    if (clint_.msip)
+        csrs_[CSR::MIP] |= (1 << 3);
+    else
+        csrs_[CSR::MIP] &= ~(1 << 3);
+
+    // MTIP -> MIP bit 7 (timer)
+    if (clint_.mtime >= clint_.mtimecmp)
+        csrs_[CSR::MIP] |= (1 << 7);
+    else
+        csrs_[CSR::MIP] &= ~(1 << 7);
+
     sr.pc_after = pc_;
     if (true) printTrace();
 
@@ -88,10 +103,6 @@ void CPU::writeReg(uint8_t rd, uint32_t value) {
 
 uint32_t CPU::readCSR(uint16_t addr) {
     uint32_t val = csrs_[addr];
-    if (addr == CSR::MIP || addr == CSR::MIE) {
-        // Force bits 1, 5, 9 to zero if S-mode isn't implemented
-        return val & ((1 << 11) | (1 << 7) | (1 << 3));
-    }
     return val;
 }
 

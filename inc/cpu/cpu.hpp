@@ -12,7 +12,7 @@
 
 class CPU {
     public:
-        CPU(Bus& bus);
+        CPU(Bus& bus, Clint& clint);
 
         void run();
         void run(uint32_t count);
@@ -38,6 +38,7 @@ class CPU {
         std::array<uint32_t, 4096> csrs_;
         
         Bus& bus_;
+        Clint& clint_;
 
         StepResult sr;
         void clearStep();
