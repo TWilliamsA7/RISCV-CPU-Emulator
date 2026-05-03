@@ -18,6 +18,7 @@ enum class ExecutionMode {
 struct CPUConfig {
     bool extension_m = false;
     bool extension_c = false;
+    bool verbose = false;
     ExecutionMode mode = ExecutionMode::SYSTEM;
 };
 
@@ -70,8 +71,6 @@ class CPU {
 
         StepResult sr;
         void clearStep();
-        
-        bool trace_enabled_ = false;
 
         // === Write Operations === //
 

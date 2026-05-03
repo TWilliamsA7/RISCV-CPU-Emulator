@@ -108,7 +108,7 @@ StepResult CPU::step() {
     }
 
     sr.pc_after = pc_;
-    if (true) printTrace();
+    if (config_.verbose) printTrace();
 
     return sr;
 }
@@ -237,7 +237,7 @@ void CPU::trap(uint32_t cause, uint32_t tval, bool is_interrupt, PrivilegeLevel 
     uint32_t cause_val = is_interrupt ? (cause | (1U << 31)) : cause;
     uint32_t mstatus = csrs_[CSR::MSTATUS];
 
-    printf("TRAP | cause: 0x%08X, tval: 0x%08X, PC: 0x%08X MTVEC: 0x%08X\n", cause_val, tval, pc_, csrs_[MTVEC]);
+    // printf("TRAP | cause: 0x%08X, tval: 0x%08X, PC: 0x%08X MTVEC: 0x%08X\n", cause_val, tval, pc_, csrs_[MTVEC]);
 
     if (target_level == PrivilegeLevel::MACHINE) {
         uint32_t mie = (mstatus >> 3) & 1;
