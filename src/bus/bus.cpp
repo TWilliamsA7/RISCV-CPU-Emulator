@@ -2,6 +2,7 @@
 
 #include "bus/bus.hpp"
 #include "errors/errors.hpp"
+#include <iostream>
 
 Bus::Bus(Clint& clint) : clint_(clint) {
     dram_ = std::vector<uint8_t>(Bus::DRAM_SIZE, 0);
@@ -51,6 +52,14 @@ void Bus::write16(uint32_t addr, uint16_t val) {
 }
 
 void Bus::write32(uint32_t addr, uint32_t val) {
+
+    if (addr == 0x80001000) {
+        if (val == 1U) {
+            std::cout << "PASS: SUCCESSFUL WRITE TO HOST\n";
+            exit(0);
+        }
+    }
+
     if (addr >= Clint::BASE && addr < Clint::BASE + Clint::SIZE) {
         clint_.write32(addr - Clint::BASE, val);
     } else if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {

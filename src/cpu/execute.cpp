@@ -439,7 +439,7 @@ void CPU::execAUIPC(const DecodedInstr& i) {
 }
 
 void CPU::execECALL(const DecodedInstr& i) {
-if (regs_[17] == 93) { 
+    if (regs_[17] == 93) { 
         std::cout << "Program exit via ECALL with code: " << regs_[10] << std::endl;
         halted = true;
         return;
