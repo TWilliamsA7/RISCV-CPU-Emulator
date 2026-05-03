@@ -12,7 +12,7 @@ CPU::CPU (CPUConfig config, Bus& bus, Clint& clint) : config_(config), bus_(bus)
     regs_.fill(0);
     csrs_.fill(0);
     csrs_[CSR::MVENDORID] = 0xF00DFACE;
-    priviledge_level_ = PrivilegeLevel::MACHINE;
+    privilege_level_ = PrivilegeLevel::MACHINE;
     csrs_[CSR::MSTATUS] = (3 << 11);
 
     uint32_t misa = (1U << 30); // RV32
@@ -200,7 +200,7 @@ void CPU::trap(uint32_t cause, uint32_t tval, bool is_interrupt) {
     mstatus &= ~(1 << 3);
 
     // Save current privilege into MPP (bits 11-12)
-    mstatus = (mstatus & ~(3 << 11)) | (static_cast<uint32_t>(priviledge_level_) << 11);
+    mstatus = (mstatus & ~(3 << 11)) | (static_cast<uint32_t>(privilege_level_) << 11);
 
     csrs_[CSR::MSTATUS] = mstatus;
 
@@ -221,7 +221,7 @@ void CPU::trap(uint32_t cause, uint32_t tval, bool is_interrupt) {
     csrs_[CSR::MTVAL] = tval;
 
     // Elevate priviledge mode
-    priviledge_level_ = PrivilegeLevel::MACHINE;
+    privilege_level_ = PrivilegeLevel::MACHINE;
 
     // Calculate jump target
     uint32_t mtvec = csrs_[CSR::MTVEC];
@@ -240,7 +240,7 @@ void CPU::checkInterrupts() {
     bool m_ie = (mstatus >> 3) & 1;
 
     // M-mode interrupts are enabled if mstatus.MIE is 1
-    if (priviledge_level_ == PrivilegeLevel::MACHINE && !m_ie) return;
+    if (privilege_level_ == PrivilegeLevel::MACHINE && !m_ie) return;
 
     uint32_t pending = csrs_[CSR::MIP] & csrs_[CSR::MIE];
 
@@ -248,6 +248,32 @@ void CPU::checkInterrupts() {
         if (pending & (1 << 11)) trap(11, 0, true);
         else if (pending & (1 << 3)) trap(3, 0, true);
         else if (pending & (1 << 7)) trap(7, 0, true);
+    }
+}
+
+bool CPU::mModeInterruptsEnabled() {
+    uint32_t mstatus = csrs_[CSR::MSTATUS];
+    bool m_global_ie = (mstatus >> 3) & 1;
+
+    if (privilege_level_ < PrivilegeLevel::MACHINE) {
+        return true;
+    } else if (privilege_level_ == PrivilegeLevel::MACHINE) {
+        return m_global_ie;
+    }
+    
+    return false;
+}
+
+bool CPU::sModeInterruptsEnabled() {
+    uint32_t mstatus = csrs_[CSR::MSTATUS];
+    bool s_global_ie = (mstatus >> 1) & 1; // SIE bit (bit 1)
+
+    if (privilege_level_ < PrivilegeLevel::SUPERVISOR) {
+        return true;
+    } else if (privilege_level_ == PrivilegeLevel::SUPERVISOR) {
+        return s_global_ie;
+    } else {
+        return false;
     }
 }
 

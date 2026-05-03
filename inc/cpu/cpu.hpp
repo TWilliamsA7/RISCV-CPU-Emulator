@@ -49,7 +49,7 @@ class CPU {
             MACHINE = 3,
         };
 
-        PrivilegeLevel priviledge_level_;
+        PrivilegeLevel privilege_level_;
 
         Bus& bus_;
         Clint& clint_;
@@ -73,6 +73,10 @@ class CPU {
 
         bool trap_occurred_ = false;
         void checkInterrupts();
+
+        bool sModeInterruptsEnabled();
+        bool mModeInterruptsEnabled();
+
         void trap(uint32_t cause, uint32_t tval, bool is_interrupt);
     
         
@@ -154,6 +158,8 @@ class CPU {
             MISA = 0x301,
             MTVEC = 0x305,
             MSTATUS = 0x300,
+            MIDELEG = 0x303,
+            MEDELEG = 0x302,
             MCAUSE = 0x342,
             MEPC = 0x341,
             MTVAL = 0x343,
@@ -166,5 +172,14 @@ class CPU {
             MVENDORID = 0xF11,
             MIP = 0x344,
             MIE = 0x304,
+            SSTATUS = 0x100,
+            SIE = 0x104,
+            STVEC = 0x105,
+            SSCRATCH = 0x140,
+            SEPC = 0x141,
+            SCAUSE = 0x142,
+            STVAL = 0x143,
+            SIP = 0x144,
+            SATP = 0x180
         };
 };
