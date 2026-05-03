@@ -13,7 +13,8 @@ uint8_t Bus::read8(uint32_t addr) const {
         uint32_t offset = addr - Bus::DRAM_BASE;
         return dram_[offset];
     }
-    return 0;
+    
+    throw BusAccessError(addr + " is outside of mapped range");
 }
 
 uint16_t Bus::read16(uint32_t addr) const {
@@ -21,7 +22,8 @@ uint16_t Bus::read16(uint32_t addr) const {
         uint32_t offset = addr - Bus::DRAM_BASE;
         return dram_[offset] | (dram_[offset+1] << 8);
     }
-    return 0;
+    
+    throw BusAccessError(addr + " is outside of mapped range");
 }
 
 uint32_t Bus::read32(uint32_t addr) const {
