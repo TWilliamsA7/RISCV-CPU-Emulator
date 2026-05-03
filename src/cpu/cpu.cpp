@@ -16,6 +16,9 @@ CPU::CPU (CPUConfig config, Bus& bus, Clint& clint) : config_(config), bus_(bus)
 
     uint32_t misa = (1U << 30); // RV32
     misa |= (1 << 8); // I (Base)
+    misa |= (1 << 18); // S (Supervisor extension)
+    misa |= (1 << 20); // U (User extension)
+
     if (config_.extension_m) misa |= (1U << 12);
     if (config_.extension_c) { 
         misa |= (1U << 2);
@@ -144,8 +147,16 @@ void CPU::writeReg(uint8_t rd, uint32_t value) {
 }
 
 uint32_t CPU::readCSR(uint16_t addr) {
-    uint32_t val = csrs_[addr];
-    return val;
+    switch (addr) {
+        case CSR::SSTATUS:
+            return csrs_[CSR::MSTATUS] & 0x000DE122;
+        case CSR::SIE:
+            return csrs_[CSR::MIE] & csrs_[CSR::MIDELEG];
+        case CSR::SIP:
+            return csrs_[CSR::MIP] & csrs_[CSR::MIDELEG];
+        default:
+            return csrs_[addr];
+    }
 }
 
 void CPU::writeCSR(uint16_t addr, uint32_t val) {
@@ -157,10 +168,10 @@ void CPU::writeCSR(uint16_t addr, uint32_t val) {
 
     switch (addr) {
         case CSR::MSTATUS: {
-            // bits 11-12 (MPP) are hardwired to 3 for M-mode only implementations.
-            uint32_t writable_mask = 0x00001888; // Adjust based on supported features
-            uint32_t hardwired_bits = (3 << 11); // MPP must be 3
-            csrs_[CSR::MSTATUS] = (val & writable_mask) | hardwired_bits;
+            uint32_t writeable_mask = 0x000E19AA;
+            uint32_t mpp = (val >> 11) & 0x3;
+            if (mpp == 2) mpp = 1;
+            csrs_[CSR::MSTATUS] = (val & writeable_mask);
             break;
         }
         case CSR::MTVEC:
@@ -171,9 +182,27 @@ void CPU::writeCSR(uint16_t addr, uint32_t val) {
             csrs_[CSR::MEPC] = val & ~0x1; // Force alignment
             break;
 
+        case CSR::MEDELEG:
+            csrs_[CSR::MEDELEG] = val & 0xFFFF;
+            break;
+
+        case CSR::MIDELEG:
+            csrs_[CSR::MIDELEG] = val & 0xFFFF;
+            break;
+
         case CSR::MISA:
             break;
-        
+
+        case CSR::SSTATUS: 
+            uint32_t mask = 0x000DE122;
+            csrs_[CSR::MSTATUS] = (csrs_[CSR::MSTATUS] & ~mask) | (val & mask);
+            break;
+
+        case CSR::SIE:
+            uint32_t mask = csrs_[CSR::MIDELEG];
+            csrs_[CSR::MIE] = (csrs_[CSR::MIE] & ~mask) | (val & mask);
+            break;
+
         default:
             csrs_[addr] = val;
             break;
