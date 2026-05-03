@@ -264,7 +264,7 @@ DecodedInstr CPU::decode(uint32_t instr) {
 
 // C-extension Instruction Decompression
 
-// Maps 3-bit C-register index to standard x-register index
+
 uint32_t encodeJType(int32_t imm, uint32_t rd) {
     uint32_t u = static_cast<uint32_t>(imm);
     
@@ -279,18 +279,16 @@ uint32_t encodeJType(int32_t imm, uint32_t rd) {
 
 uint32_t encodeBType(int32_t imm, uint32_t rs1, uint32_t rs2, uint32_t f3) {
     uint32_t u = static_cast<uint32_t>(imm);
-    uint32_t imm_12 = (u & 0x1000) << 19;      // bit 12 -> 31
-    uint32_t imm_10_5 = (u & 0x7E0) << 20;     // bits 10:5 -> 30:25
-    uint32_t imm_4_1 = (u & 0x1E) << 7;        // bits 4:1 -> 11:8
-    uint32_t imm_11 = (u & 0x800) >> 4;        // bit 11 -> 7
+    uint32_t imm_12 = (u & 0x1000) << 19;      
+    uint32_t imm_10_5 = (u & 0x7E0) << 20;     
+    uint32_t imm_4_1 = (u & 0x1E) << 7;        
+    uint32_t imm_11 = (u & 0x800) >> 4;        
     return imm_12 | imm_10_5 | (rs2 << 20) | (rs1 << 15) | (f3 << 12) | imm_4_1 | imm_11 | 0x63;
 }
 
 // Helper to extract the 6-bit signed immediate used in Q1 and Q2
 int32_t get_imm6(uint16_t i) {
-    // bit 12 is the sign bit (MSB), bits 6:2 are the rest
     int32_t imm = ((i >> 12) & 0x1) << 5 | ((i >> 2) & 0x1F);
-    // Sign extend from bit 5 to bit 31
     if (imm & 0x20) imm |= 0xFFFFFFC0;
     return imm;
 }
@@ -349,8 +347,7 @@ uint32_t CPU::decompress(uint16_t i) {
                 case 1: { // C.JAL (RV32 only) -> jal x1, offset
                     int32_t imm = (int32_t(i << 16) >> 31) << 11 | ((i & 0x400) >> 2) | ((i >> 7) & 0x18) | 
                                   ((i >> 1) & 0x40) | ((i >> 7) & 0x4) | ((i >> 2) & 0xE) | ((i << 3) & 0x200) | ((i >> 1) & 0x300);
-                    return (uint32_t(imm) << 20) | (1 << 7) | 0x6F; // This needs JAL immediate encoding logic
-                    // Note: For J/JAL, bit-swizzling into J-type is complex. Use standard J-type encoding.
+                    return (uint32_t(imm) << 20) | (1 << 7) | 0x6F; 
                 }
                 case 2: { // C.LI -> addi rd, x0, imm
                     int32_t imm = get_imm6(i);
@@ -359,27 +356,20 @@ uint32_t CPU::decompress(uint16_t i) {
                 }
                 case 3: { // C.LUI or C.ADDI16SP
                     if (rd_rs1_high == 2) { // C.ADDI16SP -> addi x2, x2, imm
-                        // The immediate is bits: 12|4|3|5|2|6
-                        // It is signed and scaled by 16.
-                        int32_t imm = ((i >> 12) & 0x1) ? 0xFFFFFE00 : 0; // Sign extend from bit 9
-                        imm |= ((i >> 3) & 0x3) << 7;  // bits 8:7
-                        imm |= ((i >> 5) & 0x1) << 6;  // bit 6
-                        imm |= ((i >> 2) & 0x1) << 5;  // bit 5
-                        imm |= ((i >> 6) & 0x1) << 4;  // bit 4
-                        
-                        // Final signed value (already scaled by logic above)
-                        // Let's verify 617d: i=0110000101111101
-                        // bit 12=0, bit 6=1, bit 5=1, bit 4=1, bit 3=1, bit 2=1
-                        // This should yield 496.
+                        int32_t imm = ((i >> 12) & 0x1) ? 0xFFFFFE00 : 0; 
+                        imm |= ((i >> 3) & 0x3) << 7;  
+                        imm |= ((i >> 5) & 0x1) << 6;  
+                        imm |= ((i >> 2) & 0x1) << 5;  
+                        imm |= ((i >> 6) & 0x1) << 4;  
                         
                         // In the 32-bit ADDI, this goes into the I-type imm field
                         return (uint32_t(imm) << 20) | (2 << 15) | (0 << 12) | (2 << 7) | 0x13;
                     }
+
                     // Standard C.LUI logic for rd != 2
                     int32_t imm = get_imm6(i);
                     if (((i >> 7) & 0x1F) == 0 || imm == 0) return 0; // Reserved
                     // LUI immediate is the upper 20 bits. 
-                    // Our 6-bit signed immediate becomes bits 17:12.
                     return (uint32_t(imm) << 12) | (((i >> 7) & 0x1F) << 7) | 0x37;
                 }
 
@@ -403,16 +393,15 @@ uint32_t CPU::decompress(uint16_t i) {
                     return 0;
                 }
                 case 5: { // C.J -> jal x0, offset
-                    // Offset mapping: 11|4|9:8|10|6|7|3:1|5
                     int32_t offset = 
-                        ((i >> 12) & 1) << 11 | // inst[12] -> imm[11] (sign)
-                        ((i >> 8)  & 1) << 10 | // inst[8]  -> imm[10]
-                        ((i >> 9)  & 3) << 8  | // inst[10:9]-> imm[9:8]
-                        ((i >> 6)  & 1) << 7  | // inst[6]  -> imm[7]
-                        ((i >> 7)  & 1) << 6  | // inst[7]  -> imm[6]
-                        ((i >> 2)  & 1) << 5  | // inst[2]  -> imm[5]
-                        ((i >> 11) & 1) << 4  | // inst[11] -> imm[4]
-                        ((i >> 3)  & 7) << 1;   // inst[5:3] -> imm[3:1]
+                        ((i >> 12) & 1) << 11 | 
+                        ((i >> 8)  & 1) << 10 | 
+                        ((i >> 9)  & 3) << 8  | 
+                        ((i >> 6)  & 1) << 7  | 
+                        ((i >> 7)  & 1) << 6  | 
+                        ((i >> 2)  & 1) << 5  | 
+                        ((i >> 11) & 1) << 4  | 
+                        ((i >> 3)  & 7) << 1;   
 
                     // Sign extend from bit 11 to 32
                     if (offset & 0x800) offset |= 0xFFFFF000;
@@ -422,12 +411,11 @@ uint32_t CPU::decompress(uint16_t i) {
                 case 6: case 7: { // C.BEQZ, C.BNEZ -> beq/bne rs1', x0, offset
                    uint32_t rs1_p = 8 + ((i >> 7) & 0x7);
     
-                    // Offset bits: [8|4:3|2:1|7:6|5]
-                    int32_t offset = ((i >> 12) & 1) << 8 |   // bit 8 (sign)
-                                    ((i >> 10) & 3) << 3 |   // bits 4:3
-                                    ((i >> 5)  & 3) << 6 |   // bits 7:6
-                                    ((i >> 2)  & 1) << 5 |   // bit 5
-                                    ((i >> 3)  & 3) << 1;    // bits 2:1
+                    int32_t offset = ((i >> 12) & 1) << 8 |   
+                                    ((i >> 10) & 3) << 3 |  
+                                    ((i >> 5)  & 3) << 6 |   
+                                    ((i >> 2)  & 1) << 5 |  
+                                    ((i >> 3)  & 3) << 1;    
                     
                     // Sign extend from bit 8 to bit 31
                     if (offset & 0x100) offset |= 0xFFFFFE00;
