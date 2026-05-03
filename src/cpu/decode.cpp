@@ -286,6 +286,15 @@ uint32_t encodeBType(int32_t imm, uint32_t rs1, uint32_t rs2, uint32_t f3) {
     return imm_12 | imm_10_5 | (rs2 << 20) | (rs1 << 15) | (f3 << 12) | imm_4_1 | imm_11 | 0x63;
 }
 
+// Helper to extract the 6-bit signed immediate used in Q1 and Q2
+int32_t get_imm6(uint16_t i) {
+    // bit 12 is the sign bit (MSB), bits 6:2 are the rest
+    int32_t imm = ((i >> 12) & 0x1) << 5 | ((i >> 2) & 0x1F);
+    // Sign extend from bit 5 to bit 31
+    if (imm & 0x20) imm |= 0xFFFFFFC0;
+    return imm;
+}
+
 
 uint32_t CPU::decompress(uint16_t i) {
     uint32_t op = i & 0x3;
@@ -344,7 +353,8 @@ uint32_t CPU::decompress(uint16_t i) {
                     // Note: For J/JAL, bit-swizzling into J-type is complex. Use standard J-type encoding.
                 }
                 case 2: { // C.LI -> addi rd, x0, imm
-                    int32_t imm = (int32_t(i << 16) >> 31) << 5 | ((i >> 2) & 0x1F);
+                    int32_t imm = get_imm6(i);
+                    if ((i >> 7) & 0x1F == 0) return 0;
                     return (uint32_t(imm) << 20) | (0 << 15) | (0 << 12) | (rd_rs1_high << 7) | 0x13;
                 }
                 case 3: { // C.LUI or C.ADDI16SP
@@ -366,8 +376,11 @@ uint32_t CPU::decompress(uint16_t i) {
                         return (uint32_t(imm) << 20) | (2 << 15) | (0 << 12) | (2 << 7) | 0x13;
                     }
                     // Standard C.LUI logic for rd != 2
-                    int32_t lui_imm = (int32_t(i << 16) >> 31) << 5 | ((i >> 2) & 0x1F);
-                    return (uint32_t(lui_imm) << 12) | (rd_rs1_high << 7) | 0x37;
+                    int32_t imm = get_imm6(i);
+                    if (((i >> 7) & 0x1F) == 0 || imm == 0) return 0; // Reserved
+                    // LUI immediate is the upper 20 bits. 
+                    // Our 6-bit signed immediate becomes bits 17:12.
+                    return (uint32_t(imm) << 12) | (((i >> 7) & 0x1F) << 7) | 0x37;
                 }
 
                 case 4: { // Logic/Shifts
@@ -375,7 +388,11 @@ uint32_t CPU::decompress(uint16_t i) {
                     uint32_t shamt = ((i >> 12) & 0x1) << 5 | ((i >> 2) & 0x1F);
                     if (sub == 0) return (shamt << 20) | (rs1_p << 15) | (5 << 12) | (rs1_p << 7) | 0x13; // SRLI
                     if (sub == 1) return (0x400 << 20) | (shamt << 20) | (rs1_p << 15) | (5 << 12) | (rs1_p << 7) | 0x13; // SRAI
-                    if (sub == 2) return (uint32_t(int32_t(i << 16) >> 31 << 5 | ((i >> 2) & 0x1F)) << 20) | (rs1_p << 15) | (7 << 12) | (rs1_p << 7) | 0x13; // ANDI
+                    if (sub == 2) { // ANDI
+                       int32_t imm = get_imm6(i);
+                        uint32_t rd_p = 8 + ((i >> 7) & 0x7);
+                        return (uint32_t(imm) << 20) | (rd_p << 15) | (7 << 12) | (rd_p << 7) | 0x13;     
+                    }
                     if (sub == 3) {
                         uint32_t f2 = (i >> 5) & 0x3;
                         if (f2 == 0) return 0x40000033 | (rs1_p << 15) | (rs1_p << 7) | (rs2_p << 20); // SUB

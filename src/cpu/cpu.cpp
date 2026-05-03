@@ -18,7 +18,7 @@ CPU::CPU (CPUConfig config, Bus& bus, Clint& clint) : config_(config), bus_(bus)
     uint32_t misa = (1U << 30); // RV32
     misa |= (1 << 8); // I (Base)
     if (config_.extension_m) misa |= (1U << 12);
-    if (config.extension_c){ 
+    if (config_.extension_c) { 
         misa |= (1U << 2);
         ADDRESS_MISALIGNMENT_MASK = 0x1;
     } else {

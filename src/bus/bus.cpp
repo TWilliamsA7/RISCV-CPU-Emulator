@@ -55,7 +55,7 @@ void Bus::write16(uint32_t addr, uint16_t val) {
 
 void Bus::write32(uint32_t addr, uint32_t val) {
 
-    if (addr == 0x80001000) {
+    if (addr == 0x80001000 || addr == 0x80003004) {
         if (val == 1U) {
             std::cout << "PASS: SUCCESSFUL WRITE TO HOST\n";
             exit(0);
