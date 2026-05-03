@@ -34,10 +34,13 @@ CPU::CPU (CPUConfig config, Bus& bus, Clint& clint) : config_(config), bus_(bus)
 }
 
 void CPU::run() {
+    state_ = CPUState::ACTIVE;
+
     while (state_ != CPUState::HALTED) {
 
+        updateCycle();
+
         if (state_ == CPUState::WAITING_FOR_INTERRUPT) {
-            clint_.updateMtime();
             if (csrs_[CSR::MIP] & csrs_[CSR::MIE]) {
                 state_ = CPUState::ACTIVE;
             } else {
@@ -54,8 +57,6 @@ void CPU::run() {
 StepResult CPU::step() {
     clearStep();  
 
-    clint_.updateMtime();
-
     // Check for Asynchronous Interrupts 
     checkInterrupts();
     if (trap_occurred_) return sr;
@@ -64,7 +65,6 @@ StepResult CPU::step() {
 
     // Fetch
     try {
-
         if (pc_ & ADDRESS_MISALIGNMENT_MASK) trap(0, pc_, false);
 
         uint16_t first_half = bus_.read16(pc_);
@@ -97,8 +97,25 @@ StepResult CPU::step() {
 
     if (trap_occurred_) return sr;
 
-    // Cycle counting
-    // mcycle
+    csrs_[CSR::MINSTRET]++;
+    if (csrs_[CSR::MINSTRET] == 0)
+        csrs_[CSR::MINSTRETH]++;
+
+    if (next_pc_.has_value()) {
+        pc_ = next_pc_.value();
+    } else {
+        pc_ += instr_len;
+    }
+
+    sr.pc_after = pc_;
+    if (true) printTrace();
+
+    return sr;
+}
+
+void CPU::updateCycle() {
+    clint_.updateMtime();
+
     uint32_t low_before = csrs_[CSR::MCYCLE]; 
     csrs_[CSR::MCYCLE]++;
     
@@ -110,9 +127,11 @@ StepResult CPU::step() {
     // The 'cycle' (0xC00) and 'cycleh' (0xC80) are read-only views of mcycle
     csrs_[CSR::CYCLE] = csrs_[CSR::MCYCLE];
     csrs_[CSR::CYCLEH] = csrs_[CSR::MCYCLEH];
-    csrs_[CSR::MINSTRET]++;
-    if (csrs_[CSR::MINSTRET] == 0)
-        csrs_[CSR::MINSTRETH]++;
+
+    // if (clint_.mtime > 0 && clint_.mtime % 100 == 0) { // Log every 100 ticks to avoid spam
+    // printf("DEBUG: mtime=%llu, mtimecmp=%llu, MIP_MTIP=%d\n", 
+    //        clint_.mtime, clint_.mtimecmp, (csrs_[CSR::MIP] >> 7) & 1);
+    // }
 
     // MSIP -> MIP bit 3
     if (clint_.msip)
@@ -125,17 +144,6 @@ StepResult CPU::step() {
         csrs_[CSR::MIP] |= (1 << 7);
     else
         csrs_[CSR::MIP] &= ~(1 << 7);
-
-    if (next_pc_.has_value()) {
-        pc_ = next_pc_.value();
-    } else {
-        pc_ += instr_len;
-    }
-
-    sr.pc_after = pc_;
-    if (true) printTrace();
-
-    return sr;
 }
 
 void CPU::clearStep() {
@@ -183,10 +191,14 @@ void CPU::writeCSR(uint16_t addr, uint32_t val) {
             csrs_[CSR::MSTATUS] = (val & writeable_mask);
             break;
         }
-        case CSR::MTVEC:
-            // Only allow valid modes (0 or 1)
-            if ((val & 0x3) <= 1) csrs_[CSR::MTVEC] = val;
+        case CSR::MTVEC: {
+            uint32_t mode = val & 0x3;
+            if (mode > 1) {
+                val = (val & ~0x3); 
+            }
+            csrs_[CSR::MTVEC] = val; 
             break;
+        }
         case CSR::MEPC:
             csrs_[CSR::MEPC] = val & ~0x1; // Force alignment
             break;
@@ -224,6 +236,8 @@ void CPU::trap(uint32_t cause, uint32_t tval, bool is_interrupt, PrivilegeLevel 
     trap_occurred_ = true;
     uint32_t cause_val = is_interrupt ? (cause | (1U << 31)) : cause;
     uint32_t mstatus = csrs_[CSR::MSTATUS];
+
+    printf("TRAP | cause: 0x%08X, tval: 0x%08X, PC: 0x%08X MTVEC: 0x%08X\n", cause_val, tval, pc_, csrs_[MTVEC]);
 
     if (target_level == PrivilegeLevel::MACHINE) {
         uint32_t mie = (mstatus >> 3) & 1;
@@ -268,9 +282,9 @@ void CPU::trap(uint32_t cause, uint32_t tval, bool is_interrupt, PrivilegeLevel 
 
         privilege_level_ = PrivilegeLevel::SUPERVISOR;
 
-        uint32_t mtvec = csrs_[CSR::STVEC];
-        uint32_t base = mtvec & ~3;
-        uint32_t mode = mtvec & 3;
+        uint32_t stvec = csrs_[CSR::STVEC];
+        uint32_t base = stvec & ~3;
+        uint32_t mode = stvec & 3;
 
         if (is_interrupt && mode == 1) {
             pc_ = base + (cause * 4);
@@ -281,13 +295,8 @@ void CPU::trap(uint32_t cause, uint32_t tval, bool is_interrupt, PrivilegeLevel 
 }
 
 void CPU::checkInterrupts() {
-    uint32_t mstatus = csrs_[CSR::MSTATUS];
-    bool m_ie = (mstatus >> 3) & 1;
-
-    // M-mode interrupts are enabled if mstatus.MIE is 1
-    if (privilege_level_ == PrivilegeLevel::MACHINE && !m_ie) return;
-
     uint32_t pending = csrs_[CSR::MIP] & csrs_[CSR::MIE];
+    if (pending == 0) return;
 
     for (int id : {11, 3, 7}) { // External, Software, Timer
         if (pending & (1 << id)) {
@@ -295,9 +304,8 @@ void CPU::checkInterrupts() {
 
             if (delegate && privilege_level_ <= PrivilegeLevel::SUPERVISOR) {
                 // Signal to Supervisor mode
-                csrs_[CSR::MIP] |= (1 << (id - 2));
                 if (sModeInterruptsEnabled()) {
-                    trap(id - 2, 0, true, PrivilegeLevel::SUPERVISOR); 
+                    trap(id, 0, true, PrivilegeLevel::SUPERVISOR); 
                     return;
                 }
             } else {

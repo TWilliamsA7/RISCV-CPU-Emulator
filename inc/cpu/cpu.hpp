@@ -79,6 +79,8 @@ class CPU {
         void writeCSR(uint16_t addr, uint32_t val);
         uint32_t readCSR(uint16_t addr);
 
+        void updateCycle();
+
         // === Trap == //
 
         bool trap_occurred_ = false;
