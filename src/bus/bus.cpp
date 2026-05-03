@@ -1,6 +1,7 @@
 // src/bus/bus.cpp
 
 #include "bus/bus.hpp"
+#include "errors/errors.hpp"
 
 Bus::Bus(Clint& clint) : clint_(clint) {
     dram_ = std::vector<uint8_t>(Bus::DRAM_SIZE, 0);
@@ -30,7 +31,8 @@ uint32_t Bus::read32(uint32_t addr) const {
         uint32_t offset = addr - Bus::DRAM_BASE;
         return dram_[offset] | (dram_[offset+1] << 8) | (dram_[offset+2] << 16) | (dram_[offset+3] << 24);
     }
-    return 0;
+
+    throw BusAccessError(addr + " is outside of mapped range");
 }
 
 void Bus::write8(uint32_t addr, uint8_t val) {

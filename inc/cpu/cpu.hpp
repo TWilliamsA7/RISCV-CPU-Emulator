@@ -31,12 +31,21 @@ class CPU {
         void dumpRegisters() const;
         void addBreakpoint(uint32_t addr);
         void removeBreakpoint(uint32_t addr);
-        
+
     private:
         uint32_t pc_;
+        uint32_t next_pc_;
         std::array<uint32_t, 32> regs_;
         std::array<uint32_t, 4096> csrs_;
-        
+
+        enum PrivilegeLevel {
+            USER = 0,
+            SUPERVISOR = 1,
+            MACHINE = 3,
+        };
+
+        PrivilegeLevel priviledge_level_;
+
         Bus& bus_;
         Clint& clint_;
 
@@ -55,9 +64,10 @@ class CPU {
 
         // === Trap == //
 
-        bool exception_occurred_ = false;
+        bool trap_occurred_ = false;
         void checkInterrupts();
-        void trap(uint32_t cause, uint32_t tval);
+        void trap(uint32_t cause, uint32_t tval, bool is_interrupt);
+    
         
         // === Execute and Decode === //
 
@@ -132,6 +142,7 @@ class CPU {
         std::string hex32(uint32_t v) const;
 
         enum CSR {
+            MISA = 0x301,
             MTVEC = 0x305,
             MSTATUS = 0x300,
             MCAUSE = 0x342,
@@ -148,4 +159,3 @@ class CPU {
             MIE = 0x304,
         };
 };
-
