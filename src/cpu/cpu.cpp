@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cassert>
 #include <iostream>
+#include <thread>
 
 CPU::CPU (CPUConfig config, Bus& bus, Clint& clint) : config_(config), bus_(bus), clint_(clint), pc_(0x80000000) {
     regs_.fill(0);
@@ -16,8 +17,11 @@ CPU::CPU (CPUConfig config, Bus& bus, Clint& clint) : config_(config), bus_(bus)
 
     uint32_t misa = (1U << 30); // RV32
     misa |= (1 << 8); // I (Base)
-    misa |= (1 << 18); // S (Supervisor extension)
-    misa |= (1 << 20); // U (User extension)
+
+    if (config_.mode == ExecutionMode::SYSTEM) {
+        misa |= (1 << 18); // S (Supervisor extension)
+        misa |= (1 << 20); // U (User extension)
+    }
 
     if (config_.extension_m) misa |= (1U << 12);
     if (config_.extension_c) { 
@@ -30,13 +34,18 @@ CPU::CPU (CPUConfig config, Bus& bus, Clint& clint) : config_(config), bus_(bus)
 }
 
 void CPU::run() {
-    while (!halted) {
-        step();
-    }
-}
+    while (state_ != CPUState::HALTED) {
 
-void CPU::run(uint32_t count) {
-    for (uint32_t i = 0; i < count && !halted; i++) {
+        if (state_ == CPUState::WAITING_FOR_INTERRUPT) {
+            clint_.updateMtime();
+            if (csrs_[CSR::MIP] & csrs_[CSR::MIE]) {
+                state_ = CPUState::ACTIVE;
+            } else {
+                std::this_thread::sleep_for(std::chrono::microseconds(100));
+                continue;
+            }
+        }
+
         step();
     }
 }
@@ -193,15 +202,17 @@ void CPU::writeCSR(uint16_t addr, uint32_t val) {
         case CSR::MISA:
             break;
 
-        case CSR::SSTATUS: 
+        case CSR::SSTATUS: {
             uint32_t mask = 0x000DE122;
             csrs_[CSR::MSTATUS] = (csrs_[CSR::MSTATUS] & ~mask) | (val & mask);
             break;
+        }
 
-        case CSR::SIE:
+        case CSR::SIE: {
             uint32_t mask = csrs_[CSR::MIDELEG];
             csrs_[CSR::MIE] = (csrs_[CSR::MIE] & ~mask) | (val & mask);
             break;
+        }
 
         default:
             csrs_[addr] = val;
@@ -267,51 +278,6 @@ void CPU::trap(uint32_t cause, uint32_t tval, bool is_interrupt, PrivilegeLevel 
             pc_ = base;
         }
     }
-
-    // Prepare MSTATUS Fields
-    uint32_t mstatus = csrs_[CSR::MSTATUS];
-    uint32_t mie = (mstatus >> 3) & 1;
-
-    // Save current MIE into MPIE (bit 7)
-    mstatus = (mstatus & ~(1 << 7)) | (mie << 7);
-
-    // Clear current MIE (bit 3) to disable interrupts during the handler
-    mstatus &= ~(1 << 3);
-
-    // Save current privilege into MPP (bits 11-12)
-    mstatus = (mstatus & ~(3 << 11)) | (static_cast<uint32_t>(privilege_level_) << 11);
-
-    csrs_[CSR::MSTATUS] = mstatus;
-
-    // Set Trap Cause Registers
-    uint32_t cause_val = cause;
-
-    // If interrupt, set bit 31
-    if (is_interrupt) {
-        cause_val |= (1U << 31);
-    }
-
-    csrs_[CSR::MCAUSE] = cause_val;
-
-    // Save the PC where the trap occurred
-    csrs_[CSR::MEPC] = pc_;
-
-    // Save specific trap info
-    csrs_[CSR::MTVAL] = tval;
-
-    // Elevate priviledge mode
-    privilege_level_ = PrivilegeLevel::MACHINE;
-
-    // Calculate jump target
-    uint32_t mtvec = csrs_[CSR::MTVEC];
-    uint32_t base = mtvec & ~3;
-    uint32_t mode = mtvec & 3;
-
-    if (is_interrupt && mode == 1) {
-        pc_ = base + (cause * 4);
-    } else {
-        pc_ = base;
-    }
 }
 
 void CPU::checkInterrupts() {
@@ -336,7 +302,7 @@ void CPU::checkInterrupts() {
                 }
             } else {
                 // Standard M-mode handling
-                if (mModeInterruptsEnabled) {
+                if (mModeInterruptsEnabled()) {
                     trap(id, 0, true, PrivilegeLevel::MACHINE);
                     return;
                 }
@@ -381,7 +347,7 @@ uint32_t CPU::reg(size_t idx) const {
 }
 
 bool CPU::isHalted() const {
-    return halted;
+    return state_ == CPUState::HALTED;
 }
 
 

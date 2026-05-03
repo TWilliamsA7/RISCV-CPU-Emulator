@@ -450,22 +450,25 @@ void CPU::execAUIPC(const DecodedInstr& i) {
 }
 
 void CPU::execECALL(const DecodedInstr& i) {
-    if (regs_[17] == 93) { 
-        std::cout << "Program exit via ECALL with code: " << regs_[10] << std::endl;
-        halted = true;
-        return;
+    if (config_.mode == ExecutionMode::BARE_METAL) {
+        if (regs_[17] == 93) {
+            std::cout << "Program exit via ECALL with code: " << regs_[10] << std::endl;
+            state_ = CPUState::HALTED;
+            return;
+        }
     }
 
-    // 2. If it's not a syscall, or a different syscall, check for a trap handler
-    uint32_t cause = 11; // Machine Mode ECALL
-
-    
-    if (csrs_[CSR::MTVEC] != 0) {
-        trap(cause, 0, false, (csrs_[CSR::MEDELEG] >> 8) & 1 ? PrivilegeLevel::SUPERVISOR : PrivilegeLevel::MACHINE);
-    } else {
-        std::cout << "Unhandled ECALL: a7=" << regs_[17] << " @ PC=" << std::hex << pc_ << std::endl;
-        halted = true; 
+    uint32_t cause;
+    switch (privilege_level_) {
+        case PrivilegeLevel::USER: cause = 9; break;
+        case PrivilegeLevel::SUPERVISOR: cause = 9; break;
+        case PrivilegeLevel::MACHINE: cause = 11; break;
+        default: cause = 11; break;
     }
+
+    bool delegate = (csrs_[CSR::MEDELEG] >> cause) & 1;
+    PrivilegeLevel target = (delegate && privilege_level_ < PrivilegeLevel::MACHINE) ? PrivilegeLevel::SUPERVISOR : PrivilegeLevel::MACHINE;
+    trap(cause, 0, false, target);
 }
 
 void CPU::execEBREAK(const DecodedInstr& i) {
@@ -697,7 +700,20 @@ void CPU::execSRET(const DecodedInstr& i) {
 }
 
 void CPU::execWFI(const DecodedInstr& i) {
+    if (privilege_level_ == PrivilegeLevel::USER) {
+        trap(2, 0, false, PrivilegeLevel::MACHINE);
+        return;
+    }
 
+    if (privilege_level_ == PrivilegeLevel::SUPERVISOR) {
+        bool mstatus_tw = (csrs_[CSR::MSTATUS] >> 21) & 1;
+        if (mstatus_tw) {
+            trap(2, 0, false, PrivilegeLevel::MACHINE);
+            return;
+        }
+    }
+
+    state_ = CPUState::WAITING_FOR_INTERRUPT;
 }
 
 

@@ -10,9 +10,15 @@
 #include "bus/bus.hpp"
 #include "core/state.hpp"
 
+enum class ExecutionMode {
+    BARE_METAL,
+    SYSTEM,
+};
+
 struct CPUConfig {
     bool extension_m = false;
     bool extension_c = false;
+    ExecutionMode mode = ExecutionMode::SYSTEM;
 };
 
 class CPU {
@@ -20,7 +26,6 @@ class CPU {
         CPU(CPUConfig config, Bus& bus, Clint& clint);
 
         void run();
-        void run(uint32_t count);
         StepResult step();
         
         void setPC(uint32_t pc);
@@ -49,6 +54,15 @@ class CPU {
 
         PrivilegeLevel privilege_level_;
 
+        enum CPUState {
+            IDLE,
+            WAITING_FOR_INTERRUPT,
+            ACTIVE,
+            HALTED,
+        };
+
+        CPUState state_;
+
         Bus& bus_;
         Clint& clint_;
         CPUConfig config_;
@@ -58,7 +72,6 @@ class CPU {
         void clearStep();
         
         bool trace_enabled_ = false;
-        bool halted = false;
 
         // === Write Operations === //
 
