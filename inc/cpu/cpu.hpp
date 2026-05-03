@@ -10,9 +10,14 @@
 #include "bus/bus.hpp"
 #include "core/state.hpp"
 
+struct CPUConfig {
+    bool extension_m = false;
+    bool extension_c = false;
+};
+
 class CPU {
     public:
-        CPU(Bus& bus, Clint& clint);
+        CPU(CPUConfig config, Bus& bus, Clint& clint);
 
         void run();
         void run(uint32_t count);
@@ -34,7 +39,7 @@ class CPU {
 
     private:
         uint32_t pc_;
-        uint32_t next_pc_;
+        std::optional<uint32_t> next_pc_;
         std::array<uint32_t, 32> regs_;
         std::array<uint32_t, 4096> csrs_;
 
@@ -48,6 +53,8 @@ class CPU {
 
         Bus& bus_;
         Clint& clint_;
+        CPUConfig config_;
+        uint32_t ADDRESS_MISALIGNMENT_MASK;
 
         StepResult sr;
         void clearStep();

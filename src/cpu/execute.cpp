@@ -75,7 +75,7 @@ void CPU::execADD(const DecodedInstr& i) {
     int32_t result = a + b;
     writeReg(i.rd, static_cast<uint32_t>(result));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execSUB(const DecodedInstr& i) {
@@ -85,7 +85,7 @@ void CPU::execSUB(const DecodedInstr& i) {
     int32_t result = a - b;
     writeReg(i.rd, static_cast<uint32_t>(result));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execAND(const DecodedInstr& i) {
@@ -95,7 +95,7 @@ void CPU::execAND(const DecodedInstr& i) {
     int32_t result = a & b;
     writeReg(i.rd, static_cast<uint32_t>(result));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execOR(const DecodedInstr& i) {
@@ -105,7 +105,7 @@ void CPU::execOR(const DecodedInstr& i) {
     int32_t result = a | b;
     writeReg(i.rd, static_cast<uint32_t>(result));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execXOR(const DecodedInstr& i) {
@@ -115,7 +115,7 @@ void CPU::execXOR(const DecodedInstr& i) {
     int32_t result = a ^ b;
     writeReg(i.rd, static_cast<uint32_t>(result));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execSLL(const DecodedInstr& i) {
@@ -125,7 +125,7 @@ void CPU::execSLL(const DecodedInstr& i) {
     int32_t result = a << b;
     writeReg(i.rd, static_cast<uint32_t>(result));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execSRL(const DecodedInstr& i) {
@@ -135,7 +135,7 @@ void CPU::execSRL(const DecodedInstr& i) {
     uint32_t result = a >> b;
     writeReg(i.rd, static_cast<uint32_t>(result));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execSRA(const DecodedInstr& i) {
@@ -145,7 +145,7 @@ void CPU::execSRA(const DecodedInstr& i) {
     int32_t result = a >> b;
     writeReg(i.rd, static_cast<uint32_t>(result));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execSLT(const DecodedInstr& i) {
@@ -154,7 +154,7 @@ void CPU::execSLT(const DecodedInstr& i) {
     int32_t b = static_cast<int32_t>(regs_[i.rs2]);
     writeReg(i.rd, static_cast<uint32_t>(a < b ? 1 : 0));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execSLTU(const DecodedInstr& i) {
@@ -163,7 +163,7 @@ void CPU::execSLTU(const DecodedInstr& i) {
     uint32_t b = regs_[i.rs2];
     writeReg(i.rd, static_cast<uint32_t>(a < b ? 1 : 0));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execADDI(const DecodedInstr& i) {
@@ -171,7 +171,7 @@ void CPU::execADDI(const DecodedInstr& i) {
     int32_t a = static_cast<int32_t>(regs_[i.rs1]);
     writeReg(i.rd, static_cast<uint32_t>(a + i.imm));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execANDI(const DecodedInstr& i) {
@@ -179,7 +179,7 @@ void CPU::execANDI(const DecodedInstr& i) {
     int32_t a = static_cast<int32_t>(regs_[i.rs1]);
     writeReg(i.rd, static_cast<uint32_t>(a & i.imm));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execORI(const DecodedInstr& i) {
@@ -187,7 +187,7 @@ void CPU::execORI(const DecodedInstr& i) {
     int32_t a = static_cast<int32_t>(regs_[i.rs1]);
     writeReg(i.rd, static_cast<uint32_t>(a | i.imm));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execXORI(const DecodedInstr& i) {
@@ -195,7 +195,7 @@ void CPU::execXORI(const DecodedInstr& i) {
     int32_t a = static_cast<int32_t>(regs_[i.rs1]);
     writeReg(i.rd, static_cast<uint32_t>(a ^ i.imm));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execSLTI(const DecodedInstr& i) {
@@ -203,7 +203,7 @@ void CPU::execSLTI(const DecodedInstr& i) {
     int32_t a = static_cast<int32_t>(regs_[i.rs1]);
     writeReg(i.rd, static_cast<uint32_t>(a < i.imm ? 1 : 0));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execSLTIU(const DecodedInstr& i) {
@@ -211,7 +211,7 @@ void CPU::execSLTIU(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1];
     writeReg(i.rd, static_cast<uint32_t>(a < i.imm ? 1 : 0));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execSLLI(const DecodedInstr& i) {
@@ -224,7 +224,7 @@ void CPU::execSLLI(const DecodedInstr& i) {
     int32_t a = static_cast<int32_t>(regs_[i.rs1]);
     writeReg(i.rd, static_cast<uint32_t>(a << i.imm));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execSRLI(const DecodedInstr& i) {
@@ -237,7 +237,7 @@ void CPU::execSRLI(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1];
     writeReg(i.rd, static_cast<uint32_t>(a >> i.imm));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execSRAI(const DecodedInstr& i) {
@@ -250,7 +250,7 @@ void CPU::execSRAI(const DecodedInstr& i) {
     int32_t a = static_cast<int32_t>(regs_[i.rs1]);
     writeReg(i.rd, static_cast<uint32_t>(a >> i.imm));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execLW(const DecodedInstr& i) {
@@ -258,7 +258,7 @@ void CPU::execLW(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1] + i.imm;
     writeReg(i.rd, bus_.read32(a));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execLH(const DecodedInstr& i) {
@@ -268,7 +268,7 @@ void CPU::execLH(const DecodedInstr& i) {
     int32_t s = static_cast<int32_t>(half);
     writeReg(i.rd, static_cast<uint32_t>(s));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execLHU(const DecodedInstr& i) {
@@ -277,7 +277,7 @@ void CPU::execLHU(const DecodedInstr& i) {
     uint32_t u = static_cast<uint32_t>(bus_.read16(a));
     writeReg(i.rd, u);
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execLB(const DecodedInstr& i) {
@@ -286,7 +286,7 @@ void CPU::execLB(const DecodedInstr& i) {
     int8_t byte = static_cast<int8_t>(bus_.read8(a));
     writeReg(i.rd, static_cast<uint32_t>(static_cast<int32_t>(byte)));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execLBU(const DecodedInstr& i) {
@@ -295,7 +295,7 @@ void CPU::execLBU(const DecodedInstr& i) {
     uint32_t u = static_cast<uint32_t>(bus_.read8(a));
     writeReg(i.rd, u);
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execSW(const DecodedInstr& i) {
@@ -303,7 +303,7 @@ void CPU::execSW(const DecodedInstr& i) {
     uint32_t o = bus_.read32(a);
     bus_.write32(a, regs_[i.rs2]);
     sr.mem_write = MemWrite{ a, o, regs_[i.rs2], 4};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execSH(const DecodedInstr& i) {
@@ -311,7 +311,7 @@ void CPU::execSH(const DecodedInstr& i) {
     uint32_t o = static_cast<uint32_t>(bus_.read16(a));
     bus_.write16(a, static_cast<uint16_t>(regs_[i.rs2]));
     sr.mem_write = MemWrite{ a, o, regs_[i.rs2], 2};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execSB(const DecodedInstr& i) {
@@ -319,35 +319,33 @@ void CPU::execSB(const DecodedInstr& i) {
     uint32_t o = static_cast<uint32_t>(bus_.read8(a));
     bus_.write8(a, static_cast<uint8_t>(regs_[i.rs2]));
     sr.mem_write = MemWrite{ a, o, regs_[i.rs2], 1};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execBEQ(const DecodedInstr& i) {
     if (regs_[i.rs1] == regs_[i.rs2]) {
         uint32_t target = pc_ + i.imm;
 
-        if (target & 3) {
+        if (target & ADDRESS_MISALIGNMENT_MASK) {
             trap(0, target, false);
             return;
         }
 
         next_pc_ = target;
-    } else
-        next_pc_ = pc_ + 4;
+    }
 }
 
 void CPU::execBNE(const DecodedInstr& i) {
     if (regs_[i.rs1] != regs_[i.rs2]) {
         uint32_t target = pc_ + i.imm;
 
-        if (target & 3) {
+        if (target & ADDRESS_MISALIGNMENT_MASK) {
             trap(0, target, false);
             return;
         }
 
         next_pc_ = target;
-    } else
-        next_pc_ = pc_ + 4;
+    }
 }
 
 void CPU::execBLT(const DecodedInstr& i) {
@@ -356,14 +354,13 @@ void CPU::execBLT(const DecodedInstr& i) {
     if (r1 < r2) {
         uint32_t target = pc_ + i.imm;
 
-        if (target & 3) {
+        if (target & ADDRESS_MISALIGNMENT_MASK) {
             trap(0, target, false);
             return;
         }
 
         next_pc_ = target;
-    } else
-        next_pc_ = pc_ + 4;
+    }
 }
 
 void CPU::execBGE(const DecodedInstr& i) {
@@ -372,50 +369,47 @@ void CPU::execBGE(const DecodedInstr& i) {
     if (r1 >= r2) {
         uint32_t target = pc_ + i.imm;
 
-        if (target & 3) {
+        if (target & ADDRESS_MISALIGNMENT_MASK) {
             trap(0, target, false);
             return;
         }
 
         next_pc_ = target;
 
-    } else
-        next_pc_ = pc_ + 4;
+    }
 }
 
 void CPU::execBLTU(const DecodedInstr& i) {
     if (regs_[i.rs1] < regs_[i.rs2]) {
         uint32_t target = pc_ + i.imm;
 
-        if (target & 3) {
+        if (target & ADDRESS_MISALIGNMENT_MASK) {
             trap(0, target, false);
             return;
         }
 
         next_pc_ = target;
-    }else
-        next_pc_ = pc_ + 4;
+    }
 }
 
 void CPU::execBGEU(const DecodedInstr& i) {
     if (regs_[i.rs1] >= regs_[i.rs2]) {
         uint32_t target = pc_ + i.imm;
 
-        if (target & 3) {
+        if (target & ADDRESS_MISALIGNMENT_MASK) {
             trap(0, target, false);
             return;
         }
 
         next_pc_ = target;
-    } else
-        next_pc_ = pc_ + 4;
+    }
 }
 
 void CPU::execJAL(const DecodedInstr& i) {
     uint32_t o = regs_[i.rd];
     uint32_t target = pc_ + i.imm;
 
-    if (target & 3) {
+    if (target & ADDRESS_MISALIGNMENT_MASK) {
         trap(0, target, false);
         return;
     }
@@ -429,7 +423,7 @@ void CPU::execJALR(const DecodedInstr& i) {
     uint32_t o = regs_[i.rd];
     uint32_t next_pc = (regs_[i.rs1] + i.imm) &~ 1;
 
-    if (next_pc & 3) {
+    if (next_pc & ADDRESS_MISALIGNMENT_MASK) {
         trap(0, next_pc, false);
         return;
     }
@@ -443,14 +437,14 @@ void CPU::execLUI(const DecodedInstr& i) {
     uint32_t o = regs_[i.rd];
     writeReg(i.rd, static_cast<uint32_t>(i.imm));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execAUIPC(const DecodedInstr& i) {
     uint32_t o = regs_[i.rd];
     writeReg(i.rd, static_cast<uint32_t>(pc_ + i.imm));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execECALL(const DecodedInstr& i) {
@@ -476,7 +470,7 @@ void CPU::execEBREAK(const DecodedInstr& i) {
 }
 
 void CPU::execFENCE(const DecodedInstr& i) {
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execCSRRW(const DecodedInstr& i) {
@@ -488,7 +482,7 @@ void CPU::execCSRRW(const DecodedInstr& i) {
     writeReg(i.rd, old_val);
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
     sr.csr_write = CsrWrite{ csr_addr, old_val,  csrs_[csr_addr] };
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execCSRRS(const DecodedInstr& i) {
@@ -502,7 +496,7 @@ void CPU::execCSRRS(const DecodedInstr& i) {
     writeReg(i.rd, old_val);
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
     sr.csr_write = CsrWrite{ csr_addr, old_val,  csrs_[csr_addr] };
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execCSRRC(const DecodedInstr& i) {
@@ -516,7 +510,7 @@ void CPU::execCSRRC(const DecodedInstr& i) {
     writeReg(i.rd, old_val);
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
     sr.csr_write = CsrWrite{ csr_addr, old_val,  csrs_[csr_addr] };
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execCSRRWI(const DecodedInstr& i) {
@@ -531,7 +525,7 @@ void CPU::execCSRRWI(const DecodedInstr& i) {
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
     sr.csr_write = CsrWrite{ csr_addr, old_val,  csrs_[csr_addr] };
     
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execCSRRSI(const DecodedInstr& i) {
@@ -550,7 +544,7 @@ void CPU::execCSRRSI(const DecodedInstr& i) {
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
     sr.csr_write = CsrWrite{ csr_addr, old_val,  csrs_[csr_addr] };
     
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execCSRRCI(const DecodedInstr& i) {
@@ -569,7 +563,7 @@ void CPU::execCSRRCI(const DecodedInstr& i) {
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
     sr.csr_write = CsrWrite{ csr_addr, old_val,  csrs_[csr_addr] };
     
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execMUL(const DecodedInstr& i) {
@@ -577,7 +571,7 @@ void CPU::execMUL(const DecodedInstr& i) {
     int64_t res = (int64_t)(int32_t)regs_[i.rs1] * (int64_t)(int32_t)regs_[i.rs2];
     writeReg(i.rd, (uint32_t)(res & 0xFFFFFFFF));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execMULH(const DecodedInstr& i) {
@@ -585,7 +579,7 @@ void CPU::execMULH(const DecodedInstr& i) {
     int64_t res = (int64_t)(int32_t)regs_[i.rs1] * (int64_t)(int32_t)regs_[i.rs2];
     writeReg(i.rd, (uint32_t)(res >> 32));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execMULHSU(const DecodedInstr& i) {
@@ -597,7 +591,7 @@ void CPU::execMULHSU(const DecodedInstr& i) {
     uint64_t res = s1 * (int64_t) s2;
     writeReg(i.rd, (uint32_t)(res >> 32));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execMULHU(const DecodedInstr& i) {
@@ -605,7 +599,7 @@ void CPU::execMULHU(const DecodedInstr& i) {
     uint64_t res = (uint64_t)regs_[i.rs1] * (uint64_t)regs_[i.rs2];
     writeReg(i.rd, (uint32_t)(res >> 32));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execDIV(const DecodedInstr& i) {
@@ -621,7 +615,7 @@ void CPU::execDIV(const DecodedInstr& i) {
         writeReg(i.rd, (uint32_t)(dividend / divisor));
     }
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execDIVU(const DecodedInstr& i) {
@@ -635,7 +629,7 @@ void CPU::execDIVU(const DecodedInstr& i) {
         writeReg(i.rd, (uint32_t)(dividend / divisor));
     }
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execREM(const DecodedInstr& i) {
@@ -651,7 +645,7 @@ void CPU::execREM(const DecodedInstr& i) {
         writeReg(i.rd, (uint32_t)(dividend % divisor));
     }
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
+    
 }
 
 void CPU::execREMU(const DecodedInstr& i) {
@@ -665,7 +659,6 @@ void CPU::execREMU(const DecodedInstr& i) {
         writeReg(i.rd, (uint32_t)(dividend % divisor));
     }
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    next_pc_ = pc_ + 4;
 }
 
 

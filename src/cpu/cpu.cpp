@@ -94,7 +94,12 @@ StepResult CPU::step() {
     // else
     //     csrs_[CSR::MIP] &= ~(1 << 7);
 
-    pc_ = next_pc_;
+    if (next_pc_.has_value()) {
+        pc_ = next_pc_.value();
+    } else {
+        pc_ += config_.extension_c ? 2 : 4;
+    }
+
     sr.pc_after = pc_;
     if (true) printTrace();
 
