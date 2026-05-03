@@ -74,7 +74,7 @@ class CPU {
         bool sModeInterruptsEnabled();
         bool mModeInterruptsEnabled();
 
-        void trap(uint32_t cause, uint32_t tval, bool is_interrupt);
+        void trap(uint32_t cause, uint32_t tval, bool is_interrupt, PrivilegeLevel target_level = PrivilegeLevel::MACHINE);
     
         
         // === Execute and Decode === //

@@ -209,8 +209,64 @@ void CPU::writeCSR(uint16_t addr, uint32_t val) {
     }
 }
 
-void CPU::trap(uint32_t cause, uint32_t tval, bool is_interrupt) {
+void CPU::trap(uint32_t cause, uint32_t tval, bool is_interrupt, PrivilegeLevel target_level) {
     trap_occurred_ = true;
+    uint32_t cause_val = is_interrupt ? (cause | (1U << 31)) : cause;
+    uint32_t mstatus = csrs_[CSR::MSTATUS];
+
+    if (target_level == PrivilegeLevel::MACHINE) {
+        uint32_t mie = (mstatus >> 3) & 1;
+
+        // Save current MIE into MPIE (bit 7)
+        mstatus = (mstatus & ~(1 << 7)) | (mie << 7);
+        // Clear current MIE (bit 3) to disable interrupts during the handler
+        mstatus &= ~(1 << 3);
+        // Save current privilege into MPP (bits 11-12)
+        mstatus = (mstatus & ~(3 << 11)) | (static_cast<uint32_t>(privilege_level_) << 11);
+
+        csrs_[CSR::MSTATUS] = mstatus;
+        csrs_[CSR::MCAUSE] = cause_val;
+        // Save the PC where the trap occurred
+        csrs_[CSR::MEPC] = pc_;
+        // Save specific trap info
+        csrs_[CSR::MTVAL] = tval;
+
+        privilege_level_ = PrivilegeLevel::MACHINE;
+
+        uint32_t mtvec = csrs_[CSR::MTVEC];
+        uint32_t base = mtvec & ~3;
+        uint32_t mode = mtvec & 3;
+
+        if (is_interrupt && mode == 1) {
+            pc_ = base + (cause * 4);
+        } else {
+            pc_ = base;
+        }
+    } else { // Supervisor trap
+        uint32_t sie = (mstatus >> 1) & 1;
+        uint32_t spp = (privilege_level_ == PrivilegeLevel::SUPERVISOR) ? 1 : 0;
+
+        mstatus = (mstatus & ~(1 << 5)) | (sie << 5);
+        mstatus &= ~(1 << 1);
+        mstatus = (mstatus & ~(1 << 8)) | (spp << 8);
+
+        csrs_[CSR::MSTATUS] = mstatus;
+        csrs_[CSR::SEPC] = pc_;
+        csrs_[CSR::SCAUSE] = cause_val;
+        csrs_[CSR::STVAL] = tval;
+
+        privilege_level_ = PrivilegeLevel::SUPERVISOR;
+
+        uint32_t mtvec = csrs_[CSR::STVEC];
+        uint32_t base = mtvec & ~3;
+        uint32_t mode = mtvec & 3;
+
+        if (is_interrupt && mode == 1) {
+            pc_ = base + (cause * 4);
+        } else {
+            pc_ = base;
+        }
+    }
 
     // Prepare MSTATUS Fields
     uint32_t mstatus = csrs_[CSR::MSTATUS];
@@ -267,10 +323,25 @@ void CPU::checkInterrupts() {
 
     uint32_t pending = csrs_[CSR::MIP] & csrs_[CSR::MIE];
 
-    if (pending != 0) {
-        if (pending & (1 << 11)) trap(11, 0, true);
-        else if (pending & (1 << 3)) trap(3, 0, true);
-        else if (pending & (1 << 7)) trap(7, 0, true);
+    for (int id : {11, 3, 7}) { // External, Software, Timer
+        if (pending & (1 << id)) {
+            bool delegate = (csrs_[CSR::MIDELEG] >> id) & 1;
+
+            if (delegate && privilege_level_ <= PrivilegeLevel::SUPERVISOR) {
+                // Signal to Supervisor mode
+                csrs_[CSR::MIP] |= (1 << (id - 2));
+                if (sModeInterruptsEnabled()) {
+                    trap(id - 2, 0, true, PrivilegeLevel::SUPERVISOR); 
+                    return;
+                }
+            } else {
+                // Standard M-mode handling
+                if (mModeInterruptsEnabled) {
+                    trap(id, 0, true, PrivilegeLevel::MACHINE);
+                    return;
+                }
+            }
+        }
     }
 }
 
