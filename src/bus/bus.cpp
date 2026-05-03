@@ -9,24 +9,30 @@ Bus::Bus(Clint& clint) : clint_(clint) {
 }
 
 uint8_t Bus::read8(uint32_t addr) const {
+    if (addr == Bus::UART) return 0;
+
     if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
         return dram_[offset];
     }
     
-    throw BusAccessError(addr + " is outside of mapped range");
+    throw BusAccessError(std::to_string(addr) + " is outside of mapped range");
 }
 
 uint16_t Bus::read16(uint32_t addr) const {
+    if (addr == Bus::UART) return 0;
+
     if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
         return dram_[offset] | (dram_[offset+1] << 8);
     }
     
-    throw BusAccessError(addr + " is outside of mapped range");
+    throw BusAccessError(std::to_string(addr) + " is outside of mapped range");
 }
 
 uint32_t Bus::read32(uint32_t addr) const {
+
+    if (addr == Bus::UART) return 0;
 
     if (addr >= Clint::BASE && addr < Clint::BASE + Clint::SIZE)
         return clint_.read32(addr - Clint::BASE);
@@ -35,10 +41,16 @@ uint32_t Bus::read32(uint32_t addr) const {
         return dram_[offset] | (dram_[offset+1] << 8) | (dram_[offset+2] << 16) | (dram_[offset+3] << 24);
     }
 
-    throw BusAccessError(addr + " is outside of mapped range");
+    throw BusAccessError(std::to_string(addr) + " is outside of mapped range");
 }
 
 void Bus::write8(uint32_t addr, uint8_t val) {
+    if (addr == Bus::UART) {
+        printf("%c", (char)(val & 0xFF));
+        fflush(stdout);
+        return;
+    }
+
     if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
         dram_[offset] = val;
@@ -46,6 +58,12 @@ void Bus::write8(uint32_t addr, uint8_t val) {
 }
 
 void Bus::write16(uint32_t addr, uint16_t val) {
+    if (addr == Bus::UART) {
+        printf("%c", (char)(val & 0xFF));
+        fflush(stdout);
+        return;
+    }
+
     if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
         dram_[offset] = val & 0xFF;

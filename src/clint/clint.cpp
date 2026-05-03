@@ -14,6 +14,9 @@ uint32_t Clint::read32(uint32_t offset) {
 }
 
 void Clint::write32(uint32_t offset, uint32_t val) {
+
+    //printf("CLINT Write: offset =0x%x, val=0x%x\n", offset, val);
+
     switch (offset) {
         case MSIP_OFFSET:  msip = val & 1; break;
         case MTIMECMP_LO:
@@ -30,5 +33,5 @@ void Clint::write32(uint32_t offset, uint32_t val) {
 void Clint::updateMtime() {
     std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
     uint64_t elapsed = std::chrono::duration_cast<std::chrono::microseconds>(now - start_time_).count();
-    mtime = (elapsed * frequency_)  / 1e6;
+    mtime = (elapsed * frequency_)  / 1000000;
 }
