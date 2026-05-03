@@ -397,11 +397,3 @@ void CPU::dumpRegisters() const {
             << "\n";
     }
 }
-
-void CPU::addBreakpoint(uint32_t addr) {
-    breakpoints_.insert(addr);
-}
-
-void CPU::removeBreakpoint(uint32_t addr) {
-    breakpoints_.erase(addr);
-}

@@ -3,7 +3,7 @@
 #pragma once
 
 #include <cstdint>
-#include <unordered_set>
+#include <unordered_map>
 #include <array>
 #include <string>
 #include "isa/isa.hpp"
@@ -34,14 +34,12 @@ class CPU {
 
         void printTrace() const;
         void dumpRegisters() const;
-        void addBreakpoint(uint32_t addr);
-        void removeBreakpoint(uint32_t addr);
 
     private:
         uint32_t pc_;
         std::optional<uint32_t> next_pc_;
         std::array<uint32_t, 32> regs_;
-        std::array<uint32_t, 4096> csrs_;
+        std::unordered_map<uint16_t, uint32_t> csrs_;
 
         enum PrivilegeLevel {
             USER = 0,
@@ -61,7 +59,6 @@ class CPU {
         
         bool trace_enabled_ = false;
         bool halted = false;
-        std::unordered_set<uint32_t> breakpoints_;
 
         // === Write Operations === //
 

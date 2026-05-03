@@ -10,7 +10,6 @@
 
 CPU::CPU (CPUConfig config, Bus& bus, Clint& clint) : config_(config), bus_(bus), clint_(clint), pc_(0x80000000) {
     regs_.fill(0);
-    csrs_.fill(0);
     csrs_[CSR::MVENDORID] = 0xF00DFACE;
     privilege_level_ = PrivilegeLevel::MACHINE;
     csrs_[CSR::MSTATUS] = (3 << 11);
@@ -29,11 +28,6 @@ CPU::CPU (CPUConfig config, Bus& bus, Clint& clint) : config_(config), bus_(bus)
 
 void CPU::run() {
     while (!halted) {
-        if (breakpoints_.contains(pc_)) {
-            std::cout << "Breakpoint hit at PC=" << hex32(pc_) << "\n";
-            break;
-        }
-
         step();
     }
 }
