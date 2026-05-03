@@ -308,61 +308,117 @@ void CPU::execSB(const DecodedInstr& i) {
 }
 
 void CPU::execBEQ(const DecodedInstr& i) {
-    if (regs_[i.rs1] == regs_[i.rs2])
-        next_pc_ = pc_ + i.imm;
-    else
+    if (regs_[i.rs1] == regs_[i.rs2]) {
+        uint32_t target = pc_ + i.imm;
+
+        if (target & 3) {
+            trap(0, target, false);
+            return;
+        }
+
+        next_pc_ = target;
+    } else
         next_pc_ = pc_ + 4;
 }
 
 void CPU::execBNE(const DecodedInstr& i) {
-    if (regs_[i.rs1] != regs_[i.rs2])
-        next_pc_ = pc_ + i.imm;
-    else
+    if (regs_[i.rs1] != regs_[i.rs2]) {
+        uint32_t target = pc_ + i.imm;
+
+        if (target & 3) {
+            trap(0, target, false);
+            return;
+        }
+
+        next_pc_ = target;
+    } else
         next_pc_ = pc_ + 4;
 }
 
 void CPU::execBLT(const DecodedInstr& i) {
     int32_t r1 = static_cast<int32_t>(regs_[i.rs1]);
     int32_t r2 = static_cast<int32_t>(regs_[i.rs2]);
-    if (r1 < r2)
-        next_pc_ = pc_ + i.imm;
-    else
+    if (r1 < r2) {
+        uint32_t target = pc_ + i.imm;
+
+        if (target & 3) {
+            trap(0, target, false);
+            return;
+        }
+
+        next_pc_ = target;
+    } else
         next_pc_ = pc_ + 4;
 }
 
 void CPU::execBGE(const DecodedInstr& i) {
     int32_t r1 = static_cast<int32_t>(regs_[i.rs1]);
     int32_t r2 = static_cast<int32_t>(regs_[i.rs2]);
-    if (r1 >= r2)
-        next_pc_ = pc_ + i.imm;
-    else
+    if (r1 >= r2) {
+        uint32_t target = pc_ + i.imm;
+
+        if (target & 3) {
+            trap(0, target, false);
+            return;
+        }
+
+        next_pc_ = target;
+
+    } else
         next_pc_ = pc_ + 4;
 }
 
 void CPU::execBLTU(const DecodedInstr& i) {
-    if (regs_[i.rs1] < regs_[i.rs2])
-        next_pc_ = pc_ + i.imm;
-    else
+    if (regs_[i.rs1] < regs_[i.rs2]) {
+        uint32_t target = pc_ + i.imm;
+
+        if (target & 3) {
+            trap(0, target, false);
+            return;
+        }
+
+        next_pc_ = target;
+    }else
         next_pc_ = pc_ + 4;
 }
 
 void CPU::execBGEU(const DecodedInstr& i) {
-    if (regs_[i.rs1] >= regs_[i.rs2])
-        next_pc_ = pc_ + i.imm;
-    else
+    if (regs_[i.rs1] >= regs_[i.rs2]) {
+        uint32_t target = pc_ + i.imm;
+
+        if (target & 3) {
+            trap(0, target, false);
+            return;
+        }
+
+        next_pc_ = target;
+    } else
         next_pc_ = pc_ + 4;
 }
 
 void CPU::execJAL(const DecodedInstr& i) {
     uint32_t o = regs_[i.rd];
+    uint32_t target = pc_ + i.imm;
+
+    if (target & 3) {
+        trap(0, target, false);
+        return;
+    }
+
     writeReg(i.rd, pc_ + 4);
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
-    next_pc_ = pc_ + i.imm;
+    next_pc_ = target;
 }
 
 void CPU::execJALR(const DecodedInstr& i) {
     uint32_t o = regs_[i.rd];
     uint32_t next_pc = (regs_[i.rs1] + i.imm) &~ 1;
+
+    if (next_pc & 3) {
+        trap(0, next_pc, false);
+        return;
+    }
+
     writeReg(i.rd, pc_ + 4);
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
     next_pc_ = next_pc;

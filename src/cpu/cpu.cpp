@@ -14,7 +14,7 @@ CPU::CPU (Bus& bus, Clint& clint) : bus_(bus), clint_(clint), pc_(0x80000000) {
     csrs_[CSR::MVENDORID] = 0xF00DFACE;
     priviledge_level_ = PrivilegeLevel::MACHINE;
     csrs_[CSR::MSTATUS] = (3 << 11);
-    csrs_[CSR::MISA] = (1 << 30) | (1 << 8);
+    csrs_[CSR::MISA] = (1U << 30) | (1U << 8);
 }
 
 void CPU::run() {
@@ -45,6 +45,9 @@ StepResult CPU::step() {
 
     // Fetch
     try {
+
+        if (pc_ & 0x3) trap(0, pc_, false);
+
         sr.instruction = bus_.read32(pc_);
     } catch (const BusAccessError& e) {
         trap(1, pc_, false);
@@ -140,6 +143,9 @@ void CPU::writeCSR(uint16_t addr, uint32_t val) {
             break;
         case CSR::MEPC:
             csrs_[CSR::MEPC] = val & ~0x1; // Force alignment
+            break;
+
+        case CSR::MISA:
             break;
         
         default:
