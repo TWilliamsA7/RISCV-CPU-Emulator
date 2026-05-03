@@ -420,9 +420,21 @@ uint32_t CPU::decompress(uint16_t i) {
                     return encodeJType(offset, 0); 
                 }
                 case 6: case 7: { // C.BEQZ, C.BNEZ -> beq/bne rs1', x0, offset
-                    int32_t imm = (int32_t(i << 16) >> 31) << 8 | ((i >> 7) & 0x18) | ((i << 1) & 0xC0) | ((i >> 2) & 0x6) | ((i >> 10) & 0x20);
-                    uint32_t f3 = (funct3 == 6) ? 0 : 1;
-                    return encodeBType(imm, rs1_p, 0, f3);
+                   uint32_t rs1_p = 8 + ((i >> 7) & 0x7);
+    
+                    // Offset bits: [8|4:3|2:1|7:6|5]
+                    int32_t offset = ((i >> 12) & 1) << 8 |   // bit 8 (sign)
+                                    ((i >> 10) & 3) << 3 |   // bits 4:3
+                                    ((i >> 5)  & 3) << 6 |   // bits 7:6
+                                    ((i >> 2)  & 1) << 5 |   // bit 5
+                                    ((i >> 3)  & 3) << 1;    // bits 2:1
+                    
+                    // Sign extend from bit 8 to bit 31
+                    if (offset & 0x100) offset |= 0xFFFFFE00;
+
+                    // Use your B-Type encoder
+                    uint32_t funct3_32 = (funct3 == 6) ? 0 : 1; // BEQ (0) or BNE (1)
+                    return encodeBType(offset, rs1_p, 0, funct3_32);
                 }
                 default: return 0;
             }

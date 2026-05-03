@@ -83,6 +83,7 @@ StepResult CPU::step() {
     // Decode and execute
     sr.pc_before = pc_;
     DecodedInstr di = decode(sr.instruction);
+    di.instr_len = instr_len;
     sr.dInstr = di;
     execute(di);
 
