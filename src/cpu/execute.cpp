@@ -59,6 +59,8 @@ const std::array<CPU::ExecFn, static_cast<size_t>(InstrKind::COUNT)> CPU::dispat
     &CPU::execREM,
     &CPU::execREMU,
     &CPU::execMRET,
+    &CPU::execSRET,
+    &CPU::execWFI,
     &CPU::execINVALID,
 };
 
@@ -456,9 +458,10 @@ void CPU::execECALL(const DecodedInstr& i) {
 
     // 2. If it's not a syscall, or a different syscall, check for a trap handler
     uint32_t cause = 11; // Machine Mode ECALL
+
     
     if (csrs_[CSR::MTVEC] != 0) {
-        trap(cause, 0, false);
+        trap(cause, 0, false, (csrs_[CSR::MEDELEG] >> 8) & 1 ? PrivilegeLevel::SUPERVISOR : PrivilegeLevel::MACHINE);
     } else {
         std::cout << "Unhandled ECALL: a7=" << regs_[17] << " @ PC=" << std::hex << pc_ << std::endl;
         halted = true; 
@@ -672,8 +675,29 @@ void CPU::execMRET(const DecodedInstr& i) {
     mstatus = (mstatus & ~(1 << 3)) | (mpie << 3);
     mstatus |= (1 << 7);
 
-    sr.csr_write = CsrWrite{ 0x300, readCSR(CSR::MSTATUS),  mstatus };
+    sr.csr_write = CsrWrite{ CSR::MSTATUS, readCSR(CSR::MSTATUS),  mstatus };
     csrs_[CSR::MSTATUS] = mstatus;
+}
+
+void CPU::execSRET(const DecodedInstr& i) {
+    uint32_t mstatus = csrs_[CSR::MSTATUS];
+
+    PrivilegeLevel target_level = ((mstatus >> 8) & 1) ? PrivilegeLevel::SUPERVISOR : PrivilegeLevel::USER;
+
+    uint32_t spie = (mstatus >> 5) & 1;
+    mstatus = (mstatus & ~(1 << 1)) | (spie << 1);
+    mstatus |= (1 << 5);
+    mstatus &= ~(1 << 8);
+
+    sr.csr_write = CsrWrite{ CSR::MSTATUS, csrs_[CSR::MSTATUS], mstatus };
+    csrs_[CSR::MSTATUS] = mstatus;
+
+    privilege_level_ = target_level;
+    next_pc_ = csrs_[CSR::SEPC];
+}
+
+void CPU::execWFI(const DecodedInstr& i) {
+
 }
 
 

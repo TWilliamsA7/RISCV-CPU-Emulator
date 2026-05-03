@@ -226,6 +226,10 @@ DecodedInstr CPU::decode(uint32_t instr) {
                         d.kind = InstrKind::EBREAK;
                     else if (funct12 = 0x302)
                         d.kind = InstrKind::MRET;
+                    else if (funct12 == 0x102)
+                        d.kind = InstrKind::SRET;
+                    else if (funct12 == 0x105)
+                        d.kind = InstrKind::WFI;
                     break;
                 }   
 

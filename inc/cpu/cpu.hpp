@@ -146,6 +146,8 @@ class CPU {
         void execREM(const DecodedInstr& i);
         void execREMU(const DecodedInstr& i);
         void execMRET(const DecodedInstr& i);
+        void execSRET(const DecodedInstr& i);
+        void execWFI(const DecodedInstr& i);
         void execINVALID(const DecodedInstr& i);
 
         // === Miscellaneous Helper functions === //
