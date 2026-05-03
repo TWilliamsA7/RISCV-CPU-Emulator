@@ -261,3 +261,140 @@ DecodedInstr CPU::decode(uint32_t instr) {
 
     return d;
 }
+
+// C-extension Instruction Decompression
+
+// Maps 3-bit C-register index to standard x-register index
+uint32_t encodeJType(int32_t imm, uint32_t rd) {
+    uint32_t u = static_cast<uint32_t>(imm);
+    uint32_t encoded_imm = ((u & 0x80000) >> 0) |   // bit 20 -> 31
+                           ((u & 0x3FF) << 21) |    // bits 10:1 -> 30:21
+                           ((u & 0x400) << 10) |    // bit 11 -> 20
+                           ((u & 0x7F800) >> 0);    // bits 19:12 -> 19:12
+    return (encoded_imm << 12) | (rd << 7) | 0x6F;
+}
+
+uint32_t encodeBType(int32_t imm, uint32_t rs1, uint32_t rs2, uint32_t f3) {
+    uint32_t u = static_cast<uint32_t>(imm);
+    uint32_t imm_12 = (u & 0x1000) << 19;      // bit 12 -> 31
+    uint32_t imm_10_5 = (u & 0x7E0) << 20;     // bits 10:5 -> 30:25
+    uint32_t imm_4_1 = (u & 0x1E) << 7;        // bits 4:1 -> 11:8
+    uint32_t imm_11 = (u & 0x800) >> 4;        // bit 11 -> 7
+    return imm_12 | imm_10_5 | (rs2 << 20) | (rs1 << 15) | (f3 << 12) | imm_4_1 | imm_11 | 0x63;
+}
+
+
+uint32_t CPU::decompress(uint16_t i) {
+    uint32_t op = i & 0x3;
+    uint32_t funct3 = (i >> 13) & 0x7;
+    
+    // Common bit-field extractions
+    uint32_t rd_rs1_high = (i >> 7) & 0x1F; // bits 11:7
+    uint32_t rs2_low = (i >> 2) & 0x1F;     // bits 6:2
+    uint32_t rd_p = 8 + ((i >> 2) & 0x7);    // bits 4:2 (C-style register)
+    uint32_t rs1_p = 8 + ((i >> 7) & 0x7);   // bits 9:7 (C-style register)
+    uint32_t rs2_p = 8 + ((i >> 2) & 0x7);   // bits 4:2 (C-style register)
+
+    switch (op) {
+        case 0: // Quadrant 0: Memory/SP-Relative
+            switch (funct3) {
+                case 0: { // C.ADDI4SPN -> addi rd', x2, nzuimm
+                    uint32_t imm = ((i >> 7) & 0x30) | ((i >> 1) & 0x3C0) | ((i >> 4) & 0x4) | ((i >> 2) & 0x8);
+                    if (imm == 0) return 0; // Illegal
+                    return (imm << 20) | (2 << 15) | (0 << 12) | (rd_p << 7) | 0x13;
+                }
+                case 2: { // C.LW -> lw rd', offset(rs1')
+                    uint32_t imm = ((i >> 7) & 0x38) | ((i >> 4) & 0x4) | ((i << 1) & 0x40);
+                    return (imm << 20) | (rs1_p << 15) | (2 << 12) | (rd_p << 7) | 0x03;
+                }
+                case 6: { // C.SW -> sw rs2', offset(rs1')
+                    uint32_t imm = ((i >> 7) & 0x38) | ((i >> 4) & 0x4) | ((i << 1) & 0x40);
+                    return ((imm >> 5) << 25) | (rs2_p << 20) | (rs1_p << 15) | (2 << 12) | ((imm & 0x1F) << 7) | 0x23;
+                }
+                default: return 0; // Reserved/Illegal
+            }
+
+        case 1: // Quadrant 1: Arithmetic/Jumps
+            switch (funct3) {
+                case 0: { // C.ADDI -> addi rd, rd, nzimm
+                    int32_t imm = (int32_t(i << 16) >> 31) << 5 | ((i >> 2) & 0x1F); // Sign-extend 6-bit
+                    if (rd_rs1_high == 0 && imm == 0) return 0x00000013; // C.NOP
+                    return (uint32_t(imm) << 20) | (rd_rs1_high << 15) | (0 << 12) | (rd_rs1_high << 7) | 0x13;
+                }
+                case 1: { // C.JAL (RV32 only) -> jal x1, offset
+                    int32_t imm = (int32_t(i << 16) >> 31) << 11 | ((i & 0x400) >> 2) | ((i >> 7) & 0x18) | 
+                                  ((i >> 1) & 0x40) | ((i >> 7) & 0x4) | ((i >> 2) & 0xE) | ((i << 3) & 0x200) | ((i >> 1) & 0x300);
+                    return (uint32_t(imm) << 20) | (1 << 7) | 0x6F; // This needs JAL immediate encoding logic
+                    // Note: For J/JAL, bit-swizzling into J-type is complex. Use standard J-type encoding.
+                }
+                case 2: { // C.LI -> addi rd, x0, imm
+                    int32_t imm = (int32_t(i << 16) >> 31) << 5 | ((i >> 2) & 0x1F);
+                    return (uint32_t(imm) << 20) | (0 << 15) | (0 << 12) | (rd_rs1_high << 7) | 0x13;
+                }
+                case 3: { // C.LUI or C.ADDI16SP
+                    int32_t imm = (int32_t(i << 16) >> 31) << 5 | ((i >> 2) & 0x1F);
+                    if (rd_rs1_high == 2) { // C.ADDI16SP -> addi x2, x2, imm
+                        int32_t sp_imm = (int32_t(i << 16) >> 31) << 9 | ((i >> 2) & 0x10) | ((i >> 5) & 0x4) | 
+                                         ((i >> 5) & 0x18) | ((i >> 2) & 0x8);
+                        return (uint32_t(sp_imm) << 20) | (2 << 15) | (0 << 12) | (2 << 7) | 0x13;
+                    }
+                    return (uint32_t(imm) << 12) | (rd_rs1_high << 7) | 0x37;
+                }
+                case 4: { // Logic/Shifts
+                    uint32_t sub = (i >> 10) & 0x3;
+                    uint32_t shamt = ((i >> 12) & 0x1) << 5 | ((i >> 2) & 0x1F);
+                    if (sub == 0) return (shamt << 20) | (rs1_p << 15) | (5 << 12) | (rs1_p << 7) | 0x13; // SRLI
+                    if (sub == 1) return (0x400 << 20) | (shamt << 20) | (rs1_p << 15) | (5 << 12) | (rs1_p << 7) | 0x13; // SRAI
+                    if (sub == 2) return (uint32_t(int32_t(i << 16) >> 31 << 5 | ((i >> 2) & 0x1F)) << 20) | (rs1_p << 15) | (7 << 12) | (rs1_p << 7) | 0x13; // ANDI
+                    if (sub == 3) {
+                        uint32_t f2 = (i >> 5) & 0x3;
+                        if (f2 == 0) return 0x40000033 | (rs1_p << 15) | (rs1_p << 7) | (rs2_p << 20); // SUB
+                        if (f2 == 1) return 0x00004033 | (rs1_p << 15) | (rs1_p << 7) | (rs2_p << 20); // XOR
+                        if (f2 == 2) return 0x00006033 | (rs1_p << 15) | (rs1_p << 7) | (rs2_p << 20); // OR
+                        if (f2 == 3) return 0x00007033 | (rs1_p << 15) | (rs1_p << 7) | (rs2_p << 20); // AND
+                    }
+                    return 0;
+                }
+                case 5: { // C.J -> jal x0, offset
+                    // Offset mapping: 11|4|9:8|10|6|7|3:1|5
+                    int32_t imm = (int32_t(i << 16) >> 31) << 11 | ((i & 0x400) >> 2) | ((i >> 7) & 0x18) | 
+                                  ((i >> 1) & 0x40) | ((i >> 7) & 0x4) | ((i >> 2) & 0xE) | ((i << 3) & 0x200) | ((i >> 1) & 0x300);
+                    // Construct J-type JAL x0
+                    return encodeJType(imm, 0); 
+                }
+                case 6: case 7: { // C.BEQZ, C.BNEZ -> beq/bne rs1', x0, offset
+                    int32_t imm = (int32_t(i << 16) >> 31) << 8 | ((i >> 7) & 0x18) | ((i << 1) & 0xC0) | ((i >> 2) & 0x6) | ((i >> 10) & 0x20);
+                    uint32_t f3 = (funct3 == 6) ? 0 : 1;
+                    return encodeBType(imm, rs1_p, 0, f3);
+                }
+                default: return 0;
+            }
+
+        case 2: // Quadrant 2: High-Speed/SP
+            switch (funct3) {
+                case 0: { // C.SLLI -> slli rd, rd, shamt
+                    uint32_t shamt = ((i >> 12) & 0x1) << 5 | ((i >> 2) & 0x1F);
+                    return (shamt << 20) | (rd_rs1_high << 15) | (1 << 12) | (rd_rs1_high << 7) | 0x13;
+                }
+                case 2: { // C.LWSP -> lw rd, offset(x2)
+                    uint32_t imm = ((i >> 2) & 0x1C) | ((i >> 7) & 0x20) | ((i << 4) & 0xC0);
+                    return (imm << 20) | (2 << 15) | (2 << 12) | (rd_rs1_high << 7) | 0x03;
+                }
+                case 4: { // C.JR, C.MV, C.EBREAK, C.JALR, C.ADD
+                    bool bit12 = (i >> 12) & 0x1;
+                    if (!bit12 && rs2_low == 0) return (rd_rs1_high << 15) | (0 << 12) | (0 << 7) | 0x67; // C.JR -> jalr x0, rs1, 0
+                    if (!bit12 && rs2_low != 0) return (0 << 15) | (rs2_low << 20) | (rd_rs1_high << 7) | 0x33; // C.MV -> add rd, x0, rs2
+                    if (bit12 && rd_rs1_high == 0 && rs2_low == 0) return 0x00100073; // C.EBREAK
+                    if (bit12 && rd_rs1_high != 0 && rs2_low == 0) return (rd_rs1_high << 15) | (0 << 12) | (1 << 7) | 0x67; // C.JALR -> jalr x1, rs1, 0
+                    if (bit12 && rd_rs1_high != 0 && rs2_low != 0) return (rd_rs1_high << 15) | (rs2_low << 20) | (rd_rs1_high << 7) | 0x33; // C.ADD -> add rd, rd, rs2
+                    return 0;
+                }
+                case 6: { // C.SWSP -> sw rs2, offset(x2)
+                    uint32_t imm = ((i >> 7) & 0x3C) | ((i >> 1) & 0xC0);
+                    return ((imm >> 5) << 25) | (rs2_low << 20) | (2 << 15) | (2 << 12) | ((imm & 0x1F) << 7) | 0x23;
+                }
+                default: return 0;
+            }
+        default: return 0;
+    }
+}

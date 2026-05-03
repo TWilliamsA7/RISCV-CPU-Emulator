@@ -79,6 +79,8 @@ class CPU {
         // === Execute and Decode === //
 
         static DecodedInstr decode(uint32_t instr);
+        static uint32_t decompress(uint16_t i);
+
         void execute(const DecodedInstr& i);
         
         // === Execution Dispath === //
