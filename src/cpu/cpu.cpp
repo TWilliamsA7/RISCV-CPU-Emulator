@@ -8,13 +8,23 @@
 #include <cassert>
 #include <iostream>
 
-CPU::CPU (Bus& bus, Clint& clint) : bus_(bus), clint_(clint), pc_(0x80000000) {
+CPU::CPU (CPUConfig config, Bus& bus, Clint& clint) : config_(config), bus_(bus), clint_(clint), pc_(0x80000000) {
     regs_.fill(0);
     csrs_.fill(0);
     csrs_[CSR::MVENDORID] = 0xF00DFACE;
     priviledge_level_ = PrivilegeLevel::MACHINE;
     csrs_[CSR::MSTATUS] = (3 << 11);
-    csrs_[CSR::MISA] = (1U << 30) | (1U << 8);
+
+    uint32_t misa = (1U << 30); // RV32
+    misa |= (1 << 8); // I (Base)
+    if (config_.extension_m) misa |= (1U << 12);
+    if (config.extension_c){ 
+        misa |= (1U << 2);
+        ADDRESS_MISALIGNMENT_MASK = 0x1;
+    } else {
+        ADDRESS_MISALIGNMENT_MASK = 0x3;
+    }
+    csrs_[CSR::MISA] = misa;
 }
 
 void CPU::run() {
@@ -46,7 +56,7 @@ StepResult CPU::step() {
     // Fetch
     try {
 
-        if (pc_ & 0x3) trap(0, pc_, false);
+        if (pc_ & ADDRESS_MISALIGNMENT_MASK) trap(0, pc_, false);
 
         sr.instruction = bus_.read32(pc_);
     } catch (const BusAccessError& e) {
@@ -114,6 +124,7 @@ void CPU::clearStep() {
     sr.mem_write.reset();
     sr.reg_write.reset();
     sr.csr_write.reset();
+    next_pc_.reset();
     trap_occurred_ = false;
 }
 
