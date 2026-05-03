@@ -12,6 +12,8 @@ class Bus {
 
         Bus(Clint& clint);
 
+        static constexpr uint32_t UART = 0x10000000;
+
         // Starting point of DRAM addresses
         static constexpr uint32_t DRAM_BASE = 0x80000000;
 
