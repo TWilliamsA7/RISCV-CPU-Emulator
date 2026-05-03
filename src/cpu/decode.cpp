@@ -320,9 +320,22 @@ uint32_t CPU::decompress(uint16_t i) {
         case 1: // Quadrant 1: Arithmetic/Jumps
             switch (funct3) {
                 case 0: { // C.ADDI -> addi rd, rd, nzimm
-                    int32_t imm = (int32_t(i << 16) >> 31) << 5 | ((i >> 2) & 0x1F); // Sign-extend 6-bit
-                    if (rd_rs1_high == 0 && imm == 0) return 0x00000013; // C.NOP
-                    return (uint32_t(imm) << 20) | (rd_rs1_high << 15) | (0 << 12) | (rd_rs1_high << 7) | 0x13;
+                    uint32_t rd_rs1 = (i >> 7) & 0x1F;
+    
+                    // Extract the 6-bit immediate: bit 12 is MSB, bits 6:2 are LSBs
+                    int32_t imm6 = ((i >> 12) & 0x1) << 5 | ((i >> 2) & 0x1F);
+                    
+                    // SIGN EXTEND the 6-bit value to 32-bit
+                    // If bit 5 (originally bit 12) is set, fill the upper 26 bits with 1s
+                    if (imm6 & 0x20) {
+                        imm6 |= 0xFFFFFFC0;
+                    }
+
+                    // Special case: C.NOP (addi x0, x0, 0) is encoded as 0x0001
+                    if (rd_rs1 == 0 && imm6 == 0) return 0x00000013; 
+
+                    // Construct the 32-bit ADDI: [imm11:0][rs1][000][rd][0010011]
+                    return (uint32_t(imm6) << 20) | (rd_rs1 << 15) | (0 << 12) | (rd_rs1 << 7) | 0x13;
                 }
                 case 1: { // C.JAL (RV32 only) -> jal x1, offset
                     int32_t imm = (int32_t(i << 16) >> 31) << 11 | ((i & 0x400) >> 2) | ((i >> 7) & 0x18) | 
