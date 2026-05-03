@@ -215,6 +215,11 @@ void CPU::execSLTIU(const DecodedInstr& i) {
 }
 
 void CPU::execSLLI(const DecodedInstr& i) {
+    if ((i.imm >> 5) != 0) {
+        trap(2, i.raw, false);
+        return;
+    }
+
     uint32_t o = regs_[i.rd];
     int32_t a = static_cast<int32_t>(regs_[i.rs1]);
     writeReg(i.rd, static_cast<uint32_t>(a << i.imm));
@@ -223,6 +228,11 @@ void CPU::execSLLI(const DecodedInstr& i) {
 }
 
 void CPU::execSRLI(const DecodedInstr& i) {
+     if ((i.imm >> 5) != 0) {
+        trap(2, i.raw, false);
+        return;
+    }
+
     uint32_t o = regs_[i.rd];
     uint32_t a = regs_[i.rs1];
     writeReg(i.rd, static_cast<uint32_t>(a >> i.imm));
@@ -231,6 +241,11 @@ void CPU::execSRLI(const DecodedInstr& i) {
 }
 
 void CPU::execSRAI(const DecodedInstr& i) {
+    if ((i.imm >> 5) != 0x20) {
+        trap(2, i.raw, false);
+        return;
+    }
+
     uint32_t o = regs_[i.rd];
     int32_t a = static_cast<int32_t>(regs_[i.rs1]);
     writeReg(i.rd, static_cast<uint32_t>(a >> i.imm));

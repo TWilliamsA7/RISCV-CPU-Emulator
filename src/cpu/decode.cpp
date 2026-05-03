@@ -15,6 +15,7 @@ static inline int32_t sign_extend(uint32_t value, int bits) {
 
 DecodedInstr CPU::decode(uint32_t instr) {
     DecodedInstr d;
+    d.raw = instr;
     
     uint32_t opcode = get_bits(instr, 6, 0);
     uint32_t funct3 = get_bits(instr, 14, 12);

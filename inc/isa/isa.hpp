@@ -30,4 +30,5 @@ struct DecodedInstr {
 
     int32_t imm = 0;
     uint16_t csr = 0;
+    uint32_t raw = 0;
 };
