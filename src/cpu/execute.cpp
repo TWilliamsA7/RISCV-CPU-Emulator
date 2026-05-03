@@ -414,7 +414,7 @@ void CPU::execJAL(const DecodedInstr& i) {
         return;
     }
 
-    writeReg(i.rd, pc_ + 4);
+    writeReg(i.rd, pc_ + i.instr_len);
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
     next_pc_ = target;
 }
