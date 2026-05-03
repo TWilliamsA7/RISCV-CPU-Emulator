@@ -48,6 +48,8 @@ void CPU::run(uint32_t count) {
 StepResult CPU::step() {
     clearStep();  
 
+    clint_.updateMtime();
+
     // Check for Asynchronous Interrupts 
     checkInterrupts();
     if (trap_occurred_) return sr;
@@ -106,20 +108,17 @@ StepResult CPU::step() {
     if (csrs_[CSR::MINSTRET] == 0)
         csrs_[CSR::MINSTRETH]++;
 
-    // // Tick CLINT and reflect into MIP
-    // clint_.tick();
+    // MSIP -> MIP bit 3
+    if (clint_.msip)
+        csrs_[CSR::MIP] |= (1 << 3);
+    else
+        csrs_[CSR::MIP] &= ~(1 << 3);
 
-    // // MSIP -> MIP bit 3
-    // if (clint_.msip)
-    //     csrs_[CSR::MIP] |= (1 << 3);
-    // else
-    //     csrs_[CSR::MIP] &= ~(1 << 3);
-
-    // // MTIP -> MIP bit 7 (timer)
-    // if (clint_.mtime >= clint_.mtimecmp)
-    //     csrs_[CSR::MIP] |= (1 << 7);
-    // else
-    //     csrs_[CSR::MIP] &= ~(1 << 7);
+    // MTIP -> MIP bit 7 (timer)
+    if (clint_.mtime >= clint_.mtimecmp)
+        csrs_[CSR::MIP] |= (1 << 7);
+    else
+        csrs_[CSR::MIP] &= ~(1 << 7);
 
     if (next_pc_.has_value()) {
         pc_ = next_pc_.value();

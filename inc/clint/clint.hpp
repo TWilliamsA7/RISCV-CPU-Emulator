@@ -1,10 +1,15 @@
 // inc/clint/clint.hpp
 
 #pragma once
+
 #include <cstdint>
+#include <chrono> 
 
 class Clint {
     public:
+
+        Clint();
+
         static constexpr uint32_t BASE        = 0x2000000;
         static constexpr uint32_t MSIP_OFFSET = 0x0000000;
         static constexpr uint32_t MTIMECMP_LO = 0x0004000;
@@ -19,7 +24,11 @@ class Clint {
 
         uint32_t read32(uint32_t offset);
         void write32(uint32_t offset, uint32_t val);
-        void tick();
+        void updateMtime();
+
+    private:
+        std::chrono::high_resolution_clock::time_point start_time_;
+        uint64_t frequency_ = 10e6;
 
 
 };

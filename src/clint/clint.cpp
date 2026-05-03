@@ -1,5 +1,7 @@
 #include "clint/clint.hpp"
 
+Clint::Clint() : start_time_(std::chrono::high_resolution_clock::now()) {}
+
 uint32_t Clint::read32(uint32_t offset) {
     switch (offset) {
         case MSIP_OFFSET:  return msip ? 1 : 0;
@@ -25,4 +27,8 @@ void Clint::write32(uint32_t offset, uint32_t val) {
     }
 }
 
-void Clint::tick() { mtime++; }
+void Clint::updateMtime() {
+    std::chrono::high_resolution_clock::time_point now = std::chrono::high_resolution_clock::now();
+    uint64_t elapsed = std::chrono::duration_cast<std::chrono::microseconds>(now - start_time_).count();
+    mtime = (elapsed * frequency_)  / 1e6;
+}
