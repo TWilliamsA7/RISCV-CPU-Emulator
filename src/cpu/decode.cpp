@@ -267,11 +267,14 @@ DecodedInstr CPU::decode(uint32_t instr) {
 // Maps 3-bit C-register index to standard x-register index
 uint32_t encodeJType(int32_t imm, uint32_t rd) {
     uint32_t u = static_cast<uint32_t>(imm);
-    uint32_t encoded_imm = ((u & 0x80000) >> 0) |   // bit 20 -> 31
-                           ((u & 0x3FF) << 21) |    // bits 10:1 -> 30:21
-                           ((u & 0x400) << 10) |    // bit 11 -> 20
-                           ((u & 0x7F800) >> 0);    // bits 19:12 -> 19:12
-    return (encoded_imm << 12) | (rd << 7) | 0x6F;
+    
+    uint32_t i20    = (u >> 20) & 0x1;
+    uint32_t i10_1  = (u >> 1)  & 0x3FF;
+    uint32_t i11    = (u >> 11) & 0x1;
+    uint32_t i19_12 = (u >> 12) & 0xFF;
+
+    uint32_t res = (i20 << 31) | (i10_1 << 21) | (i11 << 20) | (i19_12 << 12) | (rd << 7) | 0x6F;
+    return res;
 }
 
 uint32_t encodeBType(int32_t imm, uint32_t rs1, uint32_t rs2, uint32_t f3) {
@@ -332,14 +335,28 @@ uint32_t CPU::decompress(uint16_t i) {
                     return (uint32_t(imm) << 20) | (0 << 15) | (0 << 12) | (rd_rs1_high << 7) | 0x13;
                 }
                 case 3: { // C.LUI or C.ADDI16SP
-                    int32_t imm = (int32_t(i << 16) >> 31) << 5 | ((i >> 2) & 0x1F);
                     if (rd_rs1_high == 2) { // C.ADDI16SP -> addi x2, x2, imm
-                        int32_t sp_imm = (int32_t(i << 16) >> 31) << 9 | ((i >> 2) & 0x10) | ((i >> 5) & 0x4) | 
-                                         ((i >> 5) & 0x18) | ((i >> 2) & 0x8);
-                        return (uint32_t(sp_imm) << 20) | (2 << 15) | (0 << 12) | (2 << 7) | 0x13;
+                        // The immediate is bits: 12|4|3|5|2|6
+                        // It is signed and scaled by 16.
+                        int32_t imm = ((i >> 12) & 0x1) ? 0xFFFFFE00 : 0; // Sign extend from bit 9
+                        imm |= ((i >> 3) & 0x3) << 7;  // bits 8:7
+                        imm |= ((i >> 5) & 0x1) << 6;  // bit 6
+                        imm |= ((i >> 2) & 0x1) << 5;  // bit 5
+                        imm |= ((i >> 6) & 0x1) << 4;  // bit 4
+                        
+                        // Final signed value (already scaled by logic above)
+                        // Let's verify 617d: i=0110000101111101
+                        // bit 12=0, bit 6=1, bit 5=1, bit 4=1, bit 3=1, bit 2=1
+                        // This should yield 496.
+                        
+                        // In the 32-bit ADDI, this goes into the I-type imm field
+                        return (uint32_t(imm) << 20) | (2 << 15) | (0 << 12) | (2 << 7) | 0x13;
                     }
-                    return (uint32_t(imm) << 12) | (rd_rs1_high << 7) | 0x37;
+                    // Standard C.LUI logic for rd != 2
+                    int32_t lui_imm = (int32_t(i << 16) >> 31) << 5 | ((i >> 2) & 0x1F);
+                    return (uint32_t(lui_imm) << 12) | (rd_rs1_high << 7) | 0x37;
                 }
+
                 case 4: { // Logic/Shifts
                     uint32_t sub = (i >> 10) & 0x3;
                     uint32_t shamt = ((i >> 12) & 0x1) << 5 | ((i >> 2) & 0x1F);
@@ -357,10 +374,20 @@ uint32_t CPU::decompress(uint16_t i) {
                 }
                 case 5: { // C.J -> jal x0, offset
                     // Offset mapping: 11|4|9:8|10|6|7|3:1|5
-                    int32_t imm = (int32_t(i << 16) >> 31) << 11 | ((i & 0x400) >> 2) | ((i >> 7) & 0x18) | 
-                                  ((i >> 1) & 0x40) | ((i >> 7) & 0x4) | ((i >> 2) & 0xE) | ((i << 3) & 0x200) | ((i >> 1) & 0x300);
+                    int32_t offset = 
+                        ((i >> 12) & 1) << 11 | // inst[12] -> imm[11] (sign)
+                        ((i >> 8)  & 1) << 10 | // inst[8]  -> imm[10]
+                        ((i >> 9)  & 3) << 8  | // inst[10:9]-> imm[9:8]
+                        ((i >> 6)  & 1) << 7  | // inst[6]  -> imm[7]
+                        ((i >> 7)  & 1) << 6  | // inst[7]  -> imm[6]
+                        ((i >> 2)  & 1) << 5  | // inst[2]  -> imm[5]
+                        ((i >> 11) & 1) << 4  | // inst[11] -> imm[4]
+                        ((i >> 3)  & 7) << 1;   // inst[5:3] -> imm[3:1]
+
+                    // Sign extend from bit 11 to 32
+                    if (offset & 0x800) offset |= 0xFFFFF000;
                     // Construct J-type JAL x0
-                    return encodeJType(imm, 0); 
+                    return encodeJType(offset, 0); 
                 }
                 case 6: case 7: { // C.BEQZ, C.BNEZ -> beq/bne rs1', x0, offset
                     int32_t imm = (int32_t(i << 16) >> 31) << 8 | ((i >> 7) & 0x18) | ((i << 1) & 0xC0) | ((i >> 2) & 0x6) | ((i >> 10) & 0x20);
