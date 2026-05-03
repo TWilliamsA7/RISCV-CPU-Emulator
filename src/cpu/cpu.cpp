@@ -46,19 +46,35 @@ void CPU::run(uint32_t count) {
 
 
 StepResult CPU::step() {
-    clearStep();
-    
+    clearStep();  
 
     // Check for Asynchronous Interrupts 
     checkInterrupts();
     if (trap_occurred_) return sr;
+
+    uint32_t instr_len;
 
     // Fetch
     try {
 
         if (pc_ & ADDRESS_MISALIGNMENT_MASK) trap(0, pc_, false);
 
-        sr.instruction = bus_.read32(pc_);
+        uint16_t first_half = bus_.read16(pc_);
+        
+        if ((first_half & 0x3) != 0x3) {
+            if (!config_.extension_c) {
+                // Illegal if C is disabled
+                trap(2, first_half, false); 
+                return sr;
+            }
+            sr.instruction = decompress(first_half);
+            instr_len = 2;
+        } else {
+            // 32-bit instruction
+            uint16_t second_half = bus_.read16(pc_ + 2);
+            sr.instruction = (second_half << 16) | first_half;
+            instr_len = 4;
+        } 
     } catch (const BusAccessError& e) {
         trap(1, pc_, false);
         return sr;
@@ -107,7 +123,7 @@ StepResult CPU::step() {
     if (next_pc_.has_value()) {
         pc_ = next_pc_.value();
     } else {
-        pc_ += config_.extension_c ? 2 : 4;
+        pc_ += instr_len;
     }
 
     sr.pc_after = pc_;
