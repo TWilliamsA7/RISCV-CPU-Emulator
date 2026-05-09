@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <array>
 #include <string>
+#include <Optional>
 #include "isa/isa.hpp"
 #include "bus/bus.hpp"
 #include "core/state.hpp"
@@ -76,7 +77,7 @@ class CPU {
 
         void writeReg(uint8_t rd, uint32_t value);
         bool writeCSR(uint16_t addr, uint32_t val);
-        uint32_t readCSR(uint16_t addr);
+        std::optional<uint32_t> readCSR(uint16_t addr);
 
         void updateCycle();
 

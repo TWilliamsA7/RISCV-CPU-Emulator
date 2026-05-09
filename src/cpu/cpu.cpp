@@ -163,7 +163,14 @@ void CPU::writeReg(uint8_t rd, uint32_t value) {
         regs_[rd] = value;
 }
 
-uint32_t CPU::readCSR(uint16_t addr) {
+std::optional<uint32_t> CPU::readCSR(uint16_t addr) {
+
+    uint32_t required_privilege = (addr >> 8) & 0x3;
+    if (privilege_level_ < required_privilege) {
+        trap(2, sr.instruction, false);
+        return std::nullopt;
+    }
+
     switch (addr) {
         case CSR::SSTATUS:
             return csrs_[CSR::MSTATUS] & 0x000DE122;
@@ -183,11 +190,11 @@ bool CPU::writeCSR(uint16_t addr, uint32_t val) {
         return false;
     }
 
-    // uint32_t required_privilege = (addr >> 8) & 0x3;
-    // if (privilege_level_ < required_privilege) {
-    //     trap(2, sr.instruction, false);
-    //     return false;
-    // }
+    uint32_t required_privilege = (addr >> 8) & 0x3;
+    if (privilege_level_ < required_privilege) {
+        trap(2, sr.instruction, false);
+        return false;
+    }
 
 
     switch (addr) {

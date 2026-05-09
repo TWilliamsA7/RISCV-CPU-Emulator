@@ -481,94 +481,102 @@ void CPU::execFENCE(const DecodedInstr& i) {
 
 void CPU::execCSRRW(const DecodedInstr& i) {
     uint16_t csr_addr = i.csr & 0xFFF;
-    uint32_t old_val = readCSR(csr_addr);
+    auto old_val = readCSR(csr_addr);
+    if (!old_val.has_value()) return;
+
+
     uint32_t o = regs_[i.rd];
     
     if (!writeCSR(csr_addr, regs_[i.rs1])) return;
 
-    writeReg(i.rd, old_val);
+    writeReg(i.rd, old_val.value());
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
-    sr.csr_write = CsrWrite{ csr_addr, old_val,  csrs_[csr_addr] };
+    sr.csr_write = CsrWrite{ csr_addr, old_val.value(),  csrs_[csr_addr] };
     
 }
 
 void CPU::execCSRRS(const DecodedInstr& i) {
     uint16_t csr_addr = i.csr & 0xFFF;
-    uint32_t old_val = readCSR(csr_addr);
+    auto old_val = readCSR(csr_addr);
+    if (!old_val.has_value()) return;
     uint32_t o = regs_[i.rd];
     
     if (i.rs1 != 0) {
-        if (!writeCSR(csr_addr, old_val | regs_[i.rs1])) return;
+        if (!writeCSR(csr_addr, old_val.value() | regs_[i.rs1])) return;
     }
-    writeReg(i.rd, old_val);
+    writeReg(i.rd, old_val.value());
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
-    sr.csr_write = CsrWrite{ csr_addr, old_val,  csrs_[csr_addr] };
+    sr.csr_write = CsrWrite{ csr_addr, old_val.value(),  csrs_[csr_addr] };
     
 }
 
 void CPU::execCSRRC(const DecodedInstr& i) {
     uint16_t csr_addr = i.csr & 0xFFF;
-    uint32_t old_val = readCSR(csr_addr);
+    auto old_val = readCSR(csr_addr);
+    if (!old_val.has_value()) return;
     uint32_t o = regs_[i.rd];
 
     if (i.rs1 != 0) {
-        if (!writeCSR(csr_addr, old_val & ~regs_[i.rs1])) return;
+        if (!writeCSR(csr_addr, old_val.value() & ~regs_[i.rs1])) return;
     }
-    writeReg(i.rd, old_val);
+    writeReg(i.rd, old_val.value());
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
-    sr.csr_write = CsrWrite{ csr_addr, old_val,  csrs_[csr_addr] };
+    sr.csr_write = CsrWrite{ csr_addr, old_val.value(),  csrs_[csr_addr] };
     
 }
 
 void CPU::execCSRRWI(const DecodedInstr& i) {
     uint16_t csr_addr = i.csr & 0xFFF;
-    uint32_t old_val = readCSR(csr_addr);
+    auto old_val = readCSR(csr_addr);
+    if (!old_val.has_value()) return;
     uint32_t uimm = i.rs1;
     uint32_t o = regs_[i.rd];
 
     if (!writeCSR(csr_addr, uimm)) return;
-    writeReg(i.rd, old_val);
+    writeReg(i.rd, old_val.value());
 
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
-    sr.csr_write = CsrWrite{ csr_addr, old_val,  csrs_[csr_addr] };
+    sr.csr_write = CsrWrite{ csr_addr, old_val.value(),  csrs_[csr_addr] };
     
     
 }
 
 void CPU::execCSRRSI(const DecodedInstr& i) {
     uint16_t csr_addr = i.csr & 0xFFF;
-    uint32_t old_val = readCSR(csr_addr);
+    auto old_val = readCSR(csr_addr);
+    if (!old_val.has_value()) return;
     uint32_t uimm = i.rs1;
     uint32_t o = regs_[i.rd];
 
-    writeReg(i.rd, old_val);
+    writeReg(i.rd, old_val.value());
 
     
     if (uimm != 0) {
-        if (!writeCSR(csr_addr, old_val | uimm)) return;
+        if (!writeCSR(csr_addr, old_val.value() | uimm)) return;
     }
 
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
-    sr.csr_write = CsrWrite{ csr_addr, old_val,  csrs_[csr_addr] };
+    sr.csr_write = CsrWrite{ csr_addr, old_val.value(),  csrs_[csr_addr] };
     
     
 }
 
 void CPU::execCSRRCI(const DecodedInstr& i) {
     uint16_t csr_addr = i.csr & 0xFFF;
-    uint32_t old_val = readCSR(csr_addr);
+    auto old_val = readCSR(csr_addr);
+    if (!old_val.has_value()) return;
     uint32_t uimm = i.rs1;
     uint32_t o = regs_[i.rd];
 
-    writeReg(i.rd, old_val);
+    writeReg(i.rd, old_val.value());
 
     
     if (uimm != 0) {
-        if (!writeCSR(csr_addr, old_val & ~uimm));
+        if (!writeCSR(csr_addr, old_val.value() & ~uimm));
     }
     
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
-    sr.csr_write = CsrWrite{ csr_addr, old_val,  csrs_[csr_addr] };
+    sr.csr_write = CsrWrite{ csr_addr, old_val.value(),  csrs_[csr_addr] };
     
     
 }
@@ -670,10 +678,10 @@ void CPU::execREMU(const DecodedInstr& i) {
 
 
 void CPU::execMRET(const DecodedInstr& i) {
-    next_pc_ = readCSR(CSR::MEPC);
+    next_pc_ = csrs_[CSR::MEPC];
 
     // 2. Handle mstatus bit manipulation
-    uint32_t mstatus = readCSR(CSR::MSTATUS);
+    uint32_t mstatus = csrs_[CSR::MSTATUS];
     uint32_t mpie = (mstatus >> 7) & 1;
     // Set MIE to MPIE, then set MPIE to 1
     mstatus = (mstatus & ~(1 << 3)) | (mpie << 3);
@@ -683,7 +691,7 @@ void CPU::execMRET(const DecodedInstr& i) {
     uint32_t mpp = (mstatus >> 11) & 0x3;
     privilege_level_ = static_cast<CPU::PrivilegeLevel>(mpp);
 
-    sr.csr_write = CsrWrite{ CSR::MSTATUS, readCSR(CSR::MSTATUS),  mstatus };
+    sr.csr_write = CsrWrite{ CSR::MSTATUS, csrs_[CSR::MSTATUS],  mstatus };
     writeCSR(CSR::MSTATUS, mstatus);
 }
 
