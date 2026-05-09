@@ -75,7 +75,7 @@ class CPU {
         // === Write Operations === //
 
         void writeReg(uint8_t rd, uint32_t value);
-        void writeCSR(uint16_t addr, uint32_t val);
+        bool writeCSR(uint16_t addr, uint32_t val);
         uint32_t readCSR(uint16_t addr);
 
         void updateCycle();

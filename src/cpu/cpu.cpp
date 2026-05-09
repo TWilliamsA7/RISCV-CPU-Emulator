@@ -176,11 +176,11 @@ uint32_t CPU::readCSR(uint16_t addr) {
     }
 }
 
-void CPU::writeCSR(uint16_t addr, uint32_t val) {
+bool CPU::writeCSR(uint16_t addr, uint32_t val) {
     // Check bits [11:10]. If they are 11 (0xCxx), it's Read-Only
     if ((addr >> 10) == 0x3) {
         trap(2, sr.instruction, false); 
-        return;
+        return false;
     }
 
     switch (addr) {
@@ -230,6 +230,8 @@ void CPU::writeCSR(uint16_t addr, uint32_t val) {
             csrs_[addr] = val;
             break;
     }
+
+    return true;
 }
 
 void CPU::trap(uint32_t cause, uint32_t tval, bool is_interrupt, PrivilegeLevel target_level) {
