@@ -183,12 +183,23 @@ bool CPU::writeCSR(uint16_t addr, uint32_t val) {
         return false;
     }
 
+    // uint32_t required_privilege = (addr >> 8) & 0x3;
+    // if (privilege_level_ < required_privilege) {
+    //     trap(2, sr.instruction, false);
+    //     return false;
+    // }
+
+
     switch (addr) {
         case CSR::MSTATUS: {
-            uint32_t writeable_mask = 0x000E19AA;
+            uint32_t mask = 0x007E19FF; // Basic M+S mask
+    
+            mask |= (1 << 0) | (1 << 4); 
+
             uint32_t mpp = (val >> 11) & 0x3;
             if (mpp == 2) mpp = 1;
-            csrs_[CSR::MSTATUS] = (val & writeable_mask);
+
+            csrs_[CSR::MSTATUS] = (val & mask);
             break;
         }
         case CSR::MTVEC: {

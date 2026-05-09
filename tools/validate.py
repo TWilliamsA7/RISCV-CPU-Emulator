@@ -19,7 +19,7 @@ def get_flags(test_name: str) -> List[str]:
     elif "rv32um" in test_name:
         flags.extend(["-b", "-m"])
     elif "rv32mi" in test_name:
-        flags.extend(["-m", "-b"])
+        flags.extend(["-m"])
 
     return flags
 

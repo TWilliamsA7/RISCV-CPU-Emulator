@@ -678,9 +678,13 @@ void CPU::execMRET(const DecodedInstr& i) {
     // Set MIE to MPIE, then set MPIE to 1
     mstatus = (mstatus & ~(1 << 3)) | (mpie << 3);
     mstatus |= (1 << 7);
+    mstatus &= ~(3 << 11);
+
+    uint32_t mpp = (mstatus >> 11) & 0x3;
+    privilege_level_ = static_cast<CPU::PrivilegeLevel>(mpp);
 
     sr.csr_write = CsrWrite{ CSR::MSTATUS, readCSR(CSR::MSTATUS),  mstatus };
-    csrs_[CSR::MSTATUS] = mstatus;
+    writeCSR(CSR::MSTATUS, mstatus);
 }
 
 void CPU::execSRET(const DecodedInstr& i) {
