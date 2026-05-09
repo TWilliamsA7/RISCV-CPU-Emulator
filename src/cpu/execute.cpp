@@ -460,7 +460,7 @@ void CPU::execECALL(const DecodedInstr& i) {
 
     uint32_t cause;
     switch (privilege_level_) {
-        case PrivilegeLevel::USER: cause = 9; break;
+        case PrivilegeLevel::USER: cause = 8; break;
         case PrivilegeLevel::SUPERVISOR: cause = 9; break;
         case PrivilegeLevel::MACHINE: cause = 11; break;
         default: cause = 11; break;
@@ -680,18 +680,26 @@ void CPU::execREMU(const DecodedInstr& i) {
 void CPU::execMRET(const DecodedInstr& i) {
     next_pc_ = csrs_[CSR::MEPC];
 
-    // 2. Handle mstatus bit manipulation
     uint32_t mstatus = csrs_[CSR::MSTATUS];
+
+    // Read MPP BEFORE clearing it
+    uint32_t mpp = (mstatus >> 11) & 0x3;
+
     uint32_t mpie = (mstatus >> 7) & 1;
-    // Set MIE to MPIE, then set MPIE to 1
+    // MIE = MPIE
     mstatus = (mstatus & ~(1 << 3)) | (mpie << 3);
+    // MPIE = 1
     mstatus |= (1 << 7);
+    // MPP = U (least privileged supported mode)
     mstatus &= ~(3 << 11);
 
-    uint32_t mpp = (mstatus >> 11) & 0x3;
     privilege_level_ = static_cast<CPU::PrivilegeLevel>(mpp);
 
-    sr.csr_write = CsrWrite{ CSR::MSTATUS, csrs_[CSR::MSTATUS],  mstatus };
+    if (privilege_level_ != PrivilegeLevel::MACHINE) {
+        mstatus &= ~(1 << 17);  // clear MPRV
+    }
+
+    sr.csr_write = CsrWrite{ CSR::MSTATUS, csrs_[CSR::MSTATUS], mstatus };
     writeCSR(CSR::MSTATUS, mstatus);
 }
 
