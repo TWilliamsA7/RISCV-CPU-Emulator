@@ -706,12 +706,17 @@ void CPU::execMRET(const DecodedInstr& i) {
 void CPU::execSRET(const DecodedInstr& i) {
     uint32_t mstatus = csrs_[CSR::MSTATUS];
 
-    PrivilegeLevel target_level = ((mstatus >> 8) & 1) ? PrivilegeLevel::SUPERVISOR : PrivilegeLevel::USER;
+    PrivilegeLevel target_level = ((mstatus >> 8) & 1) 
+        ? PrivilegeLevel::SUPERVISOR 
+        : PrivilegeLevel::USER;
 
     uint32_t spie = (mstatus >> 5) & 1;
-    mstatus = (mstatus & ~(1 << 1)) | (spie << 1);
-    mstatus |= (1 << 5);
-    mstatus &= ~(1 << 8);
+    mstatus = (mstatus & ~(1 << 1)) | (spie << 1);  // SIE = SPIE
+    mstatus |= (1 << 5);                              // SPIE = 1
+    mstatus &= ~(1 << 8);                             // SPP = 0 (U-mode)
+
+    // Clear MPRV when leaving M-mode (SRET always leaves M-mode)
+    mstatus &= ~(1 << 17);
 
     sr.csr_write = CsrWrite{ CSR::MSTATUS, csrs_[CSR::MSTATUS], mstatus };
     csrs_[CSR::MSTATUS] = mstatus;
