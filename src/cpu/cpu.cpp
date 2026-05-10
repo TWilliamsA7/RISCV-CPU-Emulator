@@ -199,13 +199,11 @@ bool CPU::writeCSR(uint16_t addr, uint32_t val) {
 
     switch (addr) {
         case CSR::MSTATUS: {
-            uint32_t mask = 0x007E19FF; // Basic M+S mask
-    
-            mask |= (1 << 0) | (1 << 4); 
+            uint32_t mask = 0x007E19EE;
 
             uint32_t mpp = (val >> 11) & 0x3;
-            if (mpp == 2) mpp = 1;
-
+            if (mpp == 2) mpp = 1;  // clamp invalid MPP to S-mode (or U-mode if no S)
+            val = (val & ~(3u << 11)) | (mpp << 11);  // write sanitized value back
             csrs_[CSR::MSTATUS] = (val & mask);
             break;
         }
