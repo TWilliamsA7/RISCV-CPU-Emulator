@@ -224,7 +224,7 @@ DecodedInstr CPU::decode(uint32_t instr) {
                         d.kind = InstrKind::ECALL;
                     else if (funct12 == 0x1)
                         d.kind = InstrKind::EBREAK;
-                    else if (funct12 = 0x302)
+                    else if (funct12 == 0x302)
                         d.kind = InstrKind::MRET;
                     else if (funct12 == 0x102)
                         d.kind = InstrKind::SRET;
