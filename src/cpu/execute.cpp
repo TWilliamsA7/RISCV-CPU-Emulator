@@ -2,6 +2,7 @@
 
 #include "cpu/cpu.hpp"
 #include <iostream>
+#include <errors/errors.hpp>
 
 const std::array<CPU::ExecFn, static_cast<size_t>(InstrKind::COUNT)> CPU::dispatch_ = {
     &CPU::execADD,
@@ -243,16 +244,15 @@ void CPU::execSRLI(const DecodedInstr& i) {
 }
 
 void CPU::execSRAI(const DecodedInstr& i) {
-    if ((i.imm >> 5) != 0x20) {
+    if ((i.imm >> 5) != 0x10) {
         trap(2, i.raw, false);
         return;
     }
 
     uint32_t o = regs_[i.rd];
     int32_t a = static_cast<int32_t>(regs_[i.rs1]);
-    writeReg(i.rd, static_cast<uint32_t>(a >> i.imm));
+    writeReg(i.rd, static_cast<uint32_t>(a >> (i.imm & 0x1F)));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    
 }
 
 void CPU::execLW(const DecodedInstr& i) {
@@ -678,6 +678,11 @@ void CPU::execREMU(const DecodedInstr& i) {
 
 
 void CPU::execMRET(const DecodedInstr& i) {
+    if (privilege_level_ != PrivilegeLevel::MACHINE) {
+        trap(2, sr.instruction, false);
+        return;
+    }
+    
     next_pc_ = csrs_[CSR::MEPC];
 
     uint32_t mstatus = csrs_[CSR::MSTATUS];
@@ -700,10 +705,21 @@ void CPU::execMRET(const DecodedInstr& i) {
     }
 
     sr.csr_write = CsrWrite{ CSR::MSTATUS, csrs_[CSR::MSTATUS], mstatus };
-    writeCSR(CSR::MSTATUS, mstatus);
+    csrs_[CSR::MSTATUS] = mstatus;
 }
 
 void CPU::execSRET(const DecodedInstr& i) {
+    if (privilege_level_ == PrivilegeLevel::USER) {
+        trap(2, sr.instruction, false);
+        return;
+    }
+
+    if (privilege_level_ == PrivilegeLevel::SUPERVISOR &&
+        ((csrs_[CSR::MSTATUS] >> 22) & 1)) {
+        trap(2, sr.instruction, false);
+        return;
+    }
+    
     uint32_t mstatus = csrs_[CSR::MSTATUS];
 
     PrivilegeLevel target_level = ((mstatus >> 8) & 1) 
