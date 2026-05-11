@@ -244,7 +244,7 @@ void CPU::execSRLI(const DecodedInstr& i) {
 }
 
 void CPU::execSRAI(const DecodedInstr& i) {
-    if ((i.imm >> 5) != 0x10) {
+    if ((i.imm >> 5) != 0x20) {
         trap(2, i.raw, false);
         return;
     }
