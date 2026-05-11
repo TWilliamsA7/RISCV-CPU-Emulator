@@ -217,10 +217,16 @@ DecodedInstr CPU::decode(uint32_t instr) {
             d.csr = get_bits(instr, 31, 20);
 
             uint32_t funct12 = get_bits(instr, 31, 20);
+            uint32_t funct7 = instr >> 25;
 
             switch (funct3) {
                 case 0x0: {
-                    if (funct12 == 0x0)
+                    
+                    if (funct7 == 0x09) {
+                        d.kind = InstrKind::SFENCE_VMA;  // or reuse FENCE if you don't want a new kind
+                        d.rs1 = (instr >> 15) & 0x1F;
+                        d.rs2 = (instr >> 20) & 0x1F;
+                    } else if (funct12 == 0x0)
                         d.kind = InstrKind::ECALL;
                     else if (funct12 == 0x1)
                         d.kind = InstrKind::EBREAK;

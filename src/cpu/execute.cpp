@@ -62,6 +62,7 @@ const std::array<CPU::ExecFn, static_cast<size_t>(InstrKind::COUNT)> CPU::dispat
     &CPU::execMRET,
     &CPU::execSRET,
     &CPU::execWFI,
+    &CPU::execSFENCE_VMA,
     &CPU::execINVALID,
 };
 
@@ -792,6 +793,21 @@ void CPU::execWFI(const DecodedInstr& i) {
     }
 
     state_ = CPUState::WAITING_FOR_INTERRUPT;
+}
+
+void CPU::execSFENCE_VMA(const DecodedInstr& i) {
+    if (privilege_level_ == PrivilegeLevel::USER) {
+        trap(2, sr.instruction, false);
+        return;
+    }
+    
+    // S-mode: illegal when TVM=1 (mstatus bit 20)
+    if (privilege_level_ == PrivilegeLevel::SUPERVISOR) {
+        if ((csrs_[CSR::MSTATUS] >> 20) & 1) {
+            trap(2, sr.instruction, false);
+            return;
+        }
+    }
 }
 
 

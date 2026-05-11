@@ -17,6 +17,7 @@ enum class InstrKind {
     MUL, MULH, MULHSU, MULHU, // Multiply instructions
     DIV, DIVU, REM, REMU, // Divide instructions
     MRET, SRET, WFI,
+    SFENCE_VMA,
     INVALID, 
     COUNT
 };

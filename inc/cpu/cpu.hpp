@@ -163,6 +163,7 @@ class CPU {
         void execMRET(const DecodedInstr& i);
         void execSRET(const DecodedInstr& i);
         void execWFI(const DecodedInstr& i);
+        void execSFENCE_VMA(const DecodedInstr& i);
         void execINVALID(const DecodedInstr& i);
 
         // === Miscellaneous Helper functions === //
