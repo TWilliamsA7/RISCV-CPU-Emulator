@@ -202,7 +202,7 @@ DecodedInstr CPU::decode(uint32_t instr) {
         }   
 
         case 0x0F: { // FENCE
-            if (funct3 == 0x0) {
+            if (funct3 == 0x0 || funct3 == 0x1) {
                 d.kind = InstrKind::FENCE;
                 d.rd = get_bits(instr, 11, 7);
                 d.rs1 = get_bits(instr, 19, 15);
