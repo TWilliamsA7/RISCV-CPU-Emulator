@@ -171,6 +171,13 @@ std::optional<uint32_t> CPU::readCSR(uint16_t addr) {
         return std::nullopt;
     }
 
+    if (addr == CSR::SATP && privilege_level_ == PrivilegeLevel::SUPERVISOR) {
+        if ((csrs_[CSR::MSTATUS] >> 20) & 1) {  // TVM bit
+            trap(2, sr.instruction, false);
+            return std::nullopt;
+        }
+    }
+
     switch (addr) {
         case CSR::SSTATUS:
             return csrs_[CSR::MSTATUS] & 0x000DE122;
@@ -196,6 +203,12 @@ bool CPU::writeCSR(uint16_t addr, uint32_t val) {
         return false;
     }
 
+    if (addr == CSR::SATP && privilege_level_ == PrivilegeLevel::SUPERVISOR) {
+        if ((csrs_[CSR::MSTATUS] >> 20) & 1) {
+            trap(2, sr.instruction, false);
+            return false;
+        }
+    }
 
     switch (addr) {
         case CSR::MSTATUS: {
