@@ -318,20 +318,18 @@ void CPU::checkInterrupts() {
 
     uint32_t mstatus = csrs_[CSR::MSTATUS];
 
-    for (int id : {11, 3, 7}) {
+    for (int id : {11, 9, 3, 1, 7, 5}) {
         if (!(mip_mie & (1 << id))) continue;
 
         bool delegate = (csrs_[CSR::MIDELEG] >> id) & 1;
 
         if (delegate && privilege_level_ <= PrivilegeLevel::SUPERVISOR) {
-            // Delegated to S-mode: only check SIE if currently in S-mode
             bool sie = (mstatus >> 1) & 1;
             if (privilege_level_ < PrivilegeLevel::SUPERVISOR || sie) {
                 trap(id, 0, true, PrivilegeLevel::SUPERVISOR);
                 return;
             }
         } else {
-            // M-mode: only gated by MIE if already in M-mode
             bool mie = (mstatus >> 3) & 1;
             if (privilege_level_ < PrivilegeLevel::MACHINE || mie) {
                 trap(id, 0, true, PrivilegeLevel::MACHINE);
