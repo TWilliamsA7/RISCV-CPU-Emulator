@@ -355,7 +355,7 @@ uint32_t CPU::decompress(uint16_t i) {
                 }
                 case 2: { // C.LI -> addi rd, x0, imm
                     int32_t imm = get_imm6(i);
-                    if ((i >> 7) & 0x1F == 0) return 0;
+                    if (((i >> 7) & 0x1F) == 0) return 0;
                     return (uint32_t(imm) << 20) | (0 << 15) | (0 << 12) | (rd_rs1_high << 7) | 0x13;
                 }
                 case 3: { // C.LUI or C.ADDI16SP

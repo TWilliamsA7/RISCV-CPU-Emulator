@@ -257,9 +257,6 @@ void CPU::execSRAI(const DecodedInstr& i) {
 
 void CPU::execLW(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1] + i.imm;
-
-    // misaligned load
-    if (a & 0x3) { trap(4, a, false); return; } 
     
     try {
         uint32_t o = regs_[i.rd];
@@ -273,8 +270,6 @@ void CPU::execLW(const DecodedInstr& i) {
 void CPU::execLH(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1]  + i.imm;
     
-    if (a & 0x1) { trap(4, a, false); return; }
-    
     try {
         uint32_t o = regs_[i.rd];
 
@@ -287,11 +282,8 @@ void CPU::execLH(const DecodedInstr& i) {
     }
 }
 
-void CPU::execLHU(const DecodedInstr& i) {
-    
+void CPU::execLHU(const DecodedInstr& i) { 
     uint32_t a = regs_[i.rs1]  + i.imm;
-    
-    if (a & 0x1) { trap(4, a, false); return; }
     
     try {
         uint32_t o = regs_[i.rd];
@@ -334,8 +326,6 @@ void CPU::execLBU(const DecodedInstr& i) {
 void CPU::execSW(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1] + i.imm;
 
-    if (a & 0x3) { trap(6, a, false); return; }
-
     try {
         uint32_t o = bus_.read32(a);
         bus_.write32(a, regs_[i.rs2]);
@@ -348,8 +338,6 @@ void CPU::execSW(const DecodedInstr& i) {
 
 void CPU::execSH(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1] + i.imm;
-
-    if (a & 0x1) { trap(6, a, false); return; }
 
     try {
         uint32_t o = static_cast<uint32_t>(bus_.read16(a));
