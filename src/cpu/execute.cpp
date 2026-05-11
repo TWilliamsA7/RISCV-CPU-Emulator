@@ -779,14 +779,14 @@ void CPU::execSRET(const DecodedInstr& i) {
 
 void CPU::execWFI(const DecodedInstr& i) {
     if (privilege_level_ == PrivilegeLevel::USER) {
-        trap(2, 0, false, PrivilegeLevel::MACHINE);
+        trap(2, i.raw, false, PrivilegeLevel::MACHINE);
         return;
     }
 
     if (privilege_level_ == PrivilegeLevel::SUPERVISOR) {
         bool mstatus_tw = (csrs_[CSR::MSTATUS] >> 21) & 1;
         if (mstatus_tw) {
-            trap(2, 0, false, PrivilegeLevel::MACHINE);
+            trap(2, i.raw, false, PrivilegeLevel::MACHINE);
             return;
         }
     }
