@@ -201,5 +201,6 @@ class CPU {
         };
 
         // === Trace === //
+        std::string disasm(const DecodedInstr& di) const;
         std::string csrName(uint16_t csr) const;
 };
