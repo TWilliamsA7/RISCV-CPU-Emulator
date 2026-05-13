@@ -20,6 +20,7 @@ enum class ExecutionMode {
 struct CPUConfig {
     bool extension_m = false;
     bool extension_c = false;
+    bool extension_a = false;
     bool verbose = false;
     ExecutionMode mode = ExecutionMode::SYSTEM;
 };
@@ -43,6 +44,10 @@ class CPU {
         void printTrace() const;
         void dumpRegisters() const;
 
+        // Reseveration
+
+        void invalidateReservation(uint32_t addr);
+
         friend class MMU;
 
     private:
@@ -50,6 +55,11 @@ class CPU {
         std::optional<uint32_t> next_pc_;
         std::array<uint32_t, 32> regs_;
         std::unordered_map<uint16_t, uint32_t> csrs_;
+
+        // Reservation
+
+        bool reservation_valid_;
+        uint32_t reservation_addr_;
 
         enum PrivilegeLevel {
             USER = 0,
@@ -170,6 +180,17 @@ class CPU {
         void execSRET(const DecodedInstr& i);
         void execWFI(const DecodedInstr& i);
         void execSFENCE_VMA(const DecodedInstr& i);
+        void execLR_W(const DecodedInstr& i);
+        void execSC_W(const DecodedInstr& i);
+        void execAMOSWAP_W(const DecodedInstr& i);
+        void execAMOADD_W(const DecodedInstr& i);
+        void execAMOAND_W(const DecodedInstr& i);
+        void execAMOOR_W(const DecodedInstr& i);
+        void execAMOXOR_W(const DecodedInstr& i);
+        void execAMOMAX_W(const DecodedInstr& i);
+        void execAMOMAXU_W(const DecodedInstr& i);
+        void execAMOMIN_W(const DecodedInstr& i);
+        void execAMOMINU_W(const DecodedInstr& i);
         void execINVALID(const DecodedInstr& i);
 
         // === Miscellaneous Helper functions === //

@@ -63,6 +63,17 @@ const std::array<CPU::ExecFn, static_cast<size_t>(InstrKind::COUNT)> CPU::dispat
     &CPU::execSRET,
     &CPU::execWFI,
     &CPU::execSFENCE_VMA,
+    &CPU::execLR_W,
+    &CPU::execSC_W,
+    &CPU::execAMOSWAP_W,
+    &CPU::execAMOADD_W,
+    &CPU::execAMOAND_W,
+    &CPU::execAMOOR_W,
+    &CPU::execAMOXOR_W,
+    &CPU::execAMOMAX_W,
+    &CPU::execAMOMAXU_W,
+    &CPU::execAMOMIN_W,
+    &CPU::execAMOMINU_W,
     &CPU::execINVALID,
 };
 
@@ -844,6 +855,302 @@ void CPU::execSFENCE_VMA(const DecodedInstr& i) {
     }
 }
 
+void CPU::execLR_W(const DecodedInstr& i) {
+    try {
+        uint32_t paddr = mmu_.translate(regs_[i.rs1], MMU::AccessType::LOAD);
+        uint32_t o = regs_[i.rd];
+
+        writeReg(i.rd, bus_.read32(paddr));
+
+        reservation_addr_ = paddr;
+        reservation_valid_ = true;
+
+        sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
+    } catch (const BusAccessError&) {
+        trap(ExceptionCause::LOAD_ACCESS_FAULT, regs_[i.rs1], false);
+    } catch (const LoadPageError&) {
+        trap(ExceptionCause::LOAD_PAGE_FAULT, regs_[i.rs1], false);
+    }
+}
+
+void CPU::execSC_W(const DecodedInstr& i) {
+    try {
+        uint32_t paddr = mmu_.translate(regs_[i.rs1], MMU::AccessType::STORE);
+        uint32_t oReg = regs_[i.rd];
+        uint32_t oMem = bus_.read32(paddr);
+
+        if (reservation_valid_ && reservation_addr_ == paddr) {
+            bus_.write32(paddr, regs_[i.rs2]);
+            writeReg(i.rd, 0);
+            sr.mem_write = MemWrite{ regs_[i.rs1], oMem, regs_[i.rs2], 4 };
+        } else {
+            writeReg(i.rd, 1);
+            sr.mem_write = MemWrite{ regs_[i.rs1], oMem, oMem, 4 };
+        }
+        reservation_valid_ = false;
+
+        uint32_t newMem = bus_.read32(paddr);
+
+        sr.reg_write = RegWrite{ i.rd, oReg, regs_[i.rd] };
+        
+
+    } catch (const BusAccessError&) {
+        reservation_valid_ = false;
+        trap(ExceptionCause::STORE_ACCESS_FAULT, regs_[i.rs1], false);
+    } catch (const StorePageError&) {
+        reservation_valid_ = false;
+        trap(ExceptionCause::STORE_PAGE_FAULT, regs_[i.rs1], false);
+    }
+    reservation_valid_ = false;
+}
+
+void CPU::execAMOSWAP_W(const DecodedInstr& i) {
+    try {
+        uint32_t oReg = regs_[i.rd];
+        uint32_t paddr = mmu_.translate(regs_[i.rs1], MMU::AccessType::STORE);
+
+        if (paddr & 0x3) {
+            trap(ExceptionCause::MISALIGNED_STORE_ADDRESS, paddr, false);
+            return;
+        }
+
+        uint32_t operand = regs_[i.rs2];
+
+        uint32_t oMem = bus_.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return operand; });
+
+        writeReg(i.rd, oMem);
+
+        uint32_t newMem = operand;
+
+        sr.reg_write = RegWrite{ i.rd, oReg, regs_[i.rd] };
+        sr.mem_write = MemWrite{ regs_[i.rs1], oMem, newMem, 4};
+
+    } catch (const BusAccessError&) {
+        trap(ExceptionCause::STORE_ACCESS_FAULT, regs_[i.rs1], false);
+    } catch (const StorePageError&) {
+        trap(ExceptionCause::STORE_PAGE_FAULT, regs_[i.rs1], false);
+    }
+}
+
+void CPU::execAMOADD_W(const DecodedInstr& i) {
+    try {
+        uint32_t oReg = regs_[i.rd];
+        uint32_t paddr = mmu_.translate(regs_[i.rs1], MMU::AccessType::STORE);
+
+        if (paddr & 0x3) {
+            trap(ExceptionCause::MISALIGNED_STORE_ADDRESS, paddr, false);
+            return;
+        }
+
+        uint32_t operand = regs_[i.rs2];
+
+        uint32_t oMem = bus_.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return mem_val + operand; });
+
+        writeReg(i.rd, oMem);
+
+        uint32_t newMem = oMem + operand;
+
+        sr.reg_write = RegWrite{ i.rd, oReg, regs_[i.rd] };
+        sr.mem_write = MemWrite{ regs_[i.rs1], oMem, newMem, 4};
+
+    } catch (const BusAccessError&) {
+        trap(ExceptionCause::STORE_ACCESS_FAULT, regs_[i.rs1], false);
+    } catch (const StorePageError&) {
+        trap(ExceptionCause::STORE_PAGE_FAULT, regs_[i.rs1], false);
+    }
+}
+
+void CPU::execAMOAND_W(const DecodedInstr& i) {
+    try {
+        uint32_t oReg = regs_[i.rd];
+        uint32_t paddr = mmu_.translate(regs_[i.rs1], MMU::AccessType::STORE);
+
+        if (paddr & 0x3) {
+            trap(ExceptionCause::MISALIGNED_STORE_ADDRESS, paddr, false);
+            return;
+        }
+
+        uint32_t operand = regs_[i.rs2];
+
+        uint32_t oMem = bus_.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return mem_val & operand; });
+
+        writeReg(i.rd, oMem);
+
+        uint32_t newMem = oMem & operand;
+
+        sr.reg_write = RegWrite{ i.rd, oReg, regs_[i.rd] };
+        sr.mem_write = MemWrite{ regs_[i.rs1], oMem, newMem, 4};
+
+    } catch (const BusAccessError&) {
+        trap(ExceptionCause::STORE_ACCESS_FAULT, regs_[i.rs1], false);
+    } catch (const StorePageError&) {
+        trap(ExceptionCause::STORE_PAGE_FAULT, regs_[i.rs1], false);
+    }
+}
+
+void CPU::execAMOOR_W(const DecodedInstr& i) {
+    try {
+        uint32_t oReg = regs_[i.rd];
+        uint32_t paddr = mmu_.translate(regs_[i.rs1], MMU::AccessType::STORE);
+
+        if (paddr & 0x3) {
+            trap(ExceptionCause::MISALIGNED_STORE_ADDRESS, paddr, false);
+            return;
+        }
+
+        uint32_t operand = regs_[i.rs2];
+
+        uint32_t oMem = bus_.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return mem_val | operand; });
+
+        writeReg(i.rd, oMem);
+
+        uint32_t newMem = oMem | operand;
+
+        sr.reg_write = RegWrite{ i.rd, oReg, regs_[i.rd] };
+        sr.mem_write = MemWrite{ regs_[i.rs1], oMem, newMem, 4};
+
+    } catch (const BusAccessError&) {
+        trap(ExceptionCause::STORE_ACCESS_FAULT, regs_[i.rs1], false);
+    } catch (const StorePageError&) {
+        trap(ExceptionCause::STORE_PAGE_FAULT, regs_[i.rs1], false);
+    }
+}
+
+void CPU::execAMOXOR_W(const DecodedInstr& i) {
+    try {
+        uint32_t oReg = regs_[i.rd];
+        uint32_t paddr = mmu_.translate(regs_[i.rs1], MMU::AccessType::STORE);
+
+        if (paddr & 0x3) {
+            trap(ExceptionCause::MISALIGNED_STORE_ADDRESS, paddr, false);
+            return;
+        }
+
+        uint32_t operand = regs_[i.rs2];
+
+        uint32_t oMem = bus_.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return mem_val ^ operand; });
+
+        writeReg(i.rd, oMem);
+
+        uint32_t newMem = oMem ^ operand;
+
+        sr.reg_write = RegWrite{ i.rd, oReg, regs_[i.rd] };
+        sr.mem_write = MemWrite{ regs_[i.rs1], oMem, newMem, 4};
+
+    } catch (const BusAccessError&) {
+        trap(ExceptionCause::STORE_ACCESS_FAULT, regs_[i.rs1], false);
+    } catch (const StorePageError&) {
+        trap(ExceptionCause::STORE_PAGE_FAULT, regs_[i.rs1], false);
+    }
+}
+
+void CPU::execAMOMAX_W(const DecodedInstr& i) {
+    try {
+        uint32_t oReg = regs_[i.rd];
+        uint32_t paddr = mmu_.translate(regs_[i.rs1], MMU::AccessType::STORE);
+
+        if (paddr & 0x3) {
+            trap(ExceptionCause::MISALIGNED_STORE_ADDRESS, paddr, false);
+            return;
+        }
+
+        int32_t operand = static_cast<int32_t>(regs_[i.rs2]);
+
+        uint32_t oMem = bus_.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return std::max(static_cast<int32_t>(mem_val), operand); });
+
+        writeReg(i.rd, oMem);
+
+        uint32_t newMem = static_cast<uint32_t>(std::max<int32_t>(static_cast<int32_t>(oMem), operand));
+        sr.reg_write = RegWrite{ i.rd, oReg, regs_[i.rd] };
+        sr.mem_write = MemWrite{ regs_[i.rs1], oMem, newMem, 4};
+
+    } catch (const BusAccessError&) {
+        trap(ExceptionCause::STORE_ACCESS_FAULT, regs_[i.rs1], false);
+    } catch (const StorePageError&) {
+        trap(ExceptionCause::STORE_PAGE_FAULT, regs_[i.rs1], false);
+    }
+}
+
+void CPU::execAMOMAXU_W(const DecodedInstr& i) {
+    try {
+        uint32_t oReg = regs_[i.rd];
+        uint32_t paddr = mmu_.translate(regs_[i.rs1], MMU::AccessType::STORE);
+
+        if (paddr & 0x3) {
+            trap(ExceptionCause::MISALIGNED_STORE_ADDRESS, paddr, false);
+            return;
+        }
+
+        uint32_t operand = regs_[i.rs2];
+
+        uint32_t oMem = bus_.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return std::max(mem_val, operand); });
+
+        writeReg(i.rd, oMem);
+
+        uint32_t newMem = static_cast<uint32_t>(std::max(oMem, operand));
+        sr.reg_write = RegWrite{ i.rd, oReg, regs_[i.rd] };
+        sr.mem_write = MemWrite{ regs_[i.rs1], oMem, newMem, 4};
+
+    } catch (const BusAccessError&) {
+        trap(ExceptionCause::STORE_ACCESS_FAULT, regs_[i.rs1], false);
+    } catch (const StorePageError&) {
+        trap(ExceptionCause::STORE_PAGE_FAULT, regs_[i.rs1], false);
+    }
+}
+
+void CPU::execAMOMIN_W(const DecodedInstr& i) {
+    try {
+        uint32_t oReg = regs_[i.rd];
+        uint32_t paddr = mmu_.translate(regs_[i.rs1], MMU::AccessType::STORE);
+
+        if (paddr & 0x3) {
+            trap(ExceptionCause::MISALIGNED_STORE_ADDRESS, paddr, false);
+            return;
+        }
+
+        int32_t operand = static_cast<int32_t>(regs_[i.rs2]);
+
+        uint32_t oMem = bus_.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return std::min(static_cast<int32_t>(mem_val), operand); });
+
+        writeReg(i.rd, oMem);
+
+        uint32_t newMem = static_cast<uint32_t>(std::min(static_cast<int32_t>(oMem), operand));
+        sr.reg_write = RegWrite{ i.rd, oReg, regs_[i.rd] };
+        sr.mem_write = MemWrite{ regs_[i.rs1], oMem, newMem, 4};
+
+    } catch (const BusAccessError&) {
+        trap(ExceptionCause::STORE_ACCESS_FAULT, regs_[i.rs1], false);
+    } catch (const StorePageError&) {
+        trap(ExceptionCause::STORE_PAGE_FAULT, regs_[i.rs1], false);
+    }
+}
+
+void CPU::execAMOMINU_W(const DecodedInstr& i) {
+    try {
+        uint32_t oReg = regs_[i.rd];
+        uint32_t paddr = mmu_.translate(regs_[i.rs1], MMU::AccessType::STORE);
+
+        if (paddr & 0x3) {
+            trap(ExceptionCause::MISALIGNED_STORE_ADDRESS, paddr, false);
+            return;
+        }
+
+        uint32_t operand = regs_[i.rs2];
+
+        uint32_t oMem = bus_.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return std::min(mem_val, operand); });
+
+        writeReg(i.rd, oMem);
+
+        uint32_t newMem = static_cast<uint32_t>(std::min(oMem, operand));
+        sr.reg_write = RegWrite{ i.rd, oReg, regs_[i.rd] };
+        sr.mem_write = MemWrite{ regs_[i.rs1], oMem, newMem, 4};
+
+    } catch (const BusAccessError&) {
+        trap(ExceptionCause::STORE_ACCESS_FAULT, regs_[i.rs1], false);
+    } catch (const StorePageError&) {
+        trap(ExceptionCause::STORE_PAGE_FAULT, regs_[i.rs1], false);
+    }
+}
 
 void CPU::execINVALID(const DecodedInstr& i) {
     trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);

@@ -367,7 +367,73 @@ std::string CPU::disasm(const DecodedInstr& di) const {
             break;
 
         case InstrKind::SFENCE_VMA:
-            oss << "SFENCE_VMA ";
+            oss << "SFENCE.VMA ";
+            break;
+
+        case InstrKind::LR_W:
+            oss << "LR.W " << regStr(di.rd) << ", "
+                << regStr(di.rs1) << ", "
+                << regStr(di.rs2);
+            break;
+
+        case InstrKind::SC_W:
+            oss << "SC.W " << regStr(di.rd) << ", "
+                << regStr(di.rs1) << ", "
+                << regStr(di.rs2);
+            break;
+
+        case InstrKind::AMOADD_W:
+            oss << "AMOADD.W " << regStr(di.rd) << ", "
+                << regStr(di.rs1) << ", "
+                << regStr(di.rs2);
+            break;
+
+        case InstrKind::AMOAND_W:
+            oss << "AMOAND.W " << regStr(di.rd) << ", "
+                << regStr(di.rs1) << ", "
+                << regStr(di.rs2);
+            break;
+
+        case InstrKind::AMOOR_W:
+            oss << "AMOOR.W " << regStr(di.rd) << ", "
+                << regStr(di.rs1) << ", "
+                << regStr(di.rs2);
+            break;
+
+        case InstrKind::AMOXOR_W:
+            oss << "AMOXOR.W " << regStr(di.rd) << ", "
+                << regStr(di.rs1) << ", "
+                << regStr(di.rs2);
+            break;
+
+        case InstrKind::AMOSWAP_W:
+            oss << "AMOSWAP.W " << regStr(di.rd) << ", "
+                << regStr(di.rs1) << ", "
+                << regStr(di.rs2);
+            break;
+
+        case InstrKind::AMOMAX_W:
+            oss << "AMOMAX.W " << regStr(di.rd) << ", "
+                << regStr(di.rs1) << ", "
+                << regStr(di.rs2);
+            break;
+
+         case InstrKind::AMOMAXU_W:
+            oss << "AMOMAXU.W " << regStr(di.rd) << ", "
+                << regStr(di.rs1) << ", "
+                << regStr(di.rs2);
+            break;
+
+         case InstrKind::AMOMIN_W:
+            oss << "AMOMIN.W " << regStr(di.rd) << ", "
+                << regStr(di.rs1) << ", "
+                << regStr(di.rs2);
+            break;
+
+         case InstrKind::AMOMINU_W:
+            oss << "AMOMINU.W " << regStr(di.rd) << ", "
+                << regStr(di.rs1) << ", "
+                << regStr(di.rs2);
             break;
 
         default:
@@ -377,8 +443,6 @@ std::string CPU::disasm(const DecodedInstr& di) const {
 
     return oss.str();
 }
-
-
 
 void CPU::printTrace() const {
     std::cout 
