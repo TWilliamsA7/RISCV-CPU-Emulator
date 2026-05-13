@@ -63,6 +63,17 @@ const std::array<CPU::ExecFn, static_cast<size_t>(InstrKind::COUNT)> CPU::dispat
     &CPU::execSRET,
     &CPU::execWFI,
     &CPU::execSFENCE_VMA,
+    &CPU::execLR_W,
+    &CPU::execSC_W,
+    &CPU::execAMOSWAP_W,
+    &CPU::execAMOADD_W,
+    &CPU::execAMOAND_W,
+    &CPU::execAMOOR_W,
+    &CPU::execAMOXOR_W,
+    &CPU::execAMOMAX_W,
+    &CPU::execAMOMAXU_W,
+    &CPU::execAMOMIN_W,
+    &CPU::execAMOMINU_W,
     &CPU::execINVALID,
 };
 
@@ -844,6 +855,49 @@ void CPU::execSFENCE_VMA(const DecodedInstr& i) {
     }
 }
 
+void CPU::execLR_W(const DecodedInstr& i) {
+
+}
+
+void CPU::execSC_W(const DecodedInstr& i) {
+
+}
+
+void CPU::execAMOSWAP_W(const DecodedInstr& i) {
+
+}
+
+void CPU::execAMOADD_W(const DecodedInstr& i) {
+
+}
+
+void CPU::execAMOAND_W(const DecodedInstr& i) {
+
+}
+
+void CPU::execAMOOR_W(const DecodedInstr& i) {
+
+}
+
+void CPU::execAMOXOR_W(const DecodedInstr& i) {
+
+}
+
+void CPU::execAMOMAX_W(const DecodedInstr& i) {
+
+}
+
+void CPU::execAMOMAXU_W(const DecodedInstr& i) {
+
+}
+
+void CPU::execAMOMIN_W(const DecodedInstr& i) {
+
+}
+
+void CPU::execAMOMINU_W(const DecodedInstr& i) {
+
+}
 
 void CPU::execINVALID(const DecodedInstr& i) {
     trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);

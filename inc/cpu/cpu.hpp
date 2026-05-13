@@ -170,6 +170,17 @@ class CPU {
         void execSRET(const DecodedInstr& i);
         void execWFI(const DecodedInstr& i);
         void execSFENCE_VMA(const DecodedInstr& i);
+        void execLR_W(const DecodedInstr& i);
+        void execSC_W(const DecodedInstr& i);
+        void execAMOSWAP_W(const DecodedInstr& i);
+        void execAMOADD_W(const DecodedInstr& i);
+        void execAMOAND_W(const DecodedInstr& i);
+        void execAMOOR_W(const DecodedInstr& i);
+        void execAMOXOR_W(const DecodedInstr& i);
+        void execAMOMAX_W(const DecodedInstr& i);
+        void execAMOMAXU_W(const DecodedInstr& i);
+        void execAMOMIN_W(const DecodedInstr& i);
+        void execAMOMINU_W(const DecodedInstr& i);
         void execINVALID(const DecodedInstr& i);
 
         // === Miscellaneous Helper functions === //
