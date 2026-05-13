@@ -72,7 +72,7 @@ StepResult CPU::step() {
         if ((first_half & 0x3) != 0x3) {
             if (!config_.extension_c) {
                 // Illegal if C is disabled
-                trap(2, first_half, false); 
+                trap(ExceptionCause::ILLEGAL_INSTRUCTION, first_half, false); 
                 return sr;
             }
             sr.instruction = decompress(first_half);
@@ -84,7 +84,7 @@ StepResult CPU::step() {
             instr_len = 4;
         } 
     } catch (const BusAccessError& e) {
-        trap(1, pc_, false);
+        trap(ExceptionCause::INSTRUCTION_ACCESS_FAULT, pc_, false);
         return sr;
     }
 
@@ -167,13 +167,13 @@ std::optional<uint32_t> CPU::readCSR(uint16_t addr) {
 
     uint32_t required_privilege = (addr >> 8) & 0x3;
     if (privilege_level_ < required_privilege) {
-        trap(2, sr.instruction, false);
+        trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
         return std::nullopt;
     }
 
     if (addr == CSR::SATP && privilege_level_ == PrivilegeLevel::SUPERVISOR) {
         if ((csrs_[CSR::MSTATUS] >> 20) & 1) {  // TVM bit
-            trap(2, sr.instruction, false);
+            trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
             return std::nullopt;
         }
     }
@@ -193,19 +193,19 @@ std::optional<uint32_t> CPU::readCSR(uint16_t addr) {
 bool CPU::writeCSR(uint16_t addr, uint32_t val) {
     // Check bits [11:10]. If they are 11 (0xCxx), it's Read-Only
     if ((addr >> 10) == 0x3) {
-        trap(2, sr.instruction, false); 
+        trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false); 
         return false;
     }
 
     uint32_t required_privilege = (addr >> 8) & 0x3;
     if (privilege_level_ < required_privilege) {
-        trap(2, sr.instruction, false);
+        trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
         return false;
     }
 
     if (addr == CSR::SATP && privilege_level_ == PrivilegeLevel::SUPERVISOR) {
         if ((csrs_[CSR::MSTATUS] >> 20) & 1) {
-            trap(2, sr.instruction, false);
+            trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
             return false;
         }
     }
