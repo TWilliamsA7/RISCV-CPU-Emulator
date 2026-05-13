@@ -275,10 +275,10 @@ DecodedInstr CPU::decode(uint32_t instr) {
                 case 0xC: d.kind = InstrKind::AMOAND_W; break;
                 case 0x8: d.kind = InstrKind::AMOOR_W; break;
                 case 0x4: d.kind = InstrKind::AMOXOR_W; break;
-                case 0x10: d.kind = InstrKind::AMOMAX_W; break;
-                case 0x14: d.kind = InstrKind::AMOMAXU_W; break;
-                case 0x18: d.kind = InstrKind::AMOMIN_W; break;
-                case 0x1C: d.kind = InstrKind::AMOMINU_W; break;
+                case 0x10: d.kind = InstrKind::AMOMIN_W; break;
+                case 0x14: d.kind = InstrKind::AMOMAX_W; break;
+                case 0x18: d.kind = InstrKind::AMOMINU_W; break;
+                case 0x1C: d.kind = InstrKind::AMOMAXU_W; break;
             }
             break;
         }

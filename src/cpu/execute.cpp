@@ -1060,7 +1060,7 @@ void CPU::execAMOMAX_W(const DecodedInstr& i) {
 
         writeReg(i.rd, oMem);
 
-        uint32_t newMem = static_cast<uint32_t>(std::max(static_cast<int32_t>(oMem), operand));
+        uint32_t newMem = static_cast<uint32_t>(std::max<int32_t>(static_cast<int32_t>(oMem), operand));
         sr.reg_write = RegWrite{ i.rd, oReg, regs_[i.rd] };
         sr.mem_write = MemWrite{ regs_[i.rs1], oMem, newMem, 4};
 
