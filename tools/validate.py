@@ -22,6 +22,8 @@ def get_flags(test_name: str) -> List[str]:
         flags.extend(["-m"])
     elif "rv32si" in test_name:
         flags.extend(["-m", "-c"])
+    elif "rv32ua" in test_name:
+        flags.extend(["-m", "-c", "-a"])
 
     return flags
 
