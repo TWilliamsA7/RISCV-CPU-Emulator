@@ -70,6 +70,7 @@ class CPU {
 
         Bus& bus_;
         Clint& clint_;
+        MMU mmu_;
         CPUConfig config_;
         uint32_t ADDRESS_MISALIGNMENT_MASK;
 
