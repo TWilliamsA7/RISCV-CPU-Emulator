@@ -5,6 +5,10 @@
 #include <cstdint>
 #include <vector>
 #include "clint/clint.hpp"
+#include <mutex>
+#include <functional>
+
+class CPU;
 
 // Interface for reading and writing to perhiperals
 class Bus {
@@ -38,6 +42,12 @@ class Bus {
         // Write 32 bit value to addr
         void write8(uint32_t addr, uint8_t val);
 
+        // Register CPU for notification
+        void register_cpu(CPU* cpu);
+
+        // Atomic Read-Modify-Write
+        uint32_t atomic_rmw_w(uint32_t addr, std::function<uint32_t(uint32_t)> operation);
+
     private:
 
         // Dynamic Random Access Memory
@@ -45,4 +55,8 @@ class Bus {
 
         // CLINT: Core Local Interruptor
         Clint& clint_;
+
+        std::mutex mem_mutex_;
+
+        CPU* cpu_ptr_;
 };
