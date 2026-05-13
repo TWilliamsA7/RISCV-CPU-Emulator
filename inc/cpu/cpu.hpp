@@ -43,6 +43,10 @@ class CPU {
         void printTrace() const;
         void dumpRegisters() const;
 
+        // Reseveration
+
+        void invalidateReservation(uint32_t addr);
+
         friend class MMU;
 
     private:
@@ -50,6 +54,11 @@ class CPU {
         std::optional<uint32_t> next_pc_;
         std::array<uint32_t, 32> regs_;
         std::unordered_map<uint16_t, uint32_t> csrs_;
+
+        // Reservation
+
+        bool reservation_valid_;
+        uint32_t reservation_addr_;
 
         enum PrivilegeLevel {
             USER = 0,

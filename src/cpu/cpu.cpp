@@ -395,6 +395,12 @@ bool CPU::sModeInterruptsEnabled() {
     }
 }
 
+void CPU::invalidateReservation(uint32_t addr) {
+    if (reservation_valid_ && reservation_addr_ == addr) {
+        reservation_valid_ = false;
+    }
+}
+
 void CPU::setPC(uint32_t pc) { pc_ = pc; }
 
 uint32_t CPU::pc() const { return pc_; }
