@@ -4,7 +4,7 @@
 #include "cpu/cpu.hpp"
 #include "errors/errors.hpp"
 
-explicit MMU::MMU(CPU& cpu): cpu_(cpu) {}
+MMU::MMU(CPU& cpu): cpu_(cpu) {}
 
 uint32_t MMU::translate(uint32_t va, AccessType type) {
 
@@ -71,6 +71,7 @@ uint32_t MMU::translate(uint32_t va, AccessType type) {
         a = (pte >> 10) * 4096;
     }
     triggerPageFault(type);
+    return 0;
 }
 
 void MMU::triggerPageFault(AccessType type) {

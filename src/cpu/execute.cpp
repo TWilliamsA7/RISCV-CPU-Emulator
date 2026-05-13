@@ -261,10 +261,15 @@ void CPU::execLW(const DecodedInstr& i) {
     
     try {
         uint32_t o = regs_[i.rd];
-        writeReg(i.rd, bus_.read32(a));
+
+        uint32_t pa = mmu_.translate(a, MMU::AccessType::LOAD);
+
+        writeReg(i.rd, bus_.read32(pa));
         sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
     } catch (const BusAccessError&) {
         trap(ExceptionCause::LOAD_ACCESS_FAULT, a, false);
+    } catch (const LoadPageError&) {
+        trap(ExceptionCause::LOAD_PAGE_FAULT, a, false);
     }
 }
 
@@ -274,12 +279,16 @@ void CPU::execLH(const DecodedInstr& i) {
     try {
         uint32_t o = regs_[i.rd];
 
-        int16_t half = bus_.read16(a);       
+        uint32_t pa = mmu_.translate(a, MMU::AccessType::LOAD);
+
+        int16_t half = bus_.read16(pa);       
         int32_t s = static_cast<int32_t>(half);
         writeReg(i.rd, static_cast<uint32_t>(s));
         sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
     } catch (const BusAccessError&) {
         trap(ExceptionCause::LOAD_ACCESS_FAULT, a, false);
+    } catch (const LoadPageError&) {
+        trap(ExceptionCause::LOAD_PAGE_FAULT, a, false);
     }
 }
 
@@ -287,12 +296,15 @@ void CPU::execLHU(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1]  + i.imm;
     
     try {
+        uint32_t pa = mmu_.translate(a, MMU::AccessType::LOAD);
         uint32_t o = regs_[i.rd];
-        uint32_t u = static_cast<uint32_t>(bus_.read16(a));
+        uint32_t u = static_cast<uint32_t>(bus_.read16(pa));
         writeReg(i.rd, u);
         sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
     } catch (const BusAccessError&) {
         trap(ExceptionCause::LOAD_ACCESS_FAULT, a, false);
+    } catch (const LoadPageError&) {
+        trap(ExceptionCause::LOAD_PAGE_FAULT, a, false);
     }
 
     
@@ -302,12 +314,15 @@ void CPU::execLB(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1]  + i.imm;
 
     try {
+        uint32_t pa = mmu_.translate(a, MMU::AccessType::LOAD);
         uint32_t o = regs_[i.rd];
-        int8_t byte = static_cast<int8_t>(bus_.read8(a));
+        int8_t byte = static_cast<int8_t>(bus_.read8(pa));
         writeReg(i.rd, static_cast<uint32_t>(static_cast<int32_t>(byte)));
         sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
     } catch (const BusAccessError&) {
         trap(ExceptionCause::LOAD_ACCESS_FAULT, a, false);
+    } catch (const LoadPageError&) {
+        trap(ExceptionCause::LOAD_PAGE_FAULT, a, false);
     }
 }
 
@@ -315,12 +330,15 @@ void CPU::execLBU(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1] + i.imm;
 
     try {
+        uint32_t pa = mmu_.translate(a, MMU::AccessType::LOAD);
         uint32_t o = regs_[i.rd];
-        uint32_t u = static_cast<uint32_t>(bus_.read8(a));
+        uint32_t u = static_cast<uint32_t>(bus_.read8(pa));
         writeReg(i.rd, u);
         sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
     } catch (const BusAccessError&) {
         trap(ExceptionCause::LOAD_ACCESS_FAULT, a, false);
+    } catch (const LoadPageError&) {
+        trap(ExceptionCause::LOAD_PAGE_FAULT, a, false);
     }
 }
 
@@ -328,11 +346,14 @@ void CPU::execSW(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1] + i.imm;
 
     try {
-        uint32_t o = bus_.read32(a);
+        uint32_t pa = mmu_.translate(a, MMU::AccessType::STORE);
+        uint32_t o = bus_.read32(pa);
         bus_.write32(a, regs_[i.rs2]);
         sr.mem_write = MemWrite{ a, o, regs_[i.rs2], 4};
     } catch (const BusAccessError&) {
         trap(ExceptionCause::STORE_ACCESS_FAULT, a, false);
+    } catch (const StorePageError&) {
+        trap(ExceptionCause::STORE_PAGE_FAULT, a, false);
     }
     
 }
@@ -341,11 +362,14 @@ void CPU::execSH(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1] + i.imm;
 
     try {
-        uint32_t o = static_cast<uint32_t>(bus_.read16(a));
+        uint32_t pa = mmu_.translate(a, MMU::AccessType::STORE);
+        uint32_t o = static_cast<uint32_t>(bus_.read16(pa));
         bus_.write16(a, static_cast<uint16_t>(regs_[i.rs2]));
         sr.mem_write = MemWrite{ a, o, regs_[i.rs2], 2};
     } catch (const BusAccessError&) {
         trap(ExceptionCause::STORE_ACCESS_FAULT, a, false);
+    } catch (const StorePageError&) {
+        trap(ExceptionCause::STORE_PAGE_FAULT, a, false);
     }
 }
 
@@ -353,11 +377,14 @@ void CPU::execSB(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1] + i.imm; 
 
     try {
-        uint32_t o = static_cast<uint32_t>(bus_.read8(a));
+        uint32_t pa = mmu_.translate(a, MMU::AccessType::STORE);
+        uint32_t o = static_cast<uint32_t>(bus_.read8(pa));
         bus_.write8(a, static_cast<uint8_t>(regs_[i.rs2]));
         sr.mem_write = MemWrite{ a, o, regs_[i.rs2], 1};
     } catch (const BusAccessError&) {  
         trap(ExceptionCause::STORE_ACCESS_FAULT, a, false);
+    } catch (const StorePageError&) {
+        trap(ExceptionCause::STORE_PAGE_FAULT, a, false);
     }
 }
 
