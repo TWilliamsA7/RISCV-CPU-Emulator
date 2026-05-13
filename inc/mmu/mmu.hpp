@@ -35,8 +35,8 @@ class MMU {
         };
 
         uint32_t translate(uint32_t va, AccessType type);
-        void triggerPageFault(AccessType type);
-
+        
     private:
+        void triggerPageFault(AccessType type);
         CPU& cpu_;
 };
