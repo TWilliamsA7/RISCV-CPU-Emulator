@@ -444,8 +444,6 @@ std::string CPU::disasm(const DecodedInstr& di) const {
     return oss.str();
 }
 
-
-
 void CPU::printTrace() const {
     std::cout 
         << "PC=" << hex32(sr.pc_before)

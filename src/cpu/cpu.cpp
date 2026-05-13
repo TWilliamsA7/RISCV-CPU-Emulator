@@ -39,6 +39,8 @@ CPU::CPU (CPUConfig config, Bus& bus, Clint& clint) : config_(config), bus_(bus)
     }
 
     csrs_[CSR::MISA] = misa;
+
+    bus_.register_cpu(this);
 }
 
 void CPU::run() {
