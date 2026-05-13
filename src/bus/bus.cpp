@@ -128,9 +128,19 @@ uint32_t Bus::atomic_rmw_w(uint32_t addr, std::function<uint32_t(uint32_t)> oper
 
     uint32_t new_val = operation(old_val);
 
-    write32(addr, new_val);
+    write32_unlocked(addr, new_val);
 
     if (cpu_ptr_) cpu_ptr_->invalidateReservation(addr);
 
     return old_val;
+}
+
+void Bus::write32_unlocked(uint32_t addr, uint32_t val) {
+    if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
+        uint32_t offset = addr - Bus::DRAM_BASE;
+        dram_[offset]     = val & 0xFF;
+        dram_[offset + 1] = (val >> 8) & 0xFF;
+        dram_[offset + 2] = (val >> 16) & 0xFF;
+        dram_[offset + 3] = (val >> 24) & 0xFF;
+    }
 }

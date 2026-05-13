@@ -882,14 +882,17 @@ void CPU::execSC_W(const DecodedInstr& i) {
         if (reservation_valid_ && reservation_addr_ == paddr) {
             bus_.write32(paddr, regs_[i.rs2]);
             writeReg(i.rd, 0);
+            sr.mem_write = MemWrite{ regs_[i.rs1], oMem, regs_[i.rs2], 4 };
         } else {
             writeReg(i.rd, 1);
+            sr.mem_write = MemWrite{ regs_[i.rs1], oMem, oMem, 4 };
         }
+        reservation_valid_ = false;
 
         uint32_t newMem = bus_.read32(paddr);
 
         sr.reg_write = RegWrite{ i.rd, oReg, regs_[i.rd] };
-        sr.mem_write = MemWrite{ regs_[i.rs1], oMem, newMem, 4};
+        
 
     } catch (const BusAccessError&) {
         reservation_valid_ = false;
@@ -1131,7 +1134,7 @@ void CPU::execAMOMINU_W(const DecodedInstr& i) {
             trap(ExceptionCause::MISALIGNED_STORE_ADDRESS, paddr, false);
             return;
         }
-        
+
         uint32_t operand = regs_[i.rs2];
 
         uint32_t oMem = bus_.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return std::min(mem_val, operand); });

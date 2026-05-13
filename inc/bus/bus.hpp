@@ -59,4 +59,6 @@ class Bus {
         std::mutex mem_mutex_;
 
         CPU* cpu_ptr_;
+
+        void write32_unlocked(uint32_t addr, uint32_t val);
 };
