@@ -9,7 +9,7 @@
 #include <iostream>
 #include <thread>
 
-CPU::CPU (CPUConfig config, Bus& bus, Clint& clint) : config_(config), bus_(bus), clint_(clint), pc_(0x80000000) {
+CPU::CPU (CPUConfig config, Bus& bus, Clint& clint) : config_(config), bus_(bus), clint_(clint), pc_(0x80000000), mmu_(*this) {
     regs_.fill(0);
     csrs_[CSR::MVENDORID] = 0xF00DFACE;
     privilege_level_ = PrivilegeLevel::MACHINE;
@@ -67,24 +67,29 @@ StepResult CPU::step() {
     try {
         if (pc_ & ADDRESS_MISALIGNMENT_MASK) trap(0, pc_, false);
 
-        uint16_t first_half = bus_.read16(pc_);
+        uint32_t first_half_address = mmu_.translate(pc_, MMU::AccessType::FETCH);
+        uint16_t first_half = bus_.read16(first_half_address);
         
         if ((first_half & 0x3) != 0x3) {
             if (!config_.extension_c) {
                 // Illegal if C is disabled
-                trap(2, first_half, false); 
+                trap(ExceptionCause::ILLEGAL_INSTRUCTION, first_half, false); 
                 return sr;
             }
             sr.instruction = decompress(first_half);
             instr_len = 2;
         } else {
             // 32-bit instruction
-            uint16_t second_half = bus_.read16(pc_ + 2);
+            uint32_t second_half_address = mmu_.translate(pc_ + 2, MMU::AccessType::FETCH);
+            uint16_t second_half = bus_.read16(second_half_address);
             sr.instruction = (second_half << 16) | first_half;
             instr_len = 4;
         } 
     } catch (const BusAccessError& e) {
-        trap(1, pc_, false);
+        trap(ExceptionCause::INSTRUCTION_ACCESS_FAULT, pc_, false);
+        return sr;
+    } catch (const InstructionPageError&  e) {
+        trap(ExceptionCause::INSTRUCTION_PAGE_FAULT, pc_, false);
         return sr;
     }
 
@@ -167,13 +172,13 @@ std::optional<uint32_t> CPU::readCSR(uint16_t addr) {
 
     uint32_t required_privilege = (addr >> 8) & 0x3;
     if (privilege_level_ < required_privilege) {
-        trap(2, sr.instruction, false);
+        trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
         return std::nullopt;
     }
 
     if (addr == CSR::SATP && privilege_level_ == PrivilegeLevel::SUPERVISOR) {
         if ((csrs_[CSR::MSTATUS] >> 20) & 1) {  // TVM bit
-            trap(2, sr.instruction, false);
+            trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
             return std::nullopt;
         }
     }
@@ -193,19 +198,19 @@ std::optional<uint32_t> CPU::readCSR(uint16_t addr) {
 bool CPU::writeCSR(uint16_t addr, uint32_t val) {
     // Check bits [11:10]. If they are 11 (0xCxx), it's Read-Only
     if ((addr >> 10) == 0x3) {
-        trap(2, sr.instruction, false); 
+        trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false); 
         return false;
     }
 
     uint32_t required_privilege = (addr >> 8) & 0x3;
     if (privilege_level_ < required_privilege) {
-        trap(2, sr.instruction, false);
+        trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
         return false;
     }
 
     if (addr == CSR::SATP && privilege_level_ == PrivilegeLevel::SUPERVISOR) {
         if ((csrs_[CSR::MSTATUS] >> 20) & 1) {
-            trap(2, sr.instruction, false);
+            trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
             return false;
         }
     }
@@ -252,6 +257,12 @@ bool CPU::writeCSR(uint16_t addr, uint32_t val) {
         case CSR::SIE: {
             uint32_t mask = csrs_[CSR::MIDELEG];
             csrs_[CSR::MIE] = (csrs_[CSR::MIE] & ~mask) | (val & mask);
+            break;
+        }
+
+        case CSR::SIP: {
+            uint32_t mask = csrs_[CSR::MIDELEG] & 0x2;
+            csrs_[CSR::MIP] = (csrs_[CSR::MIP] & ~mask) | (val & mask);
             break;
         }
 

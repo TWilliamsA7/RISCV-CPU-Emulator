@@ -10,6 +10,7 @@
 #include "isa/isa.hpp"
 #include "bus/bus.hpp"
 #include "core/state.hpp"
+#include "mmu/mmu.hpp"
 
 enum class ExecutionMode {
     BARE_METAL,
@@ -42,6 +43,8 @@ class CPU {
         void printTrace() const;
         void dumpRegisters() const;
 
+        friend class MMU;
+
     private:
         uint32_t pc_;
         std::optional<uint32_t> next_pc_;
@@ -67,6 +70,7 @@ class CPU {
 
         Bus& bus_;
         Clint& clint_;
+        MMU mmu_;
         CPUConfig config_;
         uint32_t ADDRESS_MISALIGNMENT_MASK;
 
@@ -203,4 +207,21 @@ class CPU {
         // === Trace === //
         std::string disasm(const DecodedInstr& di) const;
         std::string csrName(uint16_t csr) const;
+
+        enum ExceptionCause {
+            MISALIGNED_INSTRUCTION = 0,
+            INSTRUCTION_ACCESS_FAULT = 1,
+            ILLEGAL_INSTRUCTION = 2,
+            BREAKPOINT = 3,
+            MISALIGNED_LOAD_ADDRESS = 4,
+            LOAD_ACCESS_FAULT = 5,
+            MISALIGNED_STORE_ADDRESS = 6,
+            STORE_ACCESS_FAULT = 7,
+            U_MODE_ENVIRONMENT_CALL = 8,
+            S_MODE_ENVIRONMENT_CALL = 9,
+            M_MODE_ENVIRONMENT_CALL = 11,
+            INSTRUCTION_PAGE_FAULT = 12,
+            LOAD_PAGE_FAULT = 13,
+            STORE_PAGE_FAULT = 15
+        };
 };

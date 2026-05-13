@@ -220,7 +220,7 @@ void CPU::execSLTIU(const DecodedInstr& i) {
 
 void CPU::execSLLI(const DecodedInstr& i) {
     if ((i.imm >> 5) != 0) {
-        trap(2, i.raw, false);
+        trap(ExceptionCause::ILLEGAL_INSTRUCTION, i.raw, false);
         return;
     }
 
@@ -233,7 +233,7 @@ void CPU::execSLLI(const DecodedInstr& i) {
 
 void CPU::execSRLI(const DecodedInstr& i) {
      if ((i.imm >> 5) != 0) {
-        trap(2, i.raw, false);
+        trap(ExceptionCause::ILLEGAL_INSTRUCTION, i.raw, false);
         return;
     }
 
@@ -246,7 +246,7 @@ void CPU::execSRLI(const DecodedInstr& i) {
 
 void CPU::execSRAI(const DecodedInstr& i) {
     if ((i.imm >> 5) != 0x20) {
-        trap(2, i.raw, false);
+        trap(ExceptionCause::ILLEGAL_INSTRUCTION, i.raw, false);
         return;
     }
 
@@ -261,10 +261,15 @@ void CPU::execLW(const DecodedInstr& i) {
     
     try {
         uint32_t o = regs_[i.rd];
-        writeReg(i.rd, bus_.read32(a));
+
+        uint32_t pa = mmu_.translate(a, MMU::AccessType::LOAD);
+
+        writeReg(i.rd, bus_.read32(pa));
         sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
     } catch (const BusAccessError&) {
-        trap(5, a, false);
+        trap(ExceptionCause::LOAD_ACCESS_FAULT, a, false);
+    } catch (const LoadPageError&) {
+        trap(ExceptionCause::LOAD_PAGE_FAULT, a, false);
     }
 }
 
@@ -274,12 +279,16 @@ void CPU::execLH(const DecodedInstr& i) {
     try {
         uint32_t o = regs_[i.rd];
 
-        int16_t half = bus_.read16(a);       
+        uint32_t pa = mmu_.translate(a, MMU::AccessType::LOAD);
+
+        int16_t half = bus_.read16(pa);       
         int32_t s = static_cast<int32_t>(half);
         writeReg(i.rd, static_cast<uint32_t>(s));
         sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
     } catch (const BusAccessError&) {
-        trap(5, a, false);
+        trap(ExceptionCause::LOAD_ACCESS_FAULT, a, false);
+    } catch (const LoadPageError&) {
+        trap(ExceptionCause::LOAD_PAGE_FAULT, a, false);
     }
 }
 
@@ -287,12 +296,15 @@ void CPU::execLHU(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1]  + i.imm;
     
     try {
+        uint32_t pa = mmu_.translate(a, MMU::AccessType::LOAD);
         uint32_t o = regs_[i.rd];
-        uint32_t u = static_cast<uint32_t>(bus_.read16(a));
+        uint32_t u = static_cast<uint32_t>(bus_.read16(pa));
         writeReg(i.rd, u);
         sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
     } catch (const BusAccessError&) {
-        trap(5, a, false);
+        trap(ExceptionCause::LOAD_ACCESS_FAULT, a, false);
+    } catch (const LoadPageError&) {
+        trap(ExceptionCause::LOAD_PAGE_FAULT, a, false);
     }
 
     
@@ -302,12 +314,15 @@ void CPU::execLB(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1]  + i.imm;
 
     try {
+        uint32_t pa = mmu_.translate(a, MMU::AccessType::LOAD);
         uint32_t o = regs_[i.rd];
-        int8_t byte = static_cast<int8_t>(bus_.read8(a));
+        int8_t byte = static_cast<int8_t>(bus_.read8(pa));
         writeReg(i.rd, static_cast<uint32_t>(static_cast<int32_t>(byte)));
         sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
     } catch (const BusAccessError&) {
-        trap(5, a, false);
+        trap(ExceptionCause::LOAD_ACCESS_FAULT, a, false);
+    } catch (const LoadPageError&) {
+        trap(ExceptionCause::LOAD_PAGE_FAULT, a, false);
     }
 }
 
@@ -315,12 +330,15 @@ void CPU::execLBU(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1] + i.imm;
 
     try {
+        uint32_t pa = mmu_.translate(a, MMU::AccessType::LOAD);
         uint32_t o = regs_[i.rd];
-        uint32_t u = static_cast<uint32_t>(bus_.read8(a));
+        uint32_t u = static_cast<uint32_t>(bus_.read8(pa));
         writeReg(i.rd, u);
         sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
     } catch (const BusAccessError&) {
-        trap(5, a, false);
+        trap(ExceptionCause::LOAD_ACCESS_FAULT, a, false);
+    } catch (const LoadPageError&) {
+        trap(ExceptionCause::LOAD_PAGE_FAULT, a, false);
     }
 }
 
@@ -328,11 +346,14 @@ void CPU::execSW(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1] + i.imm;
 
     try {
-        uint32_t o = bus_.read32(a);
-        bus_.write32(a, regs_[i.rs2]);
+        uint32_t pa = mmu_.translate(a, MMU::AccessType::STORE);
+        uint32_t o = bus_.read32(pa);
+        bus_.write32(pa, regs_[i.rs2]);
         sr.mem_write = MemWrite{ a, o, regs_[i.rs2], 4};
     } catch (const BusAccessError&) {
-        trap(7, a, false);
+        trap(ExceptionCause::STORE_ACCESS_FAULT, a, false);
+    } catch (const StorePageError&) {
+        trap(ExceptionCause::STORE_PAGE_FAULT, a, false);
     }
     
 }
@@ -341,11 +362,14 @@ void CPU::execSH(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1] + i.imm;
 
     try {
-        uint32_t o = static_cast<uint32_t>(bus_.read16(a));
-        bus_.write16(a, static_cast<uint16_t>(regs_[i.rs2]));
+        uint32_t pa = mmu_.translate(a, MMU::AccessType::STORE);
+        uint32_t o = static_cast<uint32_t>(bus_.read16(pa));
+        bus_.write16(pa, static_cast<uint16_t>(regs_[i.rs2]));
         sr.mem_write = MemWrite{ a, o, regs_[i.rs2], 2};
     } catch (const BusAccessError&) {
-        trap(7, a, false);
+        trap(ExceptionCause::STORE_ACCESS_FAULT, a, false);
+    } catch (const StorePageError&) {
+        trap(ExceptionCause::STORE_PAGE_FAULT, a, false);
     }
 }
 
@@ -353,11 +377,14 @@ void CPU::execSB(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1] + i.imm; 
 
     try {
-        uint32_t o = static_cast<uint32_t>(bus_.read8(a));
-        bus_.write8(a, static_cast<uint8_t>(regs_[i.rs2]));
+        uint32_t pa = mmu_.translate(a, MMU::AccessType::STORE);
+        uint32_t o = static_cast<uint32_t>(bus_.read8(pa));
+        bus_.write8(pa, static_cast<uint8_t>(regs_[i.rs2]));
         sr.mem_write = MemWrite{ a, o, regs_[i.rs2], 1};
     } catch (const BusAccessError&) {  
-        trap(7, a, false);
+        trap(ExceptionCause::STORE_ACCESS_FAULT, a, false);
+    } catch (const StorePageError&) {
+        trap(ExceptionCause::STORE_PAGE_FAULT, a, false);
     }
 }
 
@@ -366,7 +393,7 @@ void CPU::execBEQ(const DecodedInstr& i) {
         uint32_t target = pc_ + i.imm;
 
         if (target & ADDRESS_MISALIGNMENT_MASK) {
-            trap(0, target, false);
+            trap(ExceptionCause::MISALIGNED_INSTRUCTION, target, false);
             return;
         }
 
@@ -379,7 +406,7 @@ void CPU::execBNE(const DecodedInstr& i) {
         uint32_t target = pc_ + i.imm;
 
         if (target & ADDRESS_MISALIGNMENT_MASK) {
-            trap(0, target, false);
+            trap(ExceptionCause::MISALIGNED_INSTRUCTION, target, false);
             return;
         }
 
@@ -394,7 +421,7 @@ void CPU::execBLT(const DecodedInstr& i) {
         uint32_t target = pc_ + i.imm;
 
         if (target & ADDRESS_MISALIGNMENT_MASK) {
-            trap(0, target, false);
+            trap(ExceptionCause::MISALIGNED_INSTRUCTION, target, false);
             return;
         }
 
@@ -409,7 +436,7 @@ void CPU::execBGE(const DecodedInstr& i) {
         uint32_t target = pc_ + i.imm;
 
         if (target & ADDRESS_MISALIGNMENT_MASK) {
-            trap(0, target, false);
+            trap(ExceptionCause::MISALIGNED_INSTRUCTION, target, false);
             return;
         }
 
@@ -423,7 +450,7 @@ void CPU::execBLTU(const DecodedInstr& i) {
         uint32_t target = pc_ + i.imm;
 
         if (target & ADDRESS_MISALIGNMENT_MASK) {
-            trap(0, target, false);
+            trap(ExceptionCause::MISALIGNED_INSTRUCTION, target, false);
             return;
         }
 
@@ -436,7 +463,7 @@ void CPU::execBGEU(const DecodedInstr& i) {
         uint32_t target = pc_ + i.imm;
 
         if (target & ADDRESS_MISALIGNMENT_MASK) {
-            trap(0, target, false);
+            trap(ExceptionCause::MISALIGNED_INSTRUCTION, target, false);
             return;
         }
 
@@ -449,7 +476,7 @@ void CPU::execJAL(const DecodedInstr& i) {
     uint32_t target = pc_ + i.imm;
 
     if (target & ADDRESS_MISALIGNMENT_MASK) {
-        trap(0, target, false);
+        trap(ExceptionCause::MISALIGNED_INSTRUCTION, target, false);
         return;
     }
 
@@ -463,7 +490,7 @@ void CPU::execJALR(const DecodedInstr& i) {
     uint32_t next_pc = (regs_[i.rs1] + i.imm) &~ 1;
 
     if (next_pc & ADDRESS_MISALIGNMENT_MASK) {
-        trap(0, next_pc, false);
+        trap(ExceptionCause::MISALIGNED_INSTRUCTION, next_pc, false);
         return;
     }
 
@@ -497,10 +524,10 @@ void CPU::execECALL(const DecodedInstr& i) {
 
     uint32_t cause;
     switch (privilege_level_) {
-        case PrivilegeLevel::USER: cause = 8; break;
-        case PrivilegeLevel::SUPERVISOR: cause = 9; break;
-        case PrivilegeLevel::MACHINE: cause = 11; break;
-        default: cause = 11; break;
+        case PrivilegeLevel::USER: cause = ExceptionCause::U_MODE_ENVIRONMENT_CALL; break;
+        case PrivilegeLevel::SUPERVISOR: cause = ExceptionCause::S_MODE_ENVIRONMENT_CALL; break;
+        case PrivilegeLevel::MACHINE: cause = ExceptionCause::M_MODE_ENVIRONMENT_CALL; break;
+        default: cause = ExceptionCause::M_MODE_ENVIRONMENT_CALL; break;
     }
 
     bool delegate = (csrs_[CSR::MEDELEG] >> cause) & 1;
@@ -509,7 +536,12 @@ void CPU::execECALL(const DecodedInstr& i) {
 }
 
 void CPU::execEBREAK(const DecodedInstr& i) {
-    trap(3, 0, false);
+    uint32_t cause = ExceptionCause::BREAKPOINT;
+    bool delegate = (csrs_[CSR::MEDELEG] >> cause) & 1;
+    PrivilegeLevel target = (delegate && privilege_level_ < PrivilegeLevel::MACHINE)
+        ? PrivilegeLevel::SUPERVISOR
+        : PrivilegeLevel::MACHINE;
+    trap(cause, pc_, false, target);
 }
 
 void CPU::execFENCE(const DecodedInstr& i) {
@@ -716,7 +748,7 @@ void CPU::execREMU(const DecodedInstr& i) {
 
 void CPU::execMRET(const DecodedInstr& i) {
     if (privilege_level_ != PrivilegeLevel::MACHINE) {
-        trap(2, sr.instruction, false);
+        trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
         return;
     }
     
@@ -747,13 +779,13 @@ void CPU::execMRET(const DecodedInstr& i) {
 
 void CPU::execSRET(const DecodedInstr& i) {
     if (privilege_level_ == PrivilegeLevel::USER) {
-        trap(2, sr.instruction, false);
+        trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
         return;
     }
 
     if (privilege_level_ == PrivilegeLevel::SUPERVISOR &&
         ((csrs_[CSR::MSTATUS] >> 22) & 1)) {
-        trap(2, sr.instruction, false);
+        trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
         return;
     }
     
@@ -780,31 +812,33 @@ void CPU::execSRET(const DecodedInstr& i) {
 
 void CPU::execWFI(const DecodedInstr& i) {
     if (privilege_level_ == PrivilegeLevel::USER) {
-        trap(2, i.raw, false, PrivilegeLevel::MACHINE);
+        bool delegate = (csrs_[CSR::MEDELEG] >> ExceptionCause::ILLEGAL_INSTRUCTION) & 1;
+        PrivilegeLevel target = (delegate && privilege_level_ < PrivilegeLevel::MACHINE)
+            ? PrivilegeLevel::SUPERVISOR : PrivilegeLevel::MACHINE;
+        trap(ExceptionCause::ILLEGAL_INSTRUCTION, i.raw, false, target);
         return;
     }
-
     if (privilege_level_ == PrivilegeLevel::SUPERVISOR) {
         bool mstatus_tw = (csrs_[CSR::MSTATUS] >> 21) & 1;
         if (mstatus_tw) {
-            trap(2, i.raw, false, PrivilegeLevel::MACHINE);
+            // TW illegal instruction always goes to M-mode per spec
+            trap(ExceptionCause::ILLEGAL_INSTRUCTION, i.raw, false, PrivilegeLevel::MACHINE);
             return;
         }
     }
-
     state_ = CPUState::WAITING_FOR_INTERRUPT;
 }
 
 void CPU::execSFENCE_VMA(const DecodedInstr& i) {
     if (privilege_level_ == PrivilegeLevel::USER) {
-        trap(2, sr.instruction, false);
+        trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
         return;
     }
     
     // S-mode: illegal when TVM=1 (mstatus bit 20)
     if (privilege_level_ == PrivilegeLevel::SUPERVISOR) {
         if ((csrs_[CSR::MSTATUS] >> 20) & 1) {
-            trap(2, sr.instruction, false);
+            trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
             return;
         }
     }
@@ -812,5 +846,5 @@ void CPU::execSFENCE_VMA(const DecodedInstr& i) {
 
 
 void CPU::execINVALID(const DecodedInstr& i) {
-    trap(2, sr.instruction, false);
+    trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
 }
