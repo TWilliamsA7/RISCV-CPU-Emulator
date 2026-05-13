@@ -536,7 +536,12 @@ void CPU::execECALL(const DecodedInstr& i) {
 }
 
 void CPU::execEBREAK(const DecodedInstr& i) {
-    trap(ExceptionCause::BREAKPOINT, 0, false);
+    uint32_t cause = ExceptionCause::BREAKPOINT;
+    bool delegate = (csrs_[CSR::MEDELEG] >> cause) & 1;
+    PrivilegeLevel target = (delegate && privilege_level_ < PrivilegeLevel::MACHINE)
+        ? PrivilegeLevel::SUPERVISOR
+        : PrivilegeLevel::MACHINE;
+    trap(cause, pc_, false, target);
 }
 
 void CPU::execFENCE(const DecodedInstr& i) {
@@ -807,18 +812,20 @@ void CPU::execSRET(const DecodedInstr& i) {
 
 void CPU::execWFI(const DecodedInstr& i) {
     if (privilege_level_ == PrivilegeLevel::USER) {
-        trap(ExceptionCause::ILLEGAL_INSTRUCTION, i.raw, false, PrivilegeLevel::MACHINE);
+        bool delegate = (csrs_[CSR::MEDELEG] >> ExceptionCause::ILLEGAL_INSTRUCTION) & 1;
+        PrivilegeLevel target = (delegate && privilege_level_ < PrivilegeLevel::MACHINE)
+            ? PrivilegeLevel::SUPERVISOR : PrivilegeLevel::MACHINE;
+        trap(ExceptionCause::ILLEGAL_INSTRUCTION, i.raw, false, target);
         return;
     }
-
     if (privilege_level_ == PrivilegeLevel::SUPERVISOR) {
         bool mstatus_tw = (csrs_[CSR::MSTATUS] >> 21) & 1;
         if (mstatus_tw) {
+            // TW illegal instruction always goes to M-mode per spec
             trap(ExceptionCause::ILLEGAL_INSTRUCTION, i.raw, false, PrivilegeLevel::MACHINE);
             return;
         }
     }
-
     state_ = CPUState::WAITING_FOR_INTERRUPT;
 }
 

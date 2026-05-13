@@ -17,14 +17,14 @@ class MMU {
         static constexpr uint32_t VPN_MASK = 0x3FF;
         static constexpr uint32_t PPN_MASK = 0x3FFFFF;
 
-        static constexpr uint32_t PTE_V = 0;
-        static constexpr uint32_t PTE_R = 1;
-        static constexpr uint32_t PTE_W = 2;
-        static constexpr uint32_t PTE_X = 4;
-        static constexpr uint32_t PTE_U = 8;
-        static constexpr uint32_t PTE_G = 16;
-        static constexpr uint32_t PTE_A = 32;
-        static constexpr uint32_t PTE_D = 64;
+        static constexpr uint32_t PTE_V = (1 << 0);
+        static constexpr uint32_t PTE_R = (1 << 1);
+        static constexpr uint32_t PTE_W = (1 << 2);
+        static constexpr uint32_t PTE_X = (1 << 3);
+        static constexpr uint32_t PTE_U = (1 << 4);
+        static constexpr uint32_t PTE_G = (1 << 5);
+        static constexpr uint32_t PTE_A = (1 << 6);
+        static constexpr uint32_t PTE_D = (1 << 7);
 
 
 

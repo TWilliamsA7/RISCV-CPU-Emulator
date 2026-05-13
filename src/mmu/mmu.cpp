@@ -56,7 +56,7 @@ uint32_t MMU::translate(uint32_t va, AccessType type) {
             if (type == AccessType::STORE && !(pte & PTE_D))
                 triggerPageFault(type);
 
-            if (i == 1 && (pte & 0xFFC00))
+            if (i == 1 && (pte & 0x000FFC00))
                 triggerPageFault(type);
 
             if (i == 1) {
