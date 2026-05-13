@@ -18,6 +18,8 @@ enum class InstrKind {
     DIV, DIVU, REM, REMU, // Divide instructions
     MRET, SRET, WFI,
     SFENCE_VMA,
+    LR_W, SC_W, AMOSWAP_W, AMOADD_W, AMOAND_W, AMOOR_W, AMOXOR_W,
+    AMOMAX_W, AMOMAXU_W, AMOMIN_W, AMOMINU_W,
     INVALID, 
     COUNT
 };

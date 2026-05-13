@@ -264,6 +264,25 @@ DecodedInstr CPU::decode(uint32_t instr) {
             break;
         }
  
+        case 0x2F: { // AMO
+            uint32_t funct5 = get_bits(instr, 31, 27);
+            
+            switch (funct5) {
+                case 0x2: d.kind = InstrKind::LR_W; break;
+                case 0x3: d.kind = InstrKind::SC_W; break;
+                case 0x1: d.kind = InstrKind::AMOSWAP_W; break;
+                case 0x0: d.kind = InstrKind::AMOADD_W; break;
+                case 0xC: d.kind = InstrKind::AMOAND_W; break;
+                case 0x8: d.kind = InstrKind::AMOOR_W; break;
+                case 0x4: d.kind = InstrKind::AMOXOR_W; break;
+                case 0x10: d.kind = InstrKind::AMOMAX_W; break;
+                case 0x14: d.kind = InstrKind::AMOMAXU_W; break;
+                case 0x18: d.kind = InstrKind::AMOMIN_W; break;
+                case 0x1C: d.kind = InstrKind::AMOMINU_W; break;
+            }
+            break;
+        }
+
         default:
             d.kind = InstrKind::INVALID;
             break;
