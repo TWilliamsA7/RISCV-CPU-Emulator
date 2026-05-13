@@ -362,6 +362,8 @@ static std::string disasm(const DecodedInstr& di) {
     return oss.str();
 }
 
+
+
 void CPU::printTrace() const {
     std::cout 
         << "PC=" << hex32(sr.pc_before)
@@ -405,12 +407,44 @@ void CPU::printTrace() const {
         std::cout
             << "\tCSR\t"
              << "["
-            << hex32(cw.addr)
+            << csrName(cw.addr)
             << "]: "
             << hex32(cw.old_val)
             << " -> "
             << hex32(cw.new_val)
             << "\n";
+    }
+}
+
+std::string CPU::csrName(uint16_t csr) const {
+    switch(csr) {
+        case MISA: return "MISA";
+        case MTVEC: return "MTVEC";
+        case MSTATUS: return "MSTATUS";
+        case MIDELEG: return "MIDELEG";
+        case MEDELEG: return "MEDELEG";
+        case MCAUSE: return "MCAUSE";
+        case MEPC: return "MEPC";
+        case MTVAL: return "MTVAL";
+        case MCYCLE: return "MCYCLE";
+        case MCYCLEH: return "MCYCLEH";
+        case CYCLE: return "CYCLE";
+        case CYCLEH: return "CYCLEH";
+        case MINSTRET: return "MINSTRET";
+        case MINSTRETH: return "MINSTRETH";
+        case MVENDORID: return "MVENDORID";
+        case MIP: return "MIP";
+        case MIE: return "MIE";
+        case SSTATUS: return "SSTATUS";
+        case SIE: return "SIE";
+        case STVEC: return "STVEC";
+        case SSCRATCH: return "SSCRATCH";
+        case SEPC: return "SEPC";
+        case SCAUSE: return "SCAUSE";
+        case STVAL: return "STVAL";
+        case SIP: return "SIP";
+        case SATP: return "SATP";
+        default: return hex32(csr);
     }
 }
 

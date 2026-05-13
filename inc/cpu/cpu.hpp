@@ -73,6 +73,8 @@ class CPU {
         StepResult sr;
         void clearStep();
 
+
+
         // === Write Operations === //
 
         void writeReg(uint8_t rd, uint32_t value);
@@ -197,4 +199,7 @@ class CPU {
             SIP = 0x144,
             SATP = 0x180
         };
+
+        // === Trace === //
+        std::string csrName(uint16_t csr) const;
 };
