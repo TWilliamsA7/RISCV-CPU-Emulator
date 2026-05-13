@@ -163,7 +163,21 @@ void CPU::writeReg(uint8_t rd, uint32_t value) {
         regs_[rd] = value;
 }
 
-uint32_t CPU::readCSR(uint16_t addr) {
+std::optional<uint32_t> CPU::readCSR(uint16_t addr) {
+
+    uint32_t required_privilege = (addr >> 8) & 0x3;
+    if (privilege_level_ < required_privilege) {
+        trap(2, sr.instruction, false);
+        return std::nullopt;
+    }
+
+    if (addr == CSR::SATP && privilege_level_ == PrivilegeLevel::SUPERVISOR) {
+        if ((csrs_[CSR::MSTATUS] >> 20) & 1) {  // TVM bit
+            trap(2, sr.instruction, false);
+            return std::nullopt;
+        }
+    }
+
     switch (addr) {
         case CSR::SSTATUS:
             return csrs_[CSR::MSTATUS] & 0x000DE122;
@@ -176,19 +190,34 @@ uint32_t CPU::readCSR(uint16_t addr) {
     }
 }
 
-void CPU::writeCSR(uint16_t addr, uint32_t val) {
+bool CPU::writeCSR(uint16_t addr, uint32_t val) {
     // Check bits [11:10]. If they are 11 (0xCxx), it's Read-Only
     if ((addr >> 10) == 0x3) {
         trap(2, sr.instruction, false); 
-        return;
+        return false;
+    }
+
+    uint32_t required_privilege = (addr >> 8) & 0x3;
+    if (privilege_level_ < required_privilege) {
+        trap(2, sr.instruction, false);
+        return false;
+    }
+
+    if (addr == CSR::SATP && privilege_level_ == PrivilegeLevel::SUPERVISOR) {
+        if ((csrs_[CSR::MSTATUS] >> 20) & 1) {
+            trap(2, sr.instruction, false);
+            return false;
+        }
     }
 
     switch (addr) {
         case CSR::MSTATUS: {
-            uint32_t writeable_mask = 0x000E19AA;
+            uint32_t mask = 0x007E19EE;
+
             uint32_t mpp = (val >> 11) & 0x3;
-            if (mpp == 2) mpp = 1;
-            csrs_[CSR::MSTATUS] = (val & writeable_mask);
+            if (mpp == 2) mpp = 1;  // clamp invalid MPP to S-mode (or U-mode if no S)
+            val = (val & ~(3u << 11)) | (mpp << 11);  // write sanitized value back
+            csrs_[CSR::MSTATUS] = (val & mask);
             break;
         }
         case CSR::MTVEC: {
@@ -230,10 +259,18 @@ void CPU::writeCSR(uint16_t addr, uint32_t val) {
             csrs_[addr] = val;
             break;
     }
+
+    return true;
 }
 
 void CPU::trap(uint32_t cause, uint32_t tval, bool is_interrupt, PrivilegeLevel target_level) {
     trap_occurred_ = true;
+
+    if (config_.verbose) {
+        std::cout << "TRAP " << (is_interrupt ? "(INTERRUPT) " : "")
+            << "CAUSE: " << cause << " VAL: " << tval << "\n";
+    }
+
     uint32_t cause_val = is_interrupt ? (cause | (1U << 31)) : cause;
     uint32_t mstatus = csrs_[CSR::MSTATUS];
 
@@ -295,25 +332,27 @@ void CPU::trap(uint32_t cause, uint32_t tval, bool is_interrupt, PrivilegeLevel 
 }
 
 void CPU::checkInterrupts() {
-    uint32_t pending = csrs_[CSR::MIP] & csrs_[CSR::MIE];
-    if (pending == 0) return;
+    uint32_t mip_mie = csrs_[CSR::MIP] & csrs_[CSR::MIE];
+    if (mip_mie == 0) return;
 
-    for (int id : {11, 3, 7}) { // External, Software, Timer
-        if (pending & (1 << id)) {
-            bool delegate = (csrs_[CSR::MIDELEG] >> id) & 1;
+    uint32_t mstatus = csrs_[CSR::MSTATUS];
 
-            if (delegate && privilege_level_ <= PrivilegeLevel::SUPERVISOR) {
-                // Signal to Supervisor mode
-                if (sModeInterruptsEnabled()) {
-                    trap(id, 0, true, PrivilegeLevel::SUPERVISOR); 
-                    return;
-                }
-            } else {
-                // Standard M-mode handling
-                if (mModeInterruptsEnabled()) {
-                    trap(id, 0, true, PrivilegeLevel::MACHINE);
-                    return;
-                }
+    for (int id : {11, 9, 3, 1, 7, 5}) {
+        if (!(mip_mie & (1 << id))) continue;
+
+        bool delegate = (csrs_[CSR::MIDELEG] >> id) & 1;
+
+        if (delegate && privilege_level_ <= PrivilegeLevel::SUPERVISOR) {
+            bool sie = (mstatus >> 1) & 1;
+            if (privilege_level_ < PrivilegeLevel::SUPERVISOR || sie) {
+                trap(id, 0, true, PrivilegeLevel::SUPERVISOR);
+                return;
+            }
+        } else {
+            bool mie = (mstatus >> 3) & 1;
+            if (privilege_level_ < PrivilegeLevel::MACHINE || mie) {
+                trap(id, 0, true, PrivilegeLevel::MACHINE);
+                return;
             }
         }
     }

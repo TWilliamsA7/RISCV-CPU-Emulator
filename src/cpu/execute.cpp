@@ -2,6 +2,7 @@
 
 #include "cpu/cpu.hpp"
 #include <iostream>
+#include <errors/errors.hpp>
 
 const std::array<CPU::ExecFn, static_cast<size_t>(InstrKind::COUNT)> CPU::dispatch_ = {
     &CPU::execADD,
@@ -61,6 +62,7 @@ const std::array<CPU::ExecFn, static_cast<size_t>(InstrKind::COUNT)> CPU::dispat
     &CPU::execMRET,
     &CPU::execSRET,
     &CPU::execWFI,
+    &CPU::execSFENCE_VMA,
     &CPU::execINVALID,
 };
 
@@ -250,78 +252,113 @@ void CPU::execSRAI(const DecodedInstr& i) {
 
     uint32_t o = regs_[i.rd];
     int32_t a = static_cast<int32_t>(regs_[i.rs1]);
-    writeReg(i.rd, static_cast<uint32_t>(a >> i.imm));
+    writeReg(i.rd, static_cast<uint32_t>(a >> (i.imm & 0x1F)));
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    
 }
 
 void CPU::execLW(const DecodedInstr& i) {
-    uint32_t o = regs_[i.rd];
     uint32_t a = regs_[i.rs1] + i.imm;
-    writeReg(i.rd, bus_.read32(a));
-    sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
     
+    try {
+        uint32_t o = regs_[i.rd];
+        writeReg(i.rd, bus_.read32(a));
+        sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
+    } catch (const BusAccessError&) {
+        trap(5, a, false);
+    }
 }
 
 void CPU::execLH(const DecodedInstr& i) {
-    uint32_t o = regs_[i.rd];
     uint32_t a = regs_[i.rs1]  + i.imm;
-    int16_t half = bus_.read16(a);       
-    int32_t s = static_cast<int32_t>(half);
-    writeReg(i.rd, static_cast<uint32_t>(s));
-    sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
     
+    try {
+        uint32_t o = regs_[i.rd];
+
+        int16_t half = bus_.read16(a);       
+        int32_t s = static_cast<int32_t>(half);
+        writeReg(i.rd, static_cast<uint32_t>(s));
+        sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
+    } catch (const BusAccessError&) {
+        trap(5, a, false);
+    }
 }
 
-void CPU::execLHU(const DecodedInstr& i) {
-    uint32_t o = regs_[i.rd];
+void CPU::execLHU(const DecodedInstr& i) { 
     uint32_t a = regs_[i.rs1]  + i.imm;
-    uint32_t u = static_cast<uint32_t>(bus_.read16(a));
-    writeReg(i.rd, u);
-    sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
+    
+    try {
+        uint32_t o = regs_[i.rd];
+        uint32_t u = static_cast<uint32_t>(bus_.read16(a));
+        writeReg(i.rd, u);
+        sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
+    } catch (const BusAccessError&) {
+        trap(5, a, false);
+    }
+
     
 }
 
 void CPU::execLB(const DecodedInstr& i) {
-    uint32_t o = regs_[i.rd];
     uint32_t a = regs_[i.rs1]  + i.imm;
-    int8_t byte = static_cast<int8_t>(bus_.read8(a));
-    writeReg(i.rd, static_cast<uint32_t>(static_cast<int32_t>(byte)));
-    sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    
+
+    try {
+        uint32_t o = regs_[i.rd];
+        int8_t byte = static_cast<int8_t>(bus_.read8(a));
+        writeReg(i.rd, static_cast<uint32_t>(static_cast<int32_t>(byte)));
+        sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
+    } catch (const BusAccessError&) {
+        trap(5, a, false);
+    }
 }
 
 void CPU::execLBU(const DecodedInstr& i) {
-    uint32_t o = regs_[i.rd];
     uint32_t a = regs_[i.rs1] + i.imm;
-    uint32_t u = static_cast<uint32_t>(bus_.read8(a));
-    writeReg(i.rd, u);
-    sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
-    
+
+    try {
+        uint32_t o = regs_[i.rd];
+        uint32_t u = static_cast<uint32_t>(bus_.read8(a));
+        writeReg(i.rd, u);
+        sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
+    } catch (const BusAccessError&) {
+        trap(5, a, false);
+    }
 }
 
 void CPU::execSW(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1] + i.imm;
 
-    uint32_t o = bus_.read32(a);
-    bus_.write32(a, regs_[i.rs2]);
-    sr.mem_write = MemWrite{ a, o, regs_[i.rs2], 4};
+    try {
+        uint32_t o = bus_.read32(a);
+        bus_.write32(a, regs_[i.rs2]);
+        sr.mem_write = MemWrite{ a, o, regs_[i.rs2], 4};
+    } catch (const BusAccessError&) {
+        trap(7, a, false);
+    }
     
 }
 
 void CPU::execSH(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1] + i.imm;
-    uint32_t o = static_cast<uint32_t>(bus_.read16(a));
-    bus_.write16(a, static_cast<uint16_t>(regs_[i.rs2]));
-    sr.mem_write = MemWrite{ a, o, regs_[i.rs2], 2};
-    
+
+    try {
+        uint32_t o = static_cast<uint32_t>(bus_.read16(a));
+        bus_.write16(a, static_cast<uint16_t>(regs_[i.rs2]));
+        sr.mem_write = MemWrite{ a, o, regs_[i.rs2], 2};
+    } catch (const BusAccessError&) {
+        trap(7, a, false);
+    }
 }
 
 void CPU::execSB(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1] + i.imm; 
-    uint32_t o = static_cast<uint32_t>(bus_.read8(a));
-    bus_.write8(a, static_cast<uint8_t>(regs_[i.rs2]));
-    sr.mem_write = MemWrite{ a, o, regs_[i.rs2], 1};
+
+    try {
+        uint32_t o = static_cast<uint32_t>(bus_.read8(a));
+        bus_.write8(a, static_cast<uint8_t>(regs_[i.rs2]));
+        sr.mem_write = MemWrite{ a, o, regs_[i.rs2], 1};
+    } catch (const BusAccessError&) {  
+        trap(7, a, false);
+    }
 }
 
 void CPU::execBEQ(const DecodedInstr& i) {
@@ -460,7 +497,7 @@ void CPU::execECALL(const DecodedInstr& i) {
 
     uint32_t cause;
     switch (privilege_level_) {
-        case PrivilegeLevel::USER: cause = 9; break;
+        case PrivilegeLevel::USER: cause = 8; break;
         case PrivilegeLevel::SUPERVISOR: cause = 9; break;
         case PrivilegeLevel::MACHINE: cause = 11; break;
         default: cause = 11; break;
@@ -481,93 +518,102 @@ void CPU::execFENCE(const DecodedInstr& i) {
 
 void CPU::execCSRRW(const DecodedInstr& i) {
     uint16_t csr_addr = i.csr & 0xFFF;
-    uint32_t old_val = readCSR(csr_addr);
+    auto old_val = readCSR(csr_addr);
+    if (!old_val.has_value()) return;
+
+
     uint32_t o = regs_[i.rd];
     
-    writeCSR(csr_addr, regs_[i.rs1]);
-    writeReg(i.rd, old_val);
+    if (!writeCSR(csr_addr, regs_[i.rs1])) return;
+
+    writeReg(i.rd, old_val.value());
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
-    sr.csr_write = CsrWrite{ csr_addr, old_val,  csrs_[csr_addr] };
+    sr.csr_write = CsrWrite{ csr_addr, old_val.value(),  csrs_[csr_addr] };
     
 }
 
 void CPU::execCSRRS(const DecodedInstr& i) {
     uint16_t csr_addr = i.csr & 0xFFF;
-    uint32_t old_val = readCSR(csr_addr);
+    auto old_val = readCSR(csr_addr);
+    if (!old_val.has_value()) return;
     uint32_t o = regs_[i.rd];
     
     if (i.rs1 != 0) {
-        writeCSR(csr_addr, old_val | regs_[i.rs1]);
+        if (!writeCSR(csr_addr, old_val.value() | regs_[i.rs1])) return;
     }
-    writeReg(i.rd, old_val);
+    writeReg(i.rd, old_val.value());
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
-    sr.csr_write = CsrWrite{ csr_addr, old_val,  csrs_[csr_addr] };
+    sr.csr_write = CsrWrite{ csr_addr, old_val.value(),  csrs_[csr_addr] };
     
 }
 
 void CPU::execCSRRC(const DecodedInstr& i) {
     uint16_t csr_addr = i.csr & 0xFFF;
-    uint32_t old_val = readCSR(csr_addr);
+    auto old_val = readCSR(csr_addr);
+    if (!old_val.has_value()) return;
     uint32_t o = regs_[i.rd];
 
     if (i.rs1 != 0) {
-        writeCSR(csr_addr, old_val & ~regs_[i.rs1]);
+        if (!writeCSR(csr_addr, old_val.value() & ~regs_[i.rs1])) return;
     }
-    writeReg(i.rd, old_val);
+    writeReg(i.rd, old_val.value());
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
-    sr.csr_write = CsrWrite{ csr_addr, old_val,  csrs_[csr_addr] };
+    sr.csr_write = CsrWrite{ csr_addr, old_val.value(),  csrs_[csr_addr] };
     
 }
 
 void CPU::execCSRRWI(const DecodedInstr& i) {
     uint16_t csr_addr = i.csr & 0xFFF;
-    uint32_t old_val = readCSR(csr_addr);
+    auto old_val = readCSR(csr_addr);
+    if (!old_val.has_value()) return;
     uint32_t uimm = i.rs1;
     uint32_t o = regs_[i.rd];
 
-    writeReg(i.rd, old_val);
-    writeCSR(csr_addr, uimm);
+    if (!writeCSR(csr_addr, uimm)) return;
+    writeReg(i.rd, old_val.value());
 
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
-    sr.csr_write = CsrWrite{ csr_addr, old_val,  csrs_[csr_addr] };
+    sr.csr_write = CsrWrite{ csr_addr, old_val.value(),  csrs_[csr_addr] };
     
     
 }
 
 void CPU::execCSRRSI(const DecodedInstr& i) {
     uint16_t csr_addr = i.csr & 0xFFF;
-    uint32_t old_val = readCSR(csr_addr);
+    auto old_val = readCSR(csr_addr);
+    if (!old_val.has_value()) return;
     uint32_t uimm = i.rs1;
     uint32_t o = regs_[i.rd];
 
-    writeReg(i.rd, old_val);
+    writeReg(i.rd, old_val.value());
 
     
     if (uimm != 0) {
-        writeCSR(csr_addr, old_val | uimm);
+        if (!writeCSR(csr_addr, old_val.value() | uimm)) return;
     }
 
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
-    sr.csr_write = CsrWrite{ csr_addr, old_val,  csrs_[csr_addr] };
+    sr.csr_write = CsrWrite{ csr_addr, old_val.value(),  csrs_[csr_addr] };
     
     
 }
 
 void CPU::execCSRRCI(const DecodedInstr& i) {
     uint16_t csr_addr = i.csr & 0xFFF;
-    uint32_t old_val = readCSR(csr_addr);
+    auto old_val = readCSR(csr_addr);
+    if (!old_val.has_value()) return;
     uint32_t uimm = i.rs1;
     uint32_t o = regs_[i.rd];
 
-    writeReg(i.rd, old_val);
+    writeReg(i.rd, old_val.value());
 
     
     if (uimm != 0) {
-        writeCSR(csr_addr, old_val & ~uimm);
+        if (!writeCSR(csr_addr, old_val.value() & ~uimm));
     }
     
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
-    sr.csr_write = CsrWrite{ csr_addr, old_val,  csrs_[csr_addr] };
+    sr.csr_write = CsrWrite{ csr_addr, old_val.value(),  csrs_[csr_addr] };
     
     
 }
@@ -669,28 +715,61 @@ void CPU::execREMU(const DecodedInstr& i) {
 
 
 void CPU::execMRET(const DecodedInstr& i) {
-    next_pc_ = readCSR(CSR::MEPC);
+    if (privilege_level_ != PrivilegeLevel::MACHINE) {
+        trap(2, sr.instruction, false);
+        return;
+    }
+    
+    next_pc_ = csrs_[CSR::MEPC];
 
-    // 2. Handle mstatus bit manipulation
-    uint32_t mstatus = readCSR(CSR::MSTATUS);
+    uint32_t mstatus = csrs_[CSR::MSTATUS];
+
+    // Read MPP BEFORE clearing it
+    uint32_t mpp = (mstatus >> 11) & 0x3;
+
     uint32_t mpie = (mstatus >> 7) & 1;
-    // Set MIE to MPIE, then set MPIE to 1
+    // MIE = MPIE
     mstatus = (mstatus & ~(1 << 3)) | (mpie << 3);
+    // MPIE = 1
     mstatus |= (1 << 7);
+    // MPP = U (least privileged supported mode)
+    mstatus &= ~(3 << 11);
 
-    sr.csr_write = CsrWrite{ CSR::MSTATUS, readCSR(CSR::MSTATUS),  mstatus };
+    privilege_level_ = static_cast<CPU::PrivilegeLevel>(mpp);
+
+    if (privilege_level_ != PrivilegeLevel::MACHINE) {
+        mstatus &= ~(1 << 17);  // clear MPRV
+    }
+
+    sr.csr_write = CsrWrite{ CSR::MSTATUS, csrs_[CSR::MSTATUS], mstatus };
     csrs_[CSR::MSTATUS] = mstatus;
 }
 
 void CPU::execSRET(const DecodedInstr& i) {
+    if (privilege_level_ == PrivilegeLevel::USER) {
+        trap(2, sr.instruction, false);
+        return;
+    }
+
+    if (privilege_level_ == PrivilegeLevel::SUPERVISOR &&
+        ((csrs_[CSR::MSTATUS] >> 22) & 1)) {
+        trap(2, sr.instruction, false);
+        return;
+    }
+    
     uint32_t mstatus = csrs_[CSR::MSTATUS];
 
-    PrivilegeLevel target_level = ((mstatus >> 8) & 1) ? PrivilegeLevel::SUPERVISOR : PrivilegeLevel::USER;
+    PrivilegeLevel target_level = ((mstatus >> 8) & 1) 
+        ? PrivilegeLevel::SUPERVISOR 
+        : PrivilegeLevel::USER;
 
     uint32_t spie = (mstatus >> 5) & 1;
-    mstatus = (mstatus & ~(1 << 1)) | (spie << 1);
-    mstatus |= (1 << 5);
-    mstatus &= ~(1 << 8);
+    mstatus = (mstatus & ~(1 << 1)) | (spie << 1);  // SIE = SPIE
+    mstatus |= (1 << 5);                              // SPIE = 1
+    mstatus &= ~(1 << 8);                             // SPP = 0 (U-mode)
+
+    // Clear MPRV when leaving M-mode (SRET always leaves M-mode)
+    mstatus &= ~(1 << 17);
 
     sr.csr_write = CsrWrite{ CSR::MSTATUS, csrs_[CSR::MSTATUS], mstatus };
     csrs_[CSR::MSTATUS] = mstatus;
@@ -701,19 +780,34 @@ void CPU::execSRET(const DecodedInstr& i) {
 
 void CPU::execWFI(const DecodedInstr& i) {
     if (privilege_level_ == PrivilegeLevel::USER) {
-        trap(2, 0, false, PrivilegeLevel::MACHINE);
+        trap(2, i.raw, false, PrivilegeLevel::MACHINE);
         return;
     }
 
     if (privilege_level_ == PrivilegeLevel::SUPERVISOR) {
         bool mstatus_tw = (csrs_[CSR::MSTATUS] >> 21) & 1;
         if (mstatus_tw) {
-            trap(2, 0, false, PrivilegeLevel::MACHINE);
+            trap(2, i.raw, false, PrivilegeLevel::MACHINE);
             return;
         }
     }
 
     state_ = CPUState::WAITING_FOR_INTERRUPT;
+}
+
+void CPU::execSFENCE_VMA(const DecodedInstr& i) {
+    if (privilege_level_ == PrivilegeLevel::USER) {
+        trap(2, sr.instruction, false);
+        return;
+    }
+    
+    // S-mode: illegal when TVM=1 (mstatus bit 20)
+    if (privilege_level_ == PrivilegeLevel::SUPERVISOR) {
+        if ((csrs_[CSR::MSTATUS] >> 20) & 1) {
+            trap(2, sr.instruction, false);
+            return;
+        }
+    }
 }
 
 

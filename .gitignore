@@ -15,6 +15,7 @@ plans/
 
 # Command Visualization
 out.txt
+dump.txt
 
 # Validation Tests
 validation/

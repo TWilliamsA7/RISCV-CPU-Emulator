@@ -202,7 +202,7 @@ DecodedInstr CPU::decode(uint32_t instr) {
         }   
 
         case 0x0F: { // FENCE
-            if (funct3 == 0x0) {
+            if (funct3 == 0x0 || funct3 == 0x1) {
                 d.kind = InstrKind::FENCE;
                 d.rd = get_bits(instr, 11, 7);
                 d.rs1 = get_bits(instr, 19, 15);
@@ -217,14 +217,20 @@ DecodedInstr CPU::decode(uint32_t instr) {
             d.csr = get_bits(instr, 31, 20);
 
             uint32_t funct12 = get_bits(instr, 31, 20);
+            uint32_t funct7 = instr >> 25;
 
             switch (funct3) {
                 case 0x0: {
-                    if (funct12 == 0x0)
+                    
+                    if (funct7 == 0x09) {
+                        d.kind = InstrKind::SFENCE_VMA;  // or reuse FENCE if you don't want a new kind
+                        d.rs1 = (instr >> 15) & 0x1F;
+                        d.rs2 = (instr >> 20) & 0x1F;
+                    } else if (funct12 == 0x0)
                         d.kind = InstrKind::ECALL;
                     else if (funct12 == 0x1)
                         d.kind = InstrKind::EBREAK;
-                    else if (funct12 = 0x302)
+                    else if (funct12 == 0x302)
                         d.kind = InstrKind::MRET;
                     else if (funct12 == 0x102)
                         d.kind = InstrKind::SRET;
@@ -355,7 +361,7 @@ uint32_t CPU::decompress(uint16_t i) {
                 }
                 case 2: { // C.LI -> addi rd, x0, imm
                     int32_t imm = get_imm6(i);
-                    if ((i >> 7) & 0x1F == 0) return 0;
+                    if (((i >> 7) & 0x1F) == 0) return 0;
                     return (uint32_t(imm) << 20) | (0 << 15) | (0 << 12) | (rd_rs1_high << 7) | 0x13;
                 }
                 case 3: { // C.LUI or C.ADDI16SP

@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <array>
 #include <string>
+#include <Optional>
 #include "isa/isa.hpp"
 #include "bus/bus.hpp"
 #include "core/state.hpp"
@@ -72,11 +73,13 @@ class CPU {
         StepResult sr;
         void clearStep();
 
+
+
         // === Write Operations === //
 
         void writeReg(uint8_t rd, uint32_t value);
-        void writeCSR(uint16_t addr, uint32_t val);
-        uint32_t readCSR(uint16_t addr);
+        bool writeCSR(uint16_t addr, uint32_t val);
+        std::optional<uint32_t> readCSR(uint16_t addr);
 
         void updateCycle();
 
@@ -162,6 +165,7 @@ class CPU {
         void execMRET(const DecodedInstr& i);
         void execSRET(const DecodedInstr& i);
         void execWFI(const DecodedInstr& i);
+        void execSFENCE_VMA(const DecodedInstr& i);
         void execINVALID(const DecodedInstr& i);
 
         // === Miscellaneous Helper functions === //
@@ -195,4 +199,8 @@ class CPU {
             SIP = 0x144,
             SATP = 0x180
         };
+
+        // === Trace === //
+        std::string disasm(const DecodedInstr& di) const;
+        std::string csrName(uint16_t csr) const;
 };

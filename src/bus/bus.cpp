@@ -79,10 +79,13 @@ void Bus::write32(uint32_t addr, uint32_t val) {
         return;
     }
 
-    if (addr == 0x80001000) {
+    if (addr == 0x80001000 && val != 0) {
         if (val == 1U) {
             std::cout << "PASS: SUCCESSFUL WRITE TO HOST\n";
             exit(0);
+        } else {
+            std::cout << "FAIL: ERROR CODE " << val << " WRITTEN TO HOST\n";
+            exit(1);
         }
     }
 
