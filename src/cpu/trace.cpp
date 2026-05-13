@@ -14,7 +14,27 @@ std::string CPU::hex32(uint32_t v) const {
 }
 
 static std::string regStr(uint8_t r) {
-    return "x" + std::to_string(r);
+    if (r == 0)
+        return "zero";
+    if (r == 1)
+        return "ra";
+    if (r == 2)
+        return "sp";
+    if (r == 3)
+        return "gp";
+    if (r == 4)
+        return "tp";
+    if (r >= 5 && r <= 7)
+        return "t" + std::to_string((r - 5));
+    if (r == 8 || r == 9)
+        return "s" + std::to_string((r - 8));
+    if (r >= 10 && r <= 17)
+        return "a" + std::to_string((r - 10));
+    if (r >= 18 && r <= 27)
+        return "s" + std::to_string((r - 16));
+    if (r >= 28)
+        return "t" + std::to_string((r - 25));
+    return "unknown";
 }
 
 static std::string disasm(const DecodedInstr& di) {

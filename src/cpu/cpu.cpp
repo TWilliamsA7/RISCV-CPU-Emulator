@@ -265,6 +265,12 @@ bool CPU::writeCSR(uint16_t addr, uint32_t val) {
 
 void CPU::trap(uint32_t cause, uint32_t tval, bool is_interrupt, PrivilegeLevel target_level) {
     trap_occurred_ = true;
+
+    if (config_.verbose) {
+        std::cout << "TRAP " << (is_interrupt ? "(INTERRUPT) " : "")
+            << "CAUSE: " << cause << " VAL: " << tval << "\n";
+    }
+
     uint32_t cause_val = is_interrupt ? (cause | (1U << 31)) : cause;
     uint32_t mstatus = csrs_[CSR::MSTATUS];
 
