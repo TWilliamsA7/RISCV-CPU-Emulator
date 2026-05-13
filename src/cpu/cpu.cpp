@@ -23,13 +23,21 @@ CPU::CPU (CPUConfig config, Bus& bus, Clint& clint) : config_(config), bus_(bus)
         misa |= (1 << 20); // U (User extension)
     }
 
-    if (config_.extension_m) misa |= (1U << 12);
+    if (config_.extension_m) {
+        misa |= (1U << 12);
+    }
+        
     if (config_.extension_c) { 
         misa |= (1U << 2);
         ADDRESS_MISALIGNMENT_MASK = 0x1;
     } else {
         ADDRESS_MISALIGNMENT_MASK = 0x3;
     }
+
+    if (config_.extension_a) {
+        misa |= (1U << 0);
+    }
+
     csrs_[CSR::MISA] = misa;
 }
 

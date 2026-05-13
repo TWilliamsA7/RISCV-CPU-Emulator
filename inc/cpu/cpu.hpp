@@ -20,6 +20,7 @@ enum class ExecutionMode {
 struct CPUConfig {
     bool extension_m = false;
     bool extension_c = false;
+    bool extension_a = false;
     bool verbose = false;
     ExecutionMode mode = ExecutionMode::SYSTEM;
 };
