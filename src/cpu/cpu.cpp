@@ -67,7 +67,8 @@ StepResult CPU::step() {
     try {
         if (pc_ & ADDRESS_MISALIGNMENT_MASK) trap(0, pc_, false);
 
-        uint16_t first_half = bus_.read16(pc_);
+        uint32_t first_half_address = mmu_.translate(pc_, MMU::AccessType::FETCH);
+        uint16_t first_half = bus_.read16(first_half_address);
         
         if ((first_half & 0x3) != 0x3) {
             if (!config_.extension_c) {
@@ -79,12 +80,16 @@ StepResult CPU::step() {
             instr_len = 2;
         } else {
             // 32-bit instruction
-            uint16_t second_half = bus_.read16(pc_ + 2);
+            uint32_t second_half_address = mmu_.translate(pc_ + 2, MMU::AccessType::FETCH);
+            uint16_t second_half = bus_.read16(second_half_address);
             sr.instruction = (second_half << 16) | first_half;
             instr_len = 4;
         } 
     } catch (const BusAccessError& e) {
         trap(ExceptionCause::INSTRUCTION_ACCESS_FAULT, pc_, false);
+        return sr;
+    } catch (const InstructionPageError&  e) {
+        trap(ExceptionCause::INSTRUCTION_PAGE_FAULT, pc_, false);
         return sr;
     }
 
