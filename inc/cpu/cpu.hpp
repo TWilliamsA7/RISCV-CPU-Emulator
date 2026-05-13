@@ -10,6 +10,7 @@
 #include "isa/isa.hpp"
 #include "bus/bus.hpp"
 #include "core/state.hpp"
+#include "mmu/mmu.hpp"
 
 enum class ExecutionMode {
     BARE_METAL,
@@ -41,6 +42,8 @@ class CPU {
 
         void printTrace() const;
         void dumpRegisters() const;
+
+        friend class MMU;
 
     private:
         uint32_t pc_;
