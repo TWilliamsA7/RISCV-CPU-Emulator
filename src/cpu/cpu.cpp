@@ -260,6 +260,12 @@ bool CPU::writeCSR(uint16_t addr, uint32_t val) {
             break;
         }
 
+        case CSR::SIP: {
+            uint32_t mask = csrs_[CSR::MIDELEG] & 0x2;
+            csrs_[CSR::MIP] = (csrs_[CSR::MIP] & ~mask) | (val & mask);
+            break;
+        }
+
         default:
             csrs_[addr] = val;
             break;

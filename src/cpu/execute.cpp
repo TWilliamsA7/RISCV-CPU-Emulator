@@ -348,7 +348,7 @@ void CPU::execSW(const DecodedInstr& i) {
     try {
         uint32_t pa = mmu_.translate(a, MMU::AccessType::STORE);
         uint32_t o = bus_.read32(pa);
-        bus_.write32(a, regs_[i.rs2]);
+        bus_.write32(pa, regs_[i.rs2]);
         sr.mem_write = MemWrite{ a, o, regs_[i.rs2], 4};
     } catch (const BusAccessError&) {
         trap(ExceptionCause::STORE_ACCESS_FAULT, a, false);
@@ -364,7 +364,7 @@ void CPU::execSH(const DecodedInstr& i) {
     try {
         uint32_t pa = mmu_.translate(a, MMU::AccessType::STORE);
         uint32_t o = static_cast<uint32_t>(bus_.read16(pa));
-        bus_.write16(a, static_cast<uint16_t>(regs_[i.rs2]));
+        bus_.write16(pa, static_cast<uint16_t>(regs_[i.rs2]));
         sr.mem_write = MemWrite{ a, o, regs_[i.rs2], 2};
     } catch (const BusAccessError&) {
         trap(ExceptionCause::STORE_ACCESS_FAULT, a, false);
@@ -379,7 +379,7 @@ void CPU::execSB(const DecodedInstr& i) {
     try {
         uint32_t pa = mmu_.translate(a, MMU::AccessType::STORE);
         uint32_t o = static_cast<uint32_t>(bus_.read8(pa));
-        bus_.write8(a, static_cast<uint8_t>(regs_[i.rs2]));
+        bus_.write8(pa, static_cast<uint8_t>(regs_[i.rs2]));
         sr.mem_write = MemWrite{ a, o, regs_[i.rs2], 1};
     } catch (const BusAccessError&) {  
         trap(ExceptionCause::STORE_ACCESS_FAULT, a, false);
