@@ -5,8 +5,8 @@
 #ifdef PLATFORM_POSIX
 
 #include "devices/uart.hpp"
-#include "unistd.h"
-#include "termios.h>
+#include <unistd.h>
+#include <termios.h>
 
 static struct termios g_old_termios;
 

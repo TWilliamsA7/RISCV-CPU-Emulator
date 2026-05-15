@@ -2,6 +2,8 @@
 
 #include "plic/plic.hpp"
 
+PLIC::PLIC() {}
+
 uint32_t PLIC::read32(uint32_t offset) const {
     if (offset < 0x1000)  // Priority
         return priority_[(offset >> 2) & 0x1F];
