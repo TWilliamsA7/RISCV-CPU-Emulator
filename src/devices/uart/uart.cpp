@@ -2,8 +2,6 @@
 
 #include "devices/uart.hpp"
 #include <iostream>
-#include <unistd.h>
-#include <termios.h>
 
 UART::UART(std::function<void(uint32_t)> set_pending_cb)
     : set_pending_(set_pending_cb) {}
@@ -83,20 +81,13 @@ void UART::rx_push(uint8_t ch) {
 }
 
 void UART::start_input_thread() {
-    // Put stdin in raw mode so we get chars immediately without Enter
-    struct termios t;
-    tcgetattr(STDIN_FILENO, &t);
-    t.c_lflag &= ~(ICANON | ECHO);
-    t.c_cc[VMIN]  = 1;
-    t.c_cc[VTIME] = 0;
-    tcsetattr(STDIN_FILENO, TCSANOW, &t);
-
+    set_raw_mode();
     running_ = true;
     input_thread_ = std::thread([this]() {
         while (running_) {
             uint8_t ch;
-            int n = read(STDIN_FILENO, &ch, 1);
-            if (n == 1) rx_push(ch);
+            if (read_char(ch))
+                rx_push(ch);
         }
     });
 }
@@ -105,4 +96,5 @@ void UART::stop_input_thread() {
     running_ = false;
     if (input_thread_.joinable())
         input_thread_.join();
+    restore_terminal();
 }
