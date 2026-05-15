@@ -5,15 +5,17 @@
 #include "errors/errors.hpp"
 #include <iostream>
 
-Bus::Bus(Clint& clint, PLIC& plic) : clint_(clint), plic_(plic) {
+Bus::Bus(Clint& clint, PLIC& plic) : clint_(clint), plic_(plic), uart_([&plic](uint32_t irq){ plic.set_pending(irq);}) {
     dram_ = std::vector<uint8_t>(Bus::DRAM_SIZE, 0);
 }
 
 void Bus::register_cpu(CPU* cpu) { cpu_ptr_ = cpu; }
 
-uint8_t Bus::read8(uint32_t addr) const {
+uint8_t Bus::read8(uint32_t addr) {
 
-    if (addr == Bus::UART) return 0;
+    if (addr >= UART::BASE && addr < UART::BASE + UART::SIZE) {
+        return uart_.read8(addr - UART::BASE);
+    }
 
     if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
@@ -23,9 +25,7 @@ uint8_t Bus::read8(uint32_t addr) const {
     throw BusAccessError(std::to_string(addr) + " is outside of mapped range");
 }
 
-uint16_t Bus::read16(uint32_t addr) const {
-    if (addr == Bus::UART) return 0;
-
+uint16_t Bus::read16(uint32_t addr) {
     if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
         return dram_[offset] | (dram_[offset+1] << 8);
@@ -34,9 +34,10 @@ uint16_t Bus::read16(uint32_t addr) const {
     throw BusAccessError(std::to_string(addr) + " is outside of mapped range");
 }
 
-uint32_t Bus::read32(uint32_t addr) const {
+uint32_t Bus::read32(uint32_t addr) {
 
-    if (addr == Bus::UART) return 0;
+    if (addr >= UART::BASE && addr < UART::BASE + UART::SIZE)
+        return uart_.read8(addr - UART::BASE);
 
     if (addr >= Clint::BASE && addr < Clint::BASE + Clint::SIZE)
         return clint_.read32(addr - Clint::BASE);
@@ -54,9 +55,8 @@ uint32_t Bus::read32(uint32_t addr) const {
 void Bus::write8(uint32_t addr, uint8_t val) {
     std::lock_guard<std::mutex> lock(mem_mutex_);
 
-    if (addr == Bus::UART) {
-        printf("%c", (char)(val & 0xFF));
-        fflush(stdout);
+    if (addr >= UART::BASE && addr < UART::BASE + UART::SIZE) {
+        uart_.write8(addr - UART::BASE, val);
         return;
     }
 
@@ -73,12 +73,6 @@ void Bus::write8(uint32_t addr, uint8_t val) {
 void Bus::write16(uint32_t addr, uint16_t val) {
     std::lock_guard<std::mutex> lock(mem_mutex_);
 
-    if (addr == Bus::UART) {
-        printf("%c", (char)(val & 0xFF));
-        fflush(stdout);
-        return;
-    }
-
     if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
         dram_[offset] = val & 0xFF;
@@ -92,12 +86,6 @@ void Bus::write16(uint32_t addr, uint16_t val) {
 
 void Bus::write32(uint32_t addr, uint32_t val) {
     std::lock_guard<std::mutex> lock(mem_mutex_);
-
-    if (addr == Bus::UART) {
-        printf("%c", (char)(val & 0xFF));
-        fflush(stdout);
-        return;
-    }
 
     if (addr == 0x80001000 && val != 0) {
         if (val == 1U) {
