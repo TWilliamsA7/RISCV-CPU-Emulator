@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <vector>
 #include "clint/clint.hpp"
+#include "plic/plic.hpp"
 #include <mutex>
 #include <functional>
 
@@ -14,7 +15,7 @@ class CPU;
 class Bus {
     public:
 
-        Bus(Clint& clint);
+        Bus(Clint& clint, PLIC& plic);
 
         static constexpr uint32_t UART = 0x10000000;
 
@@ -55,6 +56,9 @@ class Bus {
 
         // CLINT: Core Local Interruptor
         Clint& clint_;
+
+        // PLIC: Platform-Level Interrupt Controller
+        PLIC& plic_;
 
         std::mutex mem_mutex_;
 

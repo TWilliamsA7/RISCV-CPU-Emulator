@@ -29,7 +29,8 @@ int main(int argc, char** argv) {
     char* elf_path = argv[optind];
 
     Clint clint;
-    Bus bus = Bus(clint);
+    PLIC plic;
+    Bus bus = Bus(clint, plic);
     CPU cpu(config, bus, clint);
 
     load_elf(elf_path, bus, cpu);

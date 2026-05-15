@@ -5,7 +5,7 @@
 #include "errors/errors.hpp"
 #include <iostream>
 
-Bus::Bus(Clint& clint) : clint_(clint) {
+Bus::Bus(Clint& clint, PLIC& plic) : clint_(clint), plic_(plic) {
     dram_ = std::vector<uint8_t>(Bus::DRAM_SIZE, 0);
 }
 
@@ -43,6 +43,9 @@ uint32_t Bus::read32(uint32_t addr) const {
     if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
         return dram_[offset] | (dram_[offset+1] << 8) | (dram_[offset+2] << 16) | (dram_[offset+3] << 24);
+    }
+    if (addr >= PLIC::BASE && addr < PLIC::BASE + PLIC::SIZE) {
+        return plic_.read32(addr - PLIC::BASE);
     }
 
     throw BusAccessError(std::to_string(addr) + " is outside of mapped range");
@@ -108,6 +111,8 @@ void Bus::write32(uint32_t addr, uint32_t val) {
 
     if (addr >= Clint::BASE && addr < Clint::BASE + Clint::SIZE) {
         clint_.write32(addr - Clint::BASE, val);
+    } else if (addr >= PLIC::BASE && addr < PLIC::BASE + PLIC::SIZE) {
+        plic_.write32(addr - PLIC::BASE, val);
     } else if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
         dram_[offset] = val & 0xFF;
