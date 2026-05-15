@@ -31,7 +31,7 @@ int main(int argc, char** argv) {
     Clint clint;
     PLIC plic;
     Bus bus = Bus(clint, plic);
-    CPU cpu(config, bus, clint);
+    CPU cpu(config, bus, clint, plic);
 
     load_elf(elf_path, bus, cpu);
 
