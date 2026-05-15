@@ -70,4 +70,10 @@ class UART {
 
         uint8_t read_lsr();
         uint8_t read_iir();
+
+        // Platform-specific: save/restore terminal state
+
+        void set_raw_mode();
+        void restore_terminal();
+        static bool read_char(uint8_t& ch);
 };
