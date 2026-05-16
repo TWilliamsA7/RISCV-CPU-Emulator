@@ -4,7 +4,9 @@
 #include <iostream>
 
 UART::UART(std::function<void(uint32_t)> set_pending_cb)
-    : set_pending_(set_pending_cb) {}
+    : set_pending_(set_pending_cb) {
+    start_input_thread();  
+}
 
 UART::~UART() { stop_input_thread(); }
 
