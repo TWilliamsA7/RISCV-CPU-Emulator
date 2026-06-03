@@ -8,8 +8,8 @@
 #include <string>
 #include <Optional>
 #include "isa/isa.hpp"
-#include "bus/bus.hpp"
 #include "core/state.hpp"
+#include "bus/bus.hpp"
 #include "mmu/mmu.hpp"
 
 enum class ExecutionMode {

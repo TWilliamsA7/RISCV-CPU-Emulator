@@ -1,22 +1,28 @@
 #include "cpu/cpu.hpp"
 #include "elf/elf.hpp"
+#include "errors/errors.hpp"
 #include <iostream>
+#include <string>
 #include <unistd.h>
 
 int main(int argc, char** argv) {
 
     CPUConfig config;
+    std::string uart_input;
+    std::string wfi_uart_input;
     int opt;
 
-    while ((opt = getopt(argc, argv, "bmcva")) != -1) {
+    while ((opt = getopt(argc, argv, "bmcvaU:W:")) != -1) {
         switch (opt) {
             case 'm': config.extension_m = true; break;
             case 'c': config.extension_c = true; break;
             case 'a': config.extension_a = true; break;
             case 'v': config.verbose = true; break;
             case 'b': config.mode = ExecutionMode::BARE_METAL; break;
+            case 'U': uart_input = optarg; break;
+            case 'W': wfi_uart_input = optarg; break;
             default:
-                std::cerr << "Usage: " << argv[0] << " [-m] [-c] [-b] [-a] <elf_file>" << std::endl;
+                std::cerr << "Usage: " << argv[0] << " [-m] [-c] [-b] [-a] [-U uart_input] [-W wfi_uart_input] <elf_file>" << std::endl;
                 return 1;
         }
     }
@@ -34,8 +40,16 @@ int main(int argc, char** argv) {
     CPU cpu(config, bus, clint, plic);
 
     load_elf(elf_path, bus, cpu);
+    if (!uart_input.empty())
+        bus.inject_uart_input(uart_input);
+    if (!wfi_uart_input.empty())
+        bus.defer_uart_input_until_wfi(wfi_uart_input);
 
-    cpu.run();
+    try {
+        cpu.run();
+    } catch (const ProgramExit& e) {
+        return e.code;
+    }
 
     return 0;
 }

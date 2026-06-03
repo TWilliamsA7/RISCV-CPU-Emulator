@@ -41,9 +41,9 @@ static inline uint32_t mmio_r32(uint32_t a)             { return *(volatile uint
 #define PLIC_BASE         0x0C000000
 #define PLIC_PRIO(src)    (PLIC_BASE + (src)*4)          // priority for source src
 #define PLIC_PENDING      (PLIC_BASE + 0x1000)            // pending bits word 0
-#define PLIC_ENABLE_S     (PLIC_BASE + 0x2080)            // enable, S-mode ctx (ctx 1)
-#define PLIC_THRESH_S     (PLIC_BASE + 0x201000)          // threshold, S-mode ctx
-#define PLIC_CLAIM_S      (PLIC_BASE + 0x201004)          // claim/complete, S-mode ctx
+#define PLIC_ENABLE_M     (PLIC_BASE + 0x2000)            // enable, M-mode ctx (ctx 0)
+#define PLIC_THRESH_M     (PLIC_BASE + 0x200000)          // threshold, M-mode ctx
+#define PLIC_CLAIM_M      (PLIC_BASE + 0x200004)          // claim/complete, M-mode ctx
 
 #define UART_IRQ   10
 
@@ -95,23 +95,23 @@ static void uart_put_hex(uint32_t v) {
 
 static void plic_init(void) {
     mmio_w32(PLIC_PRIO(UART_IRQ), 1);           // priority 1 for UART
-    mmio_w32(PLIC_ENABLE_S, 1u << UART_IRQ);    // enable UART in S-mode ctx
-    mmio_w32(PLIC_THRESH_S, 0);                 // threshold 0 = accept all
+    mmio_w32(PLIC_ENABLE_M, 1u << UART_IRQ);    // enable UART in M-mode ctx
+    mmio_w32(PLIC_THRESH_M, 0);                 // threshold 0 = accept all
 }
 
 static uint32_t plic_claim(void) {
-    return mmio_r32(PLIC_CLAIM_S);
+    return mmio_r32(PLIC_CLAIM_M);
 }
 
 static void plic_complete(uint32_t src) {
-    mmio_w32(PLIC_CLAIM_S, src);
+    mmio_w32(PLIC_CLAIM_M, src);
 }
 
 // ── Trap handler ─────────────────────────────────────────────────────────────
 // We stay in M-mode for simplicity in this test (no S-mode delegation).
 // mtvec points here (direct mode).
 
-void __attribute__((interrupt("machine"))) trap_handler(void) {
+void __attribute__((interrupt("machine"), aligned(4))) trap_handler(void) {
     uint32_t cause;
     CSR_READ(mcause, cause);
 

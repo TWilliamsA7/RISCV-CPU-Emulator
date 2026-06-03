@@ -11,6 +11,31 @@ Bus::Bus(Clint& clint, PLIC& plic) : clint_(clint), plic_(plic), uart_([&plic](u
 
 void Bus::register_cpu(CPU* cpu) { cpu_ptr_ = cpu; }
 
+void Bus::inject_uart_input(const std::string& input) {
+    for (unsigned char ch : input) {
+        uart_.rx_push(ch);
+    }
+}
+
+void Bus::defer_uart_input_until_wfi(const std::string& input) {
+    deferred_uart_input_ += input;
+}
+
+void Bus::release_deferred_uart_input() {
+    if (deferred_uart_input_.empty())
+        return;
+
+    std::string input;
+    input.swap(deferred_uart_input_);
+    inject_uart_input(input);
+}
+
+bool Bus::is_mmio(uint32_t addr) const {
+    return (addr >= UART::BASE && addr < UART::BASE + UART::SIZE) ||
+           (addr >= Clint::BASE && addr < Clint::BASE + Clint::SIZE) ||
+           (addr >= PLIC::BASE && addr < PLIC::BASE + PLIC::SIZE);
+}
+
 uint8_t Bus::read8(uint32_t addr) {
 
     if (addr >= UART::BASE && addr < UART::BASE + UART::SIZE) {
@@ -90,10 +115,10 @@ void Bus::write32(uint32_t addr, uint32_t val) {
     if (addr == 0x80001000 && val != 0) {
         if (val == 1U) {
             std::cout << "PASS: SUCCESSFUL WRITE TO HOST\n";
-            exit(0);
+            throw ProgramExit(0);
         } else {
             std::cout << "FAIL: ERROR CODE " << val << " WRITTEN TO HOST\n";
-            exit(1);
+            throw ProgramExit(1);
         }
     }
 

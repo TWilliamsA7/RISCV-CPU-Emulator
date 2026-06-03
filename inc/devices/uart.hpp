@@ -53,6 +53,8 @@ class UART {
         void start_input_thread();
         void stop_input_thread();
 
+        void load_test_input();
+
     private:
         uint8_t ier_ = 0;
         uint8_t lcr_ = 0;

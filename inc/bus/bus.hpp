@@ -9,6 +9,7 @@
 #include "devices/uart.hpp"
 #include <mutex>
 #include <functional>
+#include <string>
 
 class CPU;
 
@@ -45,6 +46,13 @@ class Bus {
         // Register CPU for notification
         void register_cpu(CPU* cpu);
 
+        // Queue host-provided bytes for deterministic UART tests
+        void inject_uart_input(const std::string& input);
+        void defer_uart_input_until_wfi(const std::string& input);
+        void release_deferred_uart_input();
+
+        bool is_mmio(uint32_t addr) const;
+
         // Atomic Read-Modify-Write
         uint32_t atomic_rmw_w(uint32_t addr, std::function<uint32_t(uint32_t)> operation);
 
@@ -65,6 +73,8 @@ class Bus {
         std::mutex mem_mutex_;
 
         CPU* cpu_ptr_;
+
+        std::string deferred_uart_input_;
 
         void write32_unlocked(uint32_t addr, uint32_t val);
 };

@@ -2,9 +2,11 @@
 
 #include "devices/uart.hpp"
 #include <iostream>
+#include <cstdlib>
 
 UART::UART(std::function<void(uint32_t)> set_pending_cb)
     : set_pending_(set_pending_cb) {
+    load_test_input();
     start_input_thread();  
 }
 
@@ -62,7 +64,12 @@ void UART::write8(uint32_t offset, uint8_t val) {
                 set_pending_(IRQ);
             break;
         case IER:
-            if (!(lcr_ & 0x80)) ier_ = val & 0x0F;
+            if (!(lcr_ & 0x80)) {
+                ier_ = val & 0x0F;
+                std::lock_guard<std::mutex> lock(rx_mutex_);
+                if ((ier_ & IER_RDI) && !rx_fifo_.empty())
+                    set_pending_(IRQ);
+            }
             break;
         case FCR: break; // FIFO control — accept but ignore
         case LCR: lcr_ = val; break;
@@ -80,6 +87,14 @@ void UART::rx_push(uint8_t ch) {
     // Assert PLIC interrupt if RX interrupts enabled
     if (ier_ & IER_RDI)
         set_pending_(IRQ);
+}
+
+void UART::load_test_input() {
+    if (const char* input = std::getenv("RISCV_EMU_UART_INPUT")) {
+        for (const char* p = input; *p != '\0'; ++p) {
+            rx_push(static_cast<uint8_t>(*p));
+        }
+    }
 }
 
 void UART::start_input_thread() {

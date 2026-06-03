@@ -2,7 +2,13 @@
 
 #include "plic/plic.hpp"
 
-PLIC::PLIC() {}
+PLIC::PLIC()
+    : pending_(0) {
+    priority_.fill(0);
+    enable_.fill(0);
+    threshold_.fill(0);
+    claimed_.fill(0);
+}
 
 uint32_t PLIC::read32(uint32_t offset) const {
     if (offset < 0x1000)  // Priority

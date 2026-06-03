@@ -358,7 +358,7 @@ void CPU::execSW(const DecodedInstr& i) {
 
     try {
         uint32_t pa = mmu_.translate(a, MMU::AccessType::STORE);
-        uint32_t o = bus_.read32(pa);
+        uint32_t o = bus_.is_mmio(pa) ? 0 : bus_.read32(pa);
         bus_.write32(pa, regs_[i.rs2]);
         sr.mem_write = MemWrite{ a, o, regs_[i.rs2], 4};
     } catch (const BusAccessError&) {
@@ -374,7 +374,7 @@ void CPU::execSH(const DecodedInstr& i) {
 
     try {
         uint32_t pa = mmu_.translate(a, MMU::AccessType::STORE);
-        uint32_t o = static_cast<uint32_t>(bus_.read16(pa));
+        uint32_t o = bus_.is_mmio(pa) ? 0 : static_cast<uint32_t>(bus_.read16(pa));
         bus_.write16(pa, static_cast<uint16_t>(regs_[i.rs2]));
         sr.mem_write = MemWrite{ a, o, regs_[i.rs2], 2};
     } catch (const BusAccessError&) {
@@ -389,7 +389,7 @@ void CPU::execSB(const DecodedInstr& i) {
 
     try {
         uint32_t pa = mmu_.translate(a, MMU::AccessType::STORE);
-        uint32_t o = static_cast<uint32_t>(bus_.read8(pa));
+        uint32_t o = bus_.is_mmio(pa) ? 0 : static_cast<uint32_t>(bus_.read8(pa));
         bus_.write8(pa, static_cast<uint8_t>(regs_[i.rs2]));
         sr.mem_write = MemWrite{ a, o, regs_[i.rs2], 1};
     } catch (const BusAccessError&) {  
@@ -838,6 +838,7 @@ void CPU::execWFI(const DecodedInstr& i) {
         }
     }
     state_ = CPUState::WAITING_FOR_INTERRUPT;
+    bus_.release_deferred_uart_input();
 }
 
 void CPU::execSFENCE_VMA(const DecodedInstr& i) {
