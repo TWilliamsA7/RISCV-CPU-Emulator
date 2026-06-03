@@ -9,7 +9,8 @@
 #include <iostream>
 #include <thread>
 
-CPU::CPU (CPUConfig config, Bus& bus, Clint& clint) : config_(config), bus_(bus), clint_(clint), pc_(0x80000000), mmu_(*this) {
+CPU::CPU (CPUConfig config, Bus& bus, Clint& clint, PLIC& plic) 
+    : config_(config), bus_(bus), clint_(clint), pc_(0x80000000), mmu_(*this), plic_(plic) {
     regs_.fill(0);
     csrs_[CSR::MVENDORID] = 0xF00DFACE;
     privilege_level_ = PrivilegeLevel::MACHINE;
@@ -143,11 +144,6 @@ void CPU::updateCycle() {
     csrs_[CSR::CYCLE] = csrs_[CSR::MCYCLE];
     csrs_[CSR::CYCLEH] = csrs_[CSR::MCYCLEH];
 
-    // if (clint_.mtime > 0 && clint_.mtime % 100 == 0) { // Log every 100 ticks to avoid spam
-    // printf("DEBUG: mtime=%llu, mtimecmp=%llu, MIP_MTIP=%d\n", 
-    //        clint_.mtime, clint_.mtimecmp, (csrs_[CSR::MIP] >> 7) & 1);
-    // }
-
     // MSIP -> MIP bit 3
     if (clint_.msip)
         csrs_[CSR::MIP] |= (1 << 3);
@@ -159,6 +155,21 @@ void CPU::updateCycle() {
         csrs_[CSR::MIP] |= (1 << 7);
     else
         csrs_[CSR::MIP] &= ~(1 << 7);
+
+    // MEIP -> MIP bit 11 (machine external interrupt)
+    if (plic_.m_interrupt_pending()) {
+        csrs_[CSR::MIP] |= (1 << 11);
+    } else {
+        csrs_[CSR::MIP] &= ~(1 << 11);
+    }
+
+    // SEIP -> MIP bit 9 (supervisor external interrupt)
+    if (plic_.s_interrupt_pending()) {
+        csrs_[CSR::MIP] |= (1 << 9);
+    } else {
+        csrs_[CSR::MIP] &= ~(1 << 9);
+    }
+ 
 }
 
 void CPU::clearStep() {

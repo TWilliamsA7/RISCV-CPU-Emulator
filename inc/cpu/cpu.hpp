@@ -8,8 +8,8 @@
 #include <string>
 #include <Optional>
 #include "isa/isa.hpp"
-#include "bus/bus.hpp"
 #include "core/state.hpp"
+#include "bus/bus.hpp"
 #include "mmu/mmu.hpp"
 
 enum class ExecutionMode {
@@ -27,7 +27,7 @@ struct CPUConfig {
 
 class CPU {
     public:
-        CPU(CPUConfig config, Bus& bus, Clint& clint);
+        CPU(CPUConfig config, Bus& bus, Clint& clint, PLIC& plic);
 
         void run();
         StepResult step();
@@ -80,6 +80,7 @@ class CPU {
 
         Bus& bus_;
         Clint& clint_;
+        PLIC& plic_;
         MMU mmu_;
         CPUConfig config_;
         uint32_t ADDRESS_MISALIGNMENT_MASK;

@@ -315,6 +315,22 @@ uint32_t encodeBType(int32_t imm, uint32_t rs1, uint32_t rs2, uint32_t f3) {
     return imm_12 | imm_10_5 | (rs2 << 20) | (rs1 << 15) | (f3 << 12) | imm_4_1 | imm_11 | 0x63;
 }
 
+static uint32_t encodeIType(int32_t imm, uint32_t rs1, uint32_t funct3, uint32_t rd, uint32_t opcode) {
+    return ((static_cast<uint32_t>(imm) & 0xFFF) << 20) |
+           (rs1 << 15) | (funct3 << 12) | (rd << 7) | opcode;
+}
+
+static uint32_t encodeSType(int32_t imm, uint32_t rs1, uint32_t rs2, uint32_t funct3) {
+    uint32_t u = static_cast<uint32_t>(imm) & 0xFFF;
+    return ((u >> 5) << 25) | (rs2 << 20) | (rs1 << 15) |
+           (funct3 << 12) | ((u & 0x1F) << 7) | 0x23;
+}
+
+static uint32_t encodeRType(uint32_t funct7, uint32_t rs2, uint32_t rs1, uint32_t funct3, uint32_t rd) {
+    return (funct7 << 25) | (rs2 << 20) | (rs1 << 15) |
+           (funct3 << 12) | (rd << 7) | 0x33;
+}
+
 // Helper to extract the 6-bit signed immediate used in Q1 and Q2
 int32_t get_imm6(uint16_t i) {
     int32_t imm = ((i >> 12) & 0x1) << 5 | ((i >> 2) & 0x1F);
@@ -338,17 +354,24 @@ uint32_t CPU::decompress(uint16_t i) {
         case 0: // Quadrant 0: Memory/SP-Relative
             switch (funct3) {
                 case 0: { // C.ADDI4SPN -> addi rd', x2, nzuimm
-                    uint32_t imm = ((i >> 7) & 0x30) | ((i >> 1) & 0x3C0) | ((i >> 4) & 0x4) | ((i >> 2) & 0x8);
+                    uint32_t imm = (((i >> 7) & 0xF) << 6) |
+                                   (((i >> 11) & 0x3) << 4) |
+                                   (((i >> 5) & 0x1) << 3) |
+                                   (((i >> 6) & 0x1) << 2);
                     if (imm == 0) return 0; // Illegal
-                    return (imm << 20) | (2 << 15) | (0 << 12) | (rd_p << 7) | 0x13;
+                    return encodeIType(imm, 2, 0, rd_p, 0x13);
                 }
                 case 2: { // C.LW -> lw rd', offset(rs1')
-                    uint32_t imm = ((i >> 7) & 0x38) | ((i >> 4) & 0x4) | ((i << 1) & 0x40);
-                    return (imm << 20) | (rs1_p << 15) | (2 << 12) | (rd_p << 7) | 0x03;
+                    uint32_t imm = (((i >> 10) & 0x7) << 3) |
+                                   (((i >> 6) & 0x1) << 2) |
+                                   (((i >> 5) & 0x1) << 6);
+                    return encodeIType(imm, rs1_p, 2, rd_p, 0x03);
                 }
                 case 6: { // C.SW -> sw rs2', offset(rs1')
-                    uint32_t imm = ((i >> 7) & 0x38) | ((i >> 4) & 0x4) | ((i << 1) & 0x40);
-                    return ((imm >> 5) << 25) | (rs2_p << 20) | (rs1_p << 15) | (2 << 12) | ((imm & 0x1F) << 7) | 0x23;
+                    uint32_t imm = (((i >> 10) & 0x7) << 3) |
+                                   (((i >> 6) & 0x1) << 2) |
+                                   (((i >> 5) & 0x1) << 6);
+                    return encodeSType(imm, rs1_p, rs2_p, 2);
                 }
                 default: return 0; // Reserved/Illegal
             }
@@ -371,53 +394,61 @@ uint32_t CPU::decompress(uint16_t i) {
                     if (rd_rs1 == 0 && imm6 == 0) return 0x00000013; 
 
                     // Construct the 32-bit ADDI: [imm11:0][rs1][000][rd][0010011]
-                    return (uint32_t(imm6) << 20) | (rd_rs1 << 15) | (0 << 12) | (rd_rs1 << 7) | 0x13;
+                    return encodeIType(imm6, rd_rs1, 0, rd_rs1, 0x13);
                 }
                 case 1: { // C.JAL (RV32 only) -> jal x1, offset
-                    int32_t imm = (int32_t(i << 16) >> 31) << 11 | ((i & 0x400) >> 2) | ((i >> 7) & 0x18) | 
-                                  ((i >> 1) & 0x40) | ((i >> 7) & 0x4) | ((i >> 2) & 0xE) | ((i << 3) & 0x200) | ((i >> 1) & 0x300);
-                    return (uint32_t(imm) << 20) | (1 << 7) | 0x6F; 
+                    int32_t imm = ((i >> 12) & 0x1) << 11 |
+                                  ((i >> 8)  & 0x1) << 10 |
+                                  ((i >> 9)  & 0x3) << 8  |
+                                  ((i >> 6)  & 0x1) << 7  |
+                                  ((i >> 7)  & 0x1) << 6  |
+                                  ((i >> 2)  & 0x1) << 5  |
+                                  ((i >> 11) & 0x1) << 4  |
+                                  ((i >> 3)  & 0x7) << 1;
+                    if (imm & 0x800) imm |= 0xFFFFF000;
+                    return encodeJType(imm, 1);
                 }
                 case 2: { // C.LI -> addi rd, x0, imm
                     int32_t imm = get_imm6(i);
                     if (((i >> 7) & 0x1F) == 0) return 0;
-                    return (uint32_t(imm) << 20) | (0 << 15) | (0 << 12) | (rd_rs1_high << 7) | 0x13;
+                    return encodeIType(imm, 0, 0, rd_rs1_high, 0x13);
                 }
                 case 3: { // C.LUI or C.ADDI16SP
                     if (rd_rs1_high == 2) { // C.ADDI16SP -> addi x2, x2, imm
-                        int32_t imm = ((i >> 12) & 0x1) ? 0xFFFFFE00 : 0; 
-                        imm |= ((i >> 3) & 0x3) << 7;  
-                        imm |= ((i >> 5) & 0x1) << 6;  
-                        imm |= ((i >> 2) & 0x1) << 5;  
-                        imm |= ((i >> 6) & 0x1) << 4;  
-                        
-                        // In the 32-bit ADDI, this goes into the I-type imm field
-                        return (uint32_t(imm) << 20) | (2 << 15) | (0 << 12) | (2 << 7) | 0x13;
+                        int32_t imm = ((i >> 12) & 0x1) << 9 |
+                                      ((i >> 3)  & 0x3) << 7 |
+                                      ((i >> 5)  & 0x1) << 6 |
+                                      ((i >> 2)  & 0x1) << 5 |
+                                      ((i >> 6)  & 0x1) << 4;
+                        if (imm == 0) return 0;
+                        if (imm & 0x200) imm |= 0xFFFFFC00;
+                        return encodeIType(imm, 2, 0, 2, 0x13);
                     }
 
                     // Standard C.LUI logic for rd != 2
                     int32_t imm = get_imm6(i);
                     if (((i >> 7) & 0x1F) == 0 || imm == 0) return 0; // Reserved
                     // LUI immediate is the upper 20 bits. 
-                    return (uint32_t(imm) << 12) | (((i >> 7) & 0x1F) << 7) | 0x37;
+                    return ((static_cast<uint32_t>(imm) & 0xFFFFF) << 12) |
+                           (((i >> 7) & 0x1F) << 7) | 0x37;
                 }
 
                 case 4: { // Logic/Shifts
                     uint32_t sub = (i >> 10) & 0x3;
                     uint32_t shamt = ((i >> 12) & 0x1) << 5 | ((i >> 2) & 0x1F);
-                    if (sub == 0) return (shamt << 20) | (rs1_p << 15) | (5 << 12) | (rs1_p << 7) | 0x13; // SRLI
-                    if (sub == 1) return (0x400 << 20) | (shamt << 20) | (rs1_p << 15) | (5 << 12) | (rs1_p << 7) | 0x13; // SRAI
+                    if (sub == 0) return encodeIType(shamt, rs1_p, 5, rs1_p, 0x13); // SRLI
+                    if (sub == 1) return encodeIType(0x400 | shamt, rs1_p, 5, rs1_p, 0x13); // SRAI
                     if (sub == 2) { // ANDI
                        int32_t imm = get_imm6(i);
                         uint32_t rd_p = 8 + ((i >> 7) & 0x7);
-                        return (uint32_t(imm) << 20) | (rd_p << 15) | (7 << 12) | (rd_p << 7) | 0x13;     
+                        return encodeIType(imm, rd_p, 7, rd_p, 0x13);     
                     }
                     if (sub == 3) {
                         uint32_t f2 = (i >> 5) & 0x3;
-                        if (f2 == 0) return 0x40000033 | (rs1_p << 15) | (rs1_p << 7) | (rs2_p << 20); // SUB
-                        if (f2 == 1) return 0x00004033 | (rs1_p << 15) | (rs1_p << 7) | (rs2_p << 20); // XOR
-                        if (f2 == 2) return 0x00006033 | (rs1_p << 15) | (rs1_p << 7) | (rs2_p << 20); // OR
-                        if (f2 == 3) return 0x00007033 | (rs1_p << 15) | (rs1_p << 7) | (rs2_p << 20); // AND
+                        if (f2 == 0) return encodeRType(0x20, rs2_p, rs1_p, 0, rs1_p); // SUB
+                        if (f2 == 1) return encodeRType(0x00, rs2_p, rs1_p, 4, rs1_p); // XOR
+                        if (f2 == 2) return encodeRType(0x00, rs2_p, rs1_p, 6, rs1_p); // OR
+                        if (f2 == 3) return encodeRType(0x00, rs2_p, rs1_p, 7, rs1_p); // AND
                     }
                     return 0;
                 }
@@ -460,24 +491,28 @@ uint32_t CPU::decompress(uint16_t i) {
             switch (funct3) {
                 case 0: { // C.SLLI -> slli rd, rd, shamt
                     uint32_t shamt = ((i >> 12) & 0x1) << 5 | ((i >> 2) & 0x1F);
-                    return (shamt << 20) | (rd_rs1_high << 15) | (1 << 12) | (rd_rs1_high << 7) | 0x13;
+                    return encodeIType(shamt, rd_rs1_high, 1, rd_rs1_high, 0x13);
                 }
                 case 2: { // C.LWSP -> lw rd, offset(x2)
-                    uint32_t imm = ((i >> 2) & 0x1C) | ((i >> 7) & 0x20) | ((i << 4) & 0xC0);
-                    return (imm << 20) | (2 << 15) | (2 << 12) | (rd_rs1_high << 7) | 0x03;
+                    uint32_t imm = (((i >> 4) & 0x7) << 2) |
+                                   (((i >> 12) & 0x1) << 5) |
+                                   (((i >> 2) & 0x3) << 6);
+                    if (rd_rs1_high == 0) return 0;
+                    return encodeIType(imm, 2, 2, rd_rs1_high, 0x03);
                 }
                 case 4: { // C.JR, C.MV, C.EBREAK, C.JALR, C.ADD
                     bool bit12 = (i >> 12) & 0x1;
-                    if (!bit12 && rs2_low == 0) return (rd_rs1_high << 15) | (0 << 12) | (0 << 7) | 0x67; // C.JR -> jalr x0, rs1, 0
-                    if (!bit12 && rs2_low != 0) return (0 << 15) | (rs2_low << 20) | (rd_rs1_high << 7) | 0x33; // C.MV -> add rd, x0, rs2
+                    if (!bit12 && rs2_low == 0) return encodeIType(0, rd_rs1_high, 0, 0, 0x67); // C.JR -> jalr x0, rs1, 0
+                    if (!bit12 && rs2_low != 0) return encodeRType(0, rs2_low, 0, 0, rd_rs1_high); // C.MV -> add rd, x0, rs2
                     if (bit12 && rd_rs1_high == 0 && rs2_low == 0) return 0x00100073; // C.EBREAK
-                    if (bit12 && rd_rs1_high != 0 && rs2_low == 0) return (rd_rs1_high << 15) | (0 << 12) | (1 << 7) | 0x67; // C.JALR -> jalr x1, rs1, 0
-                    if (bit12 && rd_rs1_high != 0 && rs2_low != 0) return (rd_rs1_high << 15) | (rs2_low << 20) | (rd_rs1_high << 7) | 0x33; // C.ADD -> add rd, rd, rs2
+                    if (bit12 && rd_rs1_high != 0 && rs2_low == 0) return encodeIType(0, rd_rs1_high, 0, 1, 0x67); // C.JALR -> jalr x1, rs1, 0
+                    if (bit12 && rd_rs1_high != 0 && rs2_low != 0) return encodeRType(0, rs2_low, rd_rs1_high, 0, rd_rs1_high); // C.ADD -> add rd, rd, rs2
                     return 0;
                 }
                 case 6: { // C.SWSP -> sw rs2, offset(x2)
-                    uint32_t imm = ((i >> 7) & 0x3C) | ((i >> 1) & 0xC0);
-                    return ((imm >> 5) << 25) | (rs2_low << 20) | (2 << 15) | (2 << 12) | ((imm & 0x1F) << 7) | 0x23;
+                    uint32_t imm = (((i >> 9) & 0xF) << 2) |
+                                   (((i >> 7) & 0x3) << 6);
+                    return encodeSType(imm, 2, rs2_low, 2);
                 }
                 default: return 0;
             }

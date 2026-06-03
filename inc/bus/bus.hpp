@@ -5,8 +5,11 @@
 #include <cstdint>
 #include <vector>
 #include "clint/clint.hpp"
+#include "plic/plic.hpp"
+#include "devices/uart.hpp"
 #include <mutex>
 #include <functional>
+#include <string>
 
 class CPU;
 
@@ -14,9 +17,7 @@ class CPU;
 class Bus {
     public:
 
-        Bus(Clint& clint);
-
-        static constexpr uint32_t UART = 0x10000000;
+        Bus(Clint& clint, PLIC& plic);
 
         // Starting point of DRAM addresses
         static constexpr uint32_t DRAM_BASE = 0x80000000;
@@ -25,13 +26,13 @@ class Bus {
         static constexpr uint32_t DRAM_SIZE = 1024 * 1024 * 128;
 
         // Read 32 bit value located at addr 
-        uint32_t read32(uint32_t addr) const;
+        uint32_t read32(uint32_t addr);
 
         // Read 16 bit value located at addr 
-        uint16_t read16(uint32_t addr) const;
+        uint16_t read16(uint32_t addr);
 
         // Read 8 bit value located at addr
-        uint8_t read8(uint32_t addr) const;
+        uint8_t read8(uint32_t addr);
 
         // Write 32 bit value to addr
         void write32(uint32_t addr, uint32_t val);
@@ -45,6 +46,13 @@ class Bus {
         // Register CPU for notification
         void register_cpu(CPU* cpu);
 
+        // Queue host-provided bytes for deterministic UART tests
+        void inject_uart_input(const std::string& input);
+        void defer_uart_input_until_wfi(const std::string& input);
+        void release_deferred_uart_input();
+
+        bool is_mmio(uint32_t addr) const;
+
         // Atomic Read-Modify-Write
         uint32_t atomic_rmw_w(uint32_t addr, std::function<uint32_t(uint32_t)> operation);
 
@@ -56,9 +64,17 @@ class Bus {
         // CLINT: Core Local Interruptor
         Clint& clint_;
 
+        // PLIC: Platform-Level Interrupt Controller
+        PLIC& plic_;
+
+        // UART: Universal Asynchronous Reciever/Transmitter
+        UART uart_;
+
         std::mutex mem_mutex_;
 
         CPU* cpu_ptr_;
+
+        std::string deferred_uart_input_;
 
         void write32_unlocked(uint32_t addr, uint32_t val);
 };

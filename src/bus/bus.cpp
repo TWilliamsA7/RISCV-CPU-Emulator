@@ -5,15 +5,42 @@
 #include "errors/errors.hpp"
 #include <iostream>
 
-Bus::Bus(Clint& clint) : clint_(clint) {
+Bus::Bus(Clint& clint, PLIC& plic) : clint_(clint), plic_(plic), uart_([&plic](uint32_t irq){ plic.set_pending(irq);}) {
     dram_ = std::vector<uint8_t>(Bus::DRAM_SIZE, 0);
 }
 
 void Bus::register_cpu(CPU* cpu) { cpu_ptr_ = cpu; }
 
-uint8_t Bus::read8(uint32_t addr) const {
+void Bus::inject_uart_input(const std::string& input) {
+    for (unsigned char ch : input) {
+        uart_.rx_push(ch);
+    }
+}
 
-    if (addr == Bus::UART) return 0;
+void Bus::defer_uart_input_until_wfi(const std::string& input) {
+    deferred_uart_input_ += input;
+}
+
+void Bus::release_deferred_uart_input() {
+    if (deferred_uart_input_.empty())
+        return;
+
+    std::string input;
+    input.swap(deferred_uart_input_);
+    inject_uart_input(input);
+}
+
+bool Bus::is_mmio(uint32_t addr) const {
+    return (addr >= UART::BASE && addr < UART::BASE + UART::SIZE) ||
+           (addr >= Clint::BASE && addr < Clint::BASE + Clint::SIZE) ||
+           (addr >= PLIC::BASE && addr < PLIC::BASE + PLIC::SIZE);
+}
+
+uint8_t Bus::read8(uint32_t addr) {
+
+    if (addr >= UART::BASE && addr < UART::BASE + UART::SIZE) {
+        return uart_.read8(addr - UART::BASE);
+    }
 
     if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
@@ -23,9 +50,7 @@ uint8_t Bus::read8(uint32_t addr) const {
     throw BusAccessError(std::to_string(addr) + " is outside of mapped range");
 }
 
-uint16_t Bus::read16(uint32_t addr) const {
-    if (addr == Bus::UART) return 0;
-
+uint16_t Bus::read16(uint32_t addr) {
     if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
         return dram_[offset] | (dram_[offset+1] << 8);
@@ -34,15 +59,19 @@ uint16_t Bus::read16(uint32_t addr) const {
     throw BusAccessError(std::to_string(addr) + " is outside of mapped range");
 }
 
-uint32_t Bus::read32(uint32_t addr) const {
+uint32_t Bus::read32(uint32_t addr) {
 
-    if (addr == Bus::UART) return 0;
+    if (addr >= UART::BASE && addr < UART::BASE + UART::SIZE)
+        return uart_.read8(addr - UART::BASE);
 
     if (addr >= Clint::BASE && addr < Clint::BASE + Clint::SIZE)
         return clint_.read32(addr - Clint::BASE);
     if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
         return dram_[offset] | (dram_[offset+1] << 8) | (dram_[offset+2] << 16) | (dram_[offset+3] << 24);
+    }
+    if (addr >= PLIC::BASE && addr < PLIC::BASE + PLIC::SIZE) {
+        return plic_.read32(addr - PLIC::BASE);
     }
 
     throw BusAccessError(std::to_string(addr) + " is outside of mapped range");
@@ -51,9 +80,8 @@ uint32_t Bus::read32(uint32_t addr) const {
 void Bus::write8(uint32_t addr, uint8_t val) {
     std::lock_guard<std::mutex> lock(mem_mutex_);
 
-    if (addr == Bus::UART) {
-        printf("%c", (char)(val & 0xFF));
-        fflush(stdout);
+    if (addr >= UART::BASE && addr < UART::BASE + UART::SIZE) {
+        uart_.write8(addr - UART::BASE, val);
         return;
     }
 
@@ -70,12 +98,6 @@ void Bus::write8(uint32_t addr, uint8_t val) {
 void Bus::write16(uint32_t addr, uint16_t val) {
     std::lock_guard<std::mutex> lock(mem_mutex_);
 
-    if (addr == Bus::UART) {
-        printf("%c", (char)(val & 0xFF));
-        fflush(stdout);
-        return;
-    }
-
     if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
         dram_[offset] = val & 0xFF;
@@ -90,24 +112,20 @@ void Bus::write16(uint32_t addr, uint16_t val) {
 void Bus::write32(uint32_t addr, uint32_t val) {
     std::lock_guard<std::mutex> lock(mem_mutex_);
 
-    if (addr == Bus::UART) {
-        printf("%c", (char)(val & 0xFF));
-        fflush(stdout);
-        return;
-    }
-
     if (addr == 0x80001000 && val != 0) {
         if (val == 1U) {
             std::cout << "PASS: SUCCESSFUL WRITE TO HOST\n";
-            exit(0);
+            throw ProgramExit(0);
         } else {
             std::cout << "FAIL: ERROR CODE " << val << " WRITTEN TO HOST\n";
-            exit(1);
+            throw ProgramExit(1);
         }
     }
 
     if (addr >= Clint::BASE && addr < Clint::BASE + Clint::SIZE) {
         clint_.write32(addr - Clint::BASE, val);
+    } else if (addr >= PLIC::BASE && addr < PLIC::BASE + PLIC::SIZE) {
+        plic_.write32(addr - PLIC::BASE, val);
     } else if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
         dram_[offset] = val & 0xFF;
