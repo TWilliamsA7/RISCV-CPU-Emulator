@@ -56,6 +56,8 @@ class Bus {
         // Atomic Read-Modify-Write
         uint32_t atomic_rmw_w(uint32_t addr, std::function<uint32_t(uint32_t)> operation);
 
+        void load_binary(std::vector<uint8_t>::const_iterator bin_start, std::vector<uint8_t>::const_iterator bin_end, uint32_t addr);
+
     private:
 
         // Dynamic Random Access Memory

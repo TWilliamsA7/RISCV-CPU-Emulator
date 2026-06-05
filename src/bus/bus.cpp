@@ -162,3 +162,10 @@ void Bus::write32_unlocked(uint32_t addr, uint32_t val) {
         dram_[offset + 3] = (val >> 24) & 0xFF;
     }
 }
+
+
+void Bus::load_binary(std::vector<uint8_t>::const_iterator bin_start, std::vector<uint8_t>::const_iterator bin_end, uint32_t addr) {
+    if (addr >= DRAM_BASE && addr <= (DRAM_BASE + DRAM_SIZE)) {
+        std::copy(bin_start, bin_end, dram_.begin() + addr);
+    }
+}
