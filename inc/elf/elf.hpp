@@ -36,5 +36,5 @@ struct Elf32_Phdr {
     uint32_t p_align;
 };
 
-void load_elf(const std::string& filename, Bus& bus, CPU& cpu);
+void load_elf(const std::string& filename, Bus& bus, CPU* cpu);
 void load_binary(const std::string& filename, Bus& bus, uint32_t addr);

@@ -43,11 +43,14 @@ int main(int argc, char** argv) {
     CPU cpu(config, bus, clint, plic);
 
     if (use_sbi) {
-        std::string bin_path = argv[optind + 1];
-        load_binary(bin_path, bus, 0x80000000);
-    }
+        load_binary(argv[optind + 1], bus, 0x80000000);
+        load_elf(elf_path, bus, nullptr);
+        cpu.setPC(0x80000000);
+    } else {
+        load_elf(elf_path, bus, &cpu);
+    } 
 
-    load_elf(elf_path, bus, cpu);
+
     if (!uart_input.empty())
         bus.inject_uart_input(uart_input);
     if (!wfi_uart_input.empty())
