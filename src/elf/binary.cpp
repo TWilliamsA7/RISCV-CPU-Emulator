@@ -1,5 +1,6 @@
 #include "elf/elf.hpp"
 
+#include <iostream>
 #include <fstream>
 #include <filesystem>
 #include <stdexcept>
@@ -16,7 +17,7 @@ void load_binary(const std::string& filename, Bus& bus, uint32_t addr) {
     std::vector<std::uint8_t> buffer(fileSize);
     inputFile.read(reinterpret_cast<char*>(buffer.data()), fileSize);
 
-    // 5. Close the file.
+    // Close the file.
     inputFile.close();
 
     bus.load_binary(buffer.begin(), buffer.end(), addr);

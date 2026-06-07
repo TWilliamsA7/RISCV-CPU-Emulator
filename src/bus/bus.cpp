@@ -166,7 +166,7 @@ void Bus::write32_unlocked(uint32_t addr, uint32_t val) {
 
 void Bus::load_binary(std::vector<uint8_t>::const_iterator bin_start, std::vector<uint8_t>::const_iterator bin_end, uint32_t addr) {
     if (addr >= DRAM_BASE && addr <= (DRAM_BASE + DRAM_SIZE)) {
-        std::copy(bin_start, bin_end, dram_.begin() + addr);
+        std::copy(bin_start, bin_end, (dram_.begin() + addr) - DRAM_BASE);
     } else {
         throw new std::runtime_error("Cannot load binary outside of DRAM!");
     }
