@@ -27,48 +27,73 @@ struct CPUConfig {
 
 class CPU {
     public:
+        // Constructor with configured devices
         CPU(CPUConfig config, Bus& bus, Clint& clint, PLIC& plic);
 
+        // Execute loaded instructions
         void run();
+
+        // Single step execution
         StepResult step();
         
+        // Set Program Counter
         void setPC(uint32_t pc);
+
+        // Get Program Counter
         uint32_t pc() const;
+
+        // Get Register idx
         uint32_t reg(size_t idx) const;
 
-
+        // Returns True if CPU is halted
         bool isHalted() const;
+
 
         // === Trace Functions === //
 
+        // Prints a summary of the last instruction executed
         void printTrace() const;
+
+        // Prints a dump of all current register values
         void dumpRegisters() const;
 
-        // Reseveration
 
+        // === Reseveration === //
+
+        // Remove an existing reservation on the address addr
         void invalidateReservation(uint32_t addr);
 
         friend class MMU;
 
     private:
+        // Program Counter
         uint32_t pc_;
+        // Next Program Counter
         std::optional<uint32_t> next_pc_;
+
+        // Registers
         std::array<uint32_t, 32> regs_;
+        // Control Status Registers
         std::unordered_map<uint16_t, uint32_t> csrs_;
 
         // Reservation
 
+        // True if a valid reservation exists
         bool reservation_valid_;
+        // Address of the current reservation if it exists
         uint32_t reservation_addr_;
 
+        // Defines read, write, execute permissions
         enum PrivilegeLevel {
             USER = 0,
             SUPERVISOR = 1,
             MACHINE = 3,
         };
 
+        // Current Execution Priviledge Level
         PrivilegeLevel privilege_level_;
 
+        // CPU States
         enum CPUState {
             IDLE,
             WAITING_FOR_INTERRUPT,
@@ -76,49 +101,76 @@ class CPU {
             HALTED,
         };
 
+        // Current CPU State
         CPUState state_;
 
+        // Bus peripheral
         Bus& bus_;
+
+        // CLINT peripheral
         Clint& clint_;
+
+        // PLIC peripheral
         PLIC& plic_;
+
+        // MMU peripheral
         MMU mmu_;
+
+        // Configuration for CPU
         CPUConfig config_;
+
+        // Mask used to check instruction alignment
         uint32_t ADDRESS_MISALIGNMENT_MASK;
 
+        // Output state of cpu after a step
         StepResult sr;
+
+        // Clear the previous step
         void clearStep();
 
-
+        // Update CLINT and timer variables
+        void updateCycle();
 
         // === Write Operations === //
 
+        // Write value to rd
         void writeReg(uint8_t rd, uint32_t value);
+
+        // Write val to CSR addr
         bool writeCSR(uint16_t addr, uint32_t val);
+
+        // Read val of CSR addr if it exists
         std::optional<uint32_t> readCSR(uint16_t addr);
 
-        void updateCycle();
 
         // === Trap == //
 
+        // True if a trap occurred on the current step
         bool trap_occurred_ = false;
+
+        // Check if there is a current pending interrupt and fire accordingly
         void checkInterrupts();
 
-        bool sModeInterruptsEnabled();
-        bool mModeInterruptsEnabled();
-
+        // Execute trap sequence depending on the privilege and interrupts
         void trap(uint32_t cause, uint32_t tval, bool is_interrupt, PrivilegeLevel target_level = PrivilegeLevel::MACHINE);
     
         
         // === Execute and Decode === //
 
+        // Decode a 32 bit instruction
         static DecodedInstr decode(uint32_t instr);
+
+        // Decompress a 16 bit instruction into a 32 bit instruction
         static uint32_t decompress(uint16_t i);
 
+        // Execute a decoded instruction
         void execute(const DecodedInstr& i);
         
         // === Execution Dispath === //
         
         using ExecFn = void (CPU::*)(const DecodedInstr&);
+
+        // Instruction Execution Dispath Array
         static const std::array<ExecFn, static_cast<size_t>(InstrKind::COUNT)> dispatch_;
 
         // === Execution Helper Functions === //
@@ -194,85 +246,129 @@ class CPU {
         void execAMOMINU_W(const DecodedInstr& i);
         void execINVALID(const DecodedInstr& i);
 
-        // === Miscellaneous Helper functions === //
-        std::string hex32(uint32_t v) const;
-
+        // Control Status Registers
         enum CSR {
-            MISA = 0x301,
-            MTVEC = 0x305,
-            MSTATUS = 0x300,
-            MSTATUSH = 0x310,
-            MIDELEG = 0x303,
-            MEDELEG = 0x302,
-            MCAUSE = 0x342,
-            MEPC = 0x341,
-            MTVAL = 0x343,
-            MCYCLE = 0xB00,
-            MCYCLEH = 0xB80,
-            CYCLE = 0xC00,
-            CYCLEH = 0xC80,
-            MINSTRET = 0xB02,
-            MINSTRETH = 0xB82,
-            MVENDORID = 0xF11,
-            MIP = 0x344,
-            MIE = 0x304,
-            SSTATUS = 0x100,
-            SIE = 0x104,
-            STVEC = 0x105,
-            SSCRATCH = 0x140,
-            SEPC = 0x141,
-            SCAUSE = 0x142,
-            STVAL = 0x143,
-            SIP = 0x144,
-            SATP = 0x180,
-            MENVCFG  = 0x30A,  // Machine environment config
-            MENVCFGH = 0x31A,  // High word (RV32)
-            SENVCFG  = 0x10A,  // Supervisor environment config
-            MSTATEEN0 = 0x30C, // Machine state enable 0
-            MSTATEEN1 = 0x30D,
-            MSTATEEN2 = 0x30E,
-            MSTATEEN3 = 0x30F,
-            SSTATEEN0 = 0x10C, // Supervisor state enable 0
-            MCOUNTEREN = 0x306,
-            SCOUNTEREN = 0x106,
+            // ============================================================
+            // Supervisor Trap Setup
+            // ============================================================
+            SSTATUS     = 0x100,
+            SIE         = 0x104,
+            STVEC       = 0x105,
+            SCOUNTEREN  = 0x106,
+
+            SENVCFG     = 0x10A,
+            SSTATEEN0   = 0x10C,
+
+            // ============================================================
+            // Supervisor Trap Handling
+            // ============================================================
+            SSCRATCH    = 0x140,
+            SEPC        = 0x141,
+            SCAUSE      = 0x142,
+            STVAL       = 0x143,
+            SIP         = 0x144,
+
+            // ============================================================
+            // Supervisor Address Translation
+            // ============================================================
+            SATP        = 0x180,
+
+            // ============================================================
+            // Machine Information Registers (Read-Only)
+            // ============================================================
+            MVENDORID   = 0xF11,
+            MARCHID     = 0xF12,
+            MIMPID      = 0xF13,
+            MHARTID     = 0xF14,
+
+            // ============================================================
+            // Machine Trap Setup
+            // ============================================================
+            MSTATUS     = 0x300,
+            MISA        = 0x301,
+            MEDELEG     = 0x302,
+            MIDELEG     = 0x303,
+            MIE         = 0x304,
+            MTVEC       = 0x305,
+            MCOUNTEREN  = 0x306,
+
+            MENVCFG     = 0x30A,
+            MSTATEEN0   = 0x30C,
+            MSTATEEN1   = 0x30D,
+            MSTATEEN2   = 0x30E,
+            MSTATEEN3   = 0x30F,
+
+            MSTATUSH    = 0x310,  
+            MENVCFGH    = 0x31A,   
+
             MCOUNTINHIBIT = 0x320,
-            MSCRATCH = 0x340,
-            MHARTID  = 0xF14,
-            MARCHID = 0xF12, // Read-only
-            MIMPID = 0xF13, // Read only
 
-            // PMP
-            PMPCFG0 = 0x3A0,
-            PMPCFG1 = 0x3A1,
-            PMPCFG2 = 0x3A2,
-            PMPCFG3 = 0x3A3,
+            // ============================================================
+            // Machine Trap Handling
+            // ============================================================
+            MSCRATCH    = 0x340,
+            MEPC        = 0x341,
+            MCAUSE      = 0x342,
+            MTVAL       = 0x343,
+            MIP         = 0x344,
 
-            PMPADDR0 = 0x3B0,
-            PMPADDR1 = 0x3B1,
-            PMPADDR2 = 0x3B2,
-            PMPADDR3 = 0x3B3,
-            PMPADDR4 = 0x3B4,
-            PMPADDR5 = 0x3B5,
-            PMPADDR6 = 0x3B6,
-            PMPADDR7 = 0x3B7,
-            PMPADDR8 = 0x3B8,
-            PMPADDR9 = 0x3B9,
-            PMPADDR10 = 0x3BA,
-            PMPADDR11 = 0x3BB,
-            PMPADDR12 = 0x3BC,
-            PMPADDR13 = 0x3BD,
-            PMPADDR14 = 0x3BE,
-            PMPADDR15 = 0x3BF,
+            // ============================================================
+            // Physical Memory Protection (PMP)
+            // ============================================================
+            PMPCFG0     = 0x3A0,
+            PMPCFG1     = 0x3A1,
+            PMPCFG2     = 0x3A2,
+            PMPCFG3     = 0x3A3,
 
-            TIME = 0xC01,
-            TIMEH = 0xC81,
+            PMPADDR0    = 0x3B0,
+            PMPADDR1    = 0x3B1,
+            PMPADDR2    = 0x3B2,
+            PMPADDR3    = 0x3B3,
+            PMPADDR4    = 0x3B4,
+            PMPADDR5    = 0x3B5,
+            PMPADDR6    = 0x3B6,
+            PMPADDR7    = 0x3B7,
+            PMPADDR8    = 0x3B8,
+            PMPADDR9    = 0x3B9,
+            PMPADDR10   = 0x3BA,
+            PMPADDR11   = 0x3BB,
+            PMPADDR12   = 0x3BC,
+            PMPADDR13   = 0x3BD,
+            PMPADDR14   = 0x3BE,
+            PMPADDR15   = 0x3BF,
 
+            // ============================================================
+            // Machine Counters
+            // ============================================================
+            MCYCLE      = 0xB00,
+            MINSTRET    = 0xB02,
+
+            MCYCLEH     = 0xB80,   
+            MINSTRETH   = 0xB82,   
+
+            // ============================================================
+            // User Counter / Timer View
+            // (Visible only if enabled through counteren CSRs)
+            // ============================================================
+            CYCLE       = 0xC00,
+            TIME        = 0xC01,
+
+            CYCLEH      = 0xC80,   
+            TIMEH       = 0xC81,   
         };
 
         // === Trace === //
+
+        // Write a 32 bit integer in as hex string
+        std::string hex32(uint32_t v) const;
+
+        // Disassemble a decoded instruction to string format
         std::string disasm(const DecodedInstr& di) const;
+
+        // Convert from CSR address to name if it is mapped
         std::string csrName(uint16_t csr) const;
 
+        // Exception Causes
         enum ExceptionCause {
             MISALIGNED_INSTRUCTION = 0,
             INSTRUCTION_ACCESS_FAULT = 1,

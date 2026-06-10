@@ -3,6 +3,8 @@ add_library(cpu
     execute.cpp
     decode.cpp
     trace.cpp
+    csr.cpp
+    trap.cpp
 )
 
 target_include_directories(cpu PUBLIC
