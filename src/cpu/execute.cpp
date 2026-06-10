@@ -758,6 +758,10 @@ void CPU::execREMU(const DecodedInstr& i) {
 
 
 void CPU::execMRET(const DecodedInstr& i) {
+
+    fprintf(stderr, "MRET at PC=0x%08x mepc=0x%08x mstatus=0x%08x\n",
+            pc_, csrs_[CSR::MEPC], csrs_[CSR::MSTATUS]);
+
     if (privilege_level_ != PrivilegeLevel::MACHINE) {
         trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
         return;

@@ -42,13 +42,7 @@ int main(int argc, char** argv) {
     Bus bus = Bus(clint, plic);
     CPU cpu(config, bus, clint, plic);
 
-    if (use_sbi) {
-        load_binary(argv[optind + 1], bus, 0x80000000);
-        load_elf(elf_path, bus, nullptr);
-        cpu.setPC(0x80000000);
-    } else {
-        load_elf(elf_path, bus, &cpu);
-    } 
+    load_elf(elf_path, bus, &cpu);
 
 
     if (!uart_input.empty())

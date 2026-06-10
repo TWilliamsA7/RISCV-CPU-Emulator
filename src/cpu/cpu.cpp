@@ -41,6 +41,7 @@ CPU::CPU (CPUConfig config, Bus& bus, Clint& clint, PLIC& plic)
 
     csrs_[CSR::MISA] = misa;
 
+    regs_[11] = 0x87000000;
     bus_.register_cpu(this);
 }
 
@@ -169,6 +170,9 @@ void CPU::updateCycle() {
     } else {
         csrs_[CSR::MIP] &= ~(1 << 9);
     }
+
+    csrs_[CSR::TIME] = (uint32_t)(clint_.mtime);
+    csrs_[CSR::TIMEH] = (uint32_t)(clint_.mtime >> 32);
  
 }
 
@@ -206,13 +210,56 @@ std::optional<uint32_t> CPU::readCSR(uint16_t addr) {
 
     switch (addr) {
         case CSR::SSTATUS:
-            return csrs_[CSR::MSTATUS] & 0x000DE122;
+            return csrs_[CSR::MSTATUS] & 0x800DE122;
         case CSR::SIE:
             return csrs_[CSR::MIE] & csrs_[CSR::MIDELEG];
         case CSR::SIP:
             return csrs_[CSR::MIP] & csrs_[CSR::MIDELEG];
-        default:
+        case CSR::MVENDORID:
+        case CSR::MARCHID:
+        case CSR::MIMPID:
+        case CSR::MHARTID:
+        case CSR::MISA:
+        case CSR::MSTATUS:
+        case CSR::MSTATUSH:
+        case CSR::MTVEC:
+        case CSR::MEDELEG:
+        case CSR::MIDELEG:
+        case CSR::MIE:
+        case CSR::MCOUNTEREN:
+        case CSR::MSCRATCH:
+        case CSR::MEPC:
+        case CSR::MCAUSE:
+        case CSR::MTVAL:
+        case CSR::MIP:
+        case CSR::MCYCLE:
+        case CSR::MCYCLEH:
+        case CSR::MINSTRET:
+        case CSR::MINSTRETH:
+        case CSR::CYCLE:
+        case CSR::CYCLEH:
+        case CSR::PMPCFG0: case CSR::PMPCFG1: case CSR::PMPCFG2: case CSR::PMPCFG3:
+        case CSR::PMPADDR0: case CSR::PMPADDR1: case CSR::PMPADDR2: case CSR::PMPADDR3: 
+        case CSR::PMPADDR4: case CSR::PMPADDR5: case CSR::PMPADDR6: case CSR::PMPADDR7:
+        case CSR::PMPADDR8: case CSR::PMPADDR9: case CSR::PMPADDR10: case CSR::PMPADDR11:
+        case CSR::PMPADDR12: case CSR::PMPADDR13: case CSR::PMPADDR14: case CSR::PMPADDR15: 
+        case CSR::STVEC:
+        case CSR::SCOUNTEREN:
+        case CSR::SSCRATCH:
+        case CSR::SEPC:
+        case CSR::SCAUSE:
+        case CSR::STVAL:
+                case CSR::TIME:
+        case CSR::TIMEH:
+        case CSR::SATP:
             return csrs_[addr];
+            case 0x747: // mseccfg — Smepmp not supported, return 0
+case 0x757: // msecfgh
+    return 0;
+
+        default:
+            trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
+            return std::nullopt;
     }
 }
 
@@ -237,13 +284,66 @@ bool CPU::writeCSR(uint16_t addr, uint32_t val) {
     }
 
     switch (addr) {
+        case CSR::SSTATUS:
+        case CSR::SIE:
+        case CSR::SIP:
+        case CSR::MVENDORID:
+        case CSR::MARCHID:
+        case CSR::MIMPID:
+        case CSR::MHARTID:
+        case CSR::MISA:
+        case CSR::MSTATUS:
+        case CSR::MSTATUSH:
+        case CSR::MTVEC:
+        case CSR::MEDELEG:
+        case CSR::MIDELEG:
+        case CSR::MIE:
+        case CSR::MCOUNTEREN:
+        case CSR::MSCRATCH:
+        case CSR::MEPC:
+        case CSR::MCAUSE:
+        case CSR::MTVAL:
+        case CSR::MIP:
+        case CSR::MCYCLE:
+        case CSR::MCYCLEH:
+        case CSR::MINSTRET:
+        case CSR::MINSTRETH:
+        case CSR::CYCLE:
+        case CSR::CYCLEH:
+        case CSR::PMPCFG0: case CSR::PMPCFG1: case CSR::PMPCFG2: case CSR::PMPCFG3:
+        case CSR::PMPADDR0: case CSR::PMPADDR1: case CSR::PMPADDR2: case CSR::PMPADDR3: 
+        case CSR::PMPADDR4: case CSR::PMPADDR5: case CSR::PMPADDR6: case CSR::PMPADDR7:
+        case CSR::PMPADDR8: case CSR::PMPADDR9: case CSR::PMPADDR10: case CSR::PMPADDR11:
+        case CSR::PMPADDR12: case CSR::PMPADDR13: case CSR::PMPADDR14: case CSR::PMPADDR15: 
+        case CSR::STVEC:
+        case CSR::SCOUNTEREN:
+        case CSR::SSCRATCH:
+        case CSR::SEPC:
+        case CSR::SCAUSE:
+        case CSR::STVAL:
+        case CSR::SATP:
+        case CSR::TIME:
+        case CSR::TIMEH:
+        case 0x747:
+case 0x757:
+    break;
+            break;
+
+        default:
+            trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
+            return false;
+    }
+
+    switch (addr) {
         case CSR::MSTATUS: {
             uint32_t mask = 0x007E19EE;
 
             uint32_t mpp = (val >> 11) & 0x3;
             if (mpp == 2) mpp = 1;  // clamp invalid MPP to S-mode (or U-mode if no S)
             val = (val & ~(3u << 11)) | (mpp << 11);  // write sanitized value back
-            csrs_[CSR::MSTATUS] = (val & mask);
+            csrs_[CSR::MSTATUS] =
+                (csrs_[CSR::MSTATUS] & ~mask) |
+                (val & mask);
             break;
         }
         case CSR::MTVEC: {
@@ -257,6 +357,11 @@ bool CPU::writeCSR(uint16_t addr, uint32_t val) {
         case CSR::MEPC:
             csrs_[CSR::MEPC] = val & ~0x1; // Force alignment
             break;
+
+            case 0x747:
+case 0x757:
+    csrs_[addr] = 0; // hardwired zero, no Smepmp
+    break;
 
         case CSR::MEDELEG:
             csrs_[CSR::MEDELEG] = val & 0xFFFF;
@@ -287,6 +392,22 @@ bool CPU::writeCSR(uint16_t addr, uint32_t val) {
             break;
         }
 
+        // Counter enable — allow writes, kernel uses these
+        case CSR::MCOUNTEREN:
+        case CSR::SCOUNTEREN:
+        case CSR::MCOUNTINHIBIT:
+            csrs_[addr] = val;
+            break;
+
+        // MHARTID is read-only, hardwired to 0
+        case CSR::MHARTID:
+            break; // ignore writes
+
+        // MSCRATCH — OpenSBI uses this heavily, must work correctly  
+        case CSR::MSCRATCH:
+            csrs_[addr] = val;
+            break;
+
         default:
             csrs_[addr] = val;
             break;
@@ -298,10 +419,10 @@ bool CPU::writeCSR(uint16_t addr, uint32_t val) {
 void CPU::trap(uint32_t cause, uint32_t tval, bool is_interrupt, PrivilegeLevel target_level) {
     trap_occurred_ = true;
 
-    if (config_.verbose) {
+    // if (config_.verbose) {
         std::cout << "TRAP " << (is_interrupt ? "(INTERRUPT) " : "")
             << "CAUSE: " << cause << " VAL: " << tval << "\n";
-    }
+    // }
 
     uint32_t cause_val = is_interrupt ? (cause | (1U << 31)) : cause;
     uint32_t mstatus = csrs_[CSR::MSTATUS];

@@ -201,6 +201,7 @@ class CPU {
             MISA = 0x301,
             MTVEC = 0x305,
             MSTATUS = 0x300,
+            MSTATUSH = 0x310,
             MIDELEG = 0x303,
             MEDELEG = 0x302,
             MCAUSE = 0x342,
@@ -223,7 +224,49 @@ class CPU {
             SCAUSE = 0x142,
             STVAL = 0x143,
             SIP = 0x144,
-            SATP = 0x180
+            SATP = 0x180,
+            MENVCFG  = 0x30A,  // Machine environment config
+            MENVCFGH = 0x31A,  // High word (RV32)
+            SENVCFG  = 0x10A,  // Supervisor environment config
+            MSTATEEN0 = 0x30C, // Machine state enable 0
+            MSTATEEN1 = 0x30D,
+            MSTATEEN2 = 0x30E,
+            MSTATEEN3 = 0x30F,
+            SSTATEEN0 = 0x10C, // Supervisor state enable 0
+            MCOUNTEREN = 0x306,
+            SCOUNTEREN = 0x106,
+            MCOUNTINHIBIT = 0x320,
+            MSCRATCH = 0x340,
+            MHARTID  = 0xF14,
+            MARCHID = 0xF12, // Read-only
+            MIMPID = 0xF13, // Read only
+
+            // PMP
+            PMPCFG0 = 0x3A0,
+            PMPCFG1 = 0x3A1,
+            PMPCFG2 = 0x3A2,
+            PMPCFG3 = 0x3A3,
+
+            PMPADDR0 = 0x3B0,
+            PMPADDR1 = 0x3B1,
+            PMPADDR2 = 0x3B2,
+            PMPADDR3 = 0x3B3,
+            PMPADDR4 = 0x3B4,
+            PMPADDR5 = 0x3B5,
+            PMPADDR6 = 0x3B6,
+            PMPADDR7 = 0x3B7,
+            PMPADDR8 = 0x3B8,
+            PMPADDR9 = 0x3B9,
+            PMPADDR10 = 0x3BA,
+            PMPADDR11 = 0x3BB,
+            PMPADDR12 = 0x3BC,
+            PMPADDR13 = 0x3BD,
+            PMPADDR14 = 0x3BE,
+            PMPADDR15 = 0x3BF,
+
+            TIME = 0xC01,
+            TIMEH = 0xC81,
+
         };
 
         // === Trace === //
