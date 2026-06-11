@@ -5,7 +5,12 @@
 #include "errors/errors.hpp"
 #include <iostream>
 
-Bus::Bus(Clint& clint, PLIC& plic) : clint_(clint), plic_(plic), uart_([&plic](uint32_t irq){ plic.set_pending(irq);}) {
+Bus::Bus(Clint& clint, PLIC& plic, const std::string& disk_path) 
+    : clint_(clint), 
+    plic_(plic), 
+    uart_([&plic](uint32_t irq){ plic.set_pending(irq);}),
+    virtio_blk_(disk_path, [&plic](uint32_t irq){ plic.set_pending(irq); }, *this)
+{
     dram_ = std::vector<uint8_t>(Bus::DRAM_SIZE, 0);
 }
 
@@ -74,6 +79,9 @@ uint32_t Bus::read32(uint32_t addr) {
         return plic_.read32(addr - PLIC::BASE);
     }
 
+    if (addr >= VirtioBlk::BASE && addr < VirtioBlk::BASE + VirtioBlk::SIZE)
+        return virtio_blk_.read32(addr - VirtioBlk::BASE);
+
     throw BusAccessError(std::to_string(addr) + " is outside of mapped range");
 }
 
@@ -136,7 +144,8 @@ void Bus::write32(uint32_t addr, uint32_t val) {
         if (cpu_ptr_) {
             cpu_ptr_->invalidateReservation(addr);
         }
-    } 
+    } else if (addr >= VirtioBlk::BASE && addr < VirtioBlk::BASE + VirtioBlk::SIZE)
+        virtio_blk_.write32(addr - VirtioBlk::BASE, val);
 }
 
 uint32_t Bus::atomic_rmw_w(uint32_t addr, std::function<uint32_t(uint32_t)> operation) {
