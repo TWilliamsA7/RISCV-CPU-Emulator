@@ -14,6 +14,7 @@ plans/
 *.elf
 bin/
 kernel/
+disk/
 
 # Command Visualization
 out.txt
