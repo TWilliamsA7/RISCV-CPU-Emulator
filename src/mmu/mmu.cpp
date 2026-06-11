@@ -51,10 +51,20 @@ uint32_t MMU::translate(uint32_t va, AccessType type) {
             if (type == AccessType::STORE && !(pte & PTE_W))
                 triggerPageFault(type);
 
-            if (!(pte & PTE_A))
-                triggerPageFault(type);
-            if (type == AccessType::STORE && !(pte & PTE_D))
-                triggerPageFault(type);
+            bool pte_changed = false;
+
+            if (!(pte & PTE_A)) {
+                pte |= PTE_A;
+                pte_changed = true;
+            }
+            if (type == AccessType::STORE && !(pte & PTE_D)) {
+                pte |= PTE_D;
+                pte_changed = true;
+            }
+
+            if (pte_changed) {
+                cpu_.bus_.write32(pte_addr, pte);
+            }
 
             if (i == 1 && (pte & 0x000FFC00))
                 triggerPageFault(type);
