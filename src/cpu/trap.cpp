@@ -11,6 +11,7 @@ void CPU::trap(uint32_t cause, uint32_t tval, bool is_interrupt, PrivilegeLevel 
             << "CAUSE: " << cause << " VAL: " << tval << "\n";
     }
 
+
     uint32_t cause_val = is_interrupt ? (cause | (1U << 31)) : cause;
     uint32_t mstatus = csrs_[CSR::MSTATUS];
 
@@ -69,6 +70,7 @@ void CPU::trap(uint32_t cause, uint32_t tval, bool is_interrupt, PrivilegeLevel 
             pc_ = base;
         }
     }
+
 }
 
 void CPU::checkInterrupts() {

@@ -119,6 +119,12 @@ class CPU {
         // Configuration for CPU
         CPUConfig config_;
 
+        // Supported Extensions Mask
+        static constexpr uint32_t SUPPORTED_EXTENSIONS_MASK = (1U << 30) | (1U << 8) | (1U << 18) | (1U << 20) | (1U << 12) | (1U << 2) | (1U << 0);
+
+        // Required Extenions Mask
+        static constexpr uint32_t REQUIRED_EXTENSIONS_MASK = (1U << 30) | (1U << 8);
+
         // Mask used to check instruction alignment
         uint32_t ADDRESS_MISALIGNMENT_MASK;
 
@@ -355,6 +361,17 @@ class CPU {
 
             CYCLEH      = 0xC80,   
             TIMEH       = 0xC81,   
+
+            // SSTC
+
+            STIMECMP = 0x14D,
+            STIMECMPH = 0x15D,
+
+            // MSECC
+
+            MSECCFG = 0x747,
+            MSECCFGH = 0x757
+        
         };
 
         // === Trace === //

@@ -24,51 +24,30 @@ std::optional<uint32_t> CPU::readCSR(uint16_t addr) {
             return csrs_[CSR::MIE] & csrs_[CSR::MIDELEG];
         case CSR::SIP:
             return csrs_[CSR::MIP] & csrs_[CSR::MIDELEG];
-        case CSR::MVENDORID:
-        case CSR::MARCHID:
-        case CSR::MIMPID:
-        case CSR::MHARTID:
-        case CSR::MISA:
-        case CSR::MSTATUS:
-        case CSR::MSTATUSH:
-        case CSR::MTVEC:
-        case CSR::MEDELEG:
-        case CSR::MIDELEG:
-        case CSR::MIE:
-        case CSR::MCOUNTEREN:
-        case CSR::MSCRATCH:
-        case CSR::MEPC:
-        case CSR::MCAUSE:
-        case CSR::MTVAL:
-        case CSR::MIP:
-        case CSR::MCYCLE:
-        case CSR::MCYCLEH:
-        case CSR::MINSTRET:
-        case CSR::MINSTRETH:
-        case CSR::CYCLE:
-        case CSR::CYCLEH:
-        case CSR::PMPCFG0: case CSR::PMPCFG1: case CSR::PMPCFG2: case CSR::PMPCFG3:
-        case CSR::PMPADDR0: case CSR::PMPADDR1: case CSR::PMPADDR2: case CSR::PMPADDR3: 
-        case CSR::PMPADDR4: case CSR::PMPADDR5: case CSR::PMPADDR6: case CSR::PMPADDR7:
-        case CSR::PMPADDR8: case CSR::PMPADDR9: case CSR::PMPADDR10: case CSR::PMPADDR11:
-        case CSR::PMPADDR12: case CSR::PMPADDR13: case CSR::PMPADDR14: case CSR::PMPADDR15: 
-        case CSR::STVEC:
-        case CSR::SCOUNTEREN:
-        case CSR::SSCRATCH:
-        case CSR::SEPC:
-        case CSR::SCAUSE:
-        case CSR::STVAL:
-                case CSR::TIME:
+        case CSR::TIME:
+            return (uint32_t)(clint_.mtime);
         case CSR::TIMEH:
-        case CSR::SATP:
-            return csrs_[addr];
-            case 0x747: // mseccfg — Smepmp not supported, return 0
-case 0x757: // msecfgh
-    return 0;
+            return (uint32_t)(clint_.mtime >> 32);
+
+        // Hardwired zero — defined but unimplemented extensions
+        case CSR::MENVCFG:
+        case CSR::MENVCFGH:
+        case CSR::SENVCFG:
+        case CSR::MSTATEEN0:
+        case CSR::MSTATEEN1:
+        case CSR::MSTATEEN2:
+        case CSR::MSTATEEN3:
+        case CSR::SSTATEEN0:
+        case CSR::STIMECMP:
+        case CSR::STIMECMPH:
+        case CSR::MSECCFG:
+        case CSR::MSECCFGH:
+            return 0;
 
         default:
-            trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
-            return std::nullopt;
+            auto it = csrs_.find(addr);
+            if (it != csrs_.end()) return it->second;
+            return 0;
     }
 }
 
@@ -90,57 +69,6 @@ bool CPU::writeCSR(uint16_t addr, uint32_t val) {
             trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
             return false;
         }
-    }
-
-    switch (addr) {
-        case CSR::SSTATUS:
-        case CSR::SIE:
-        case CSR::SIP:
-        case CSR::MVENDORID:
-        case CSR::MARCHID:
-        case CSR::MIMPID:
-        case CSR::MHARTID:
-        case CSR::MISA:
-        case CSR::MSTATUS:
-        case CSR::MSTATUSH:
-        case CSR::MTVEC:
-        case CSR::MEDELEG:
-        case CSR::MIDELEG:
-        case CSR::MIE:
-        case CSR::MCOUNTEREN:
-        case CSR::MSCRATCH:
-        case CSR::MEPC:
-        case CSR::MCAUSE:
-        case CSR::MTVAL:
-        case CSR::MIP:
-        case CSR::MCYCLE:
-        case CSR::MCYCLEH:
-        case CSR::MINSTRET:
-        case CSR::MINSTRETH:
-        case CSR::CYCLE:
-        case CSR::CYCLEH:
-        case CSR::PMPCFG0: case CSR::PMPCFG1: case CSR::PMPCFG2: case CSR::PMPCFG3:
-        case CSR::PMPADDR0: case CSR::PMPADDR1: case CSR::PMPADDR2: case CSR::PMPADDR3: 
-        case CSR::PMPADDR4: case CSR::PMPADDR5: case CSR::PMPADDR6: case CSR::PMPADDR7:
-        case CSR::PMPADDR8: case CSR::PMPADDR9: case CSR::PMPADDR10: case CSR::PMPADDR11:
-        case CSR::PMPADDR12: case CSR::PMPADDR13: case CSR::PMPADDR14: case CSR::PMPADDR15: 
-        case CSR::STVEC:
-        case CSR::SCOUNTEREN:
-        case CSR::SSCRATCH:
-        case CSR::SEPC:
-        case CSR::SCAUSE:
-        case CSR::STVAL:
-        case CSR::SATP:
-        case CSR::TIME:
-        case CSR::TIMEH:
-        case 0x747:
-case 0x757:
-    break;
-            break;
-
-        default:
-            trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
-            return false;
     }
 
     switch (addr) {
@@ -166,60 +94,73 @@ case 0x757:
         case CSR::MEPC:
             csrs_[CSR::MEPC] = val & ~0x1; // Force alignment
             break;
-
-            case 0x747:
-case 0x757:
-    csrs_[addr] = 0; // hardwired zero, no Smepmp
-    break;
-
         case CSR::MEDELEG:
             csrs_[CSR::MEDELEG] = val & 0xFFFF;
             break;
-
         case CSR::MIDELEG:
             csrs_[CSR::MIDELEG] = val & 0xFFFF;
             break;
-
-        case CSR::MISA:
-            break;
-
         case CSR::SSTATUS: {
             uint32_t mask = 0x000DE122;
             csrs_[CSR::MSTATUS] = (csrs_[CSR::MSTATUS] & ~mask) | (val & mask);
             break;
         }
-
         case CSR::SIE: {
             uint32_t mask = csrs_[CSR::MIDELEG];
             csrs_[CSR::MIE] = (csrs_[CSR::MIE] & ~mask) | (val & mask);
             break;
         }
-
         case CSR::SIP: {
             uint32_t mask = csrs_[CSR::MIDELEG] & 0x2;
             csrs_[CSR::MIP] = (csrs_[CSR::MIP] & ~mask) | (val & mask);
             break;
         }
 
-        // Counter enable — allow writes, kernel uses these
-        case CSR::MCOUNTEREN:
-        case CSR::SCOUNTEREN:
-        case CSR::MCOUNTINHIBIT:
-            csrs_[addr] = val;
-            break;
+        case CSR::MISA: {
+            // uint32_t old_misa = csrs_[CSR::MISA];
 
-        // MHARTID is read-only, hardwired to 0
+            // uint32_t misa = val;
+            // misa &= SUPPORTED_EXTENSIONS_MASK;
+            // misa |= REQUIRED_EXTENSIONS_MASK;
+
+            // bool old_c = old_misa & (1u << 2);
+            // bool new_c = misa     & (1u << 2);
+
+            // // IALIGN would change 16 -> 32
+            // if (old_c && !new_c) {
+            //     uint32_t next_insn_addr = pc_ + sr.dInstr.instr_len;
+
+            //     if (next_insn_addr & 0x3) {
+            //         // WARL suppression: leave misa unchanged
+            //         misa = old_misa;
+            //     }
+            // }
+
+            // csrs_[CSR::MISA] = misa;
+            break;
+        }
+
+        case CSR::MENVCFG:
+        case CSR::MENVCFGH:
+        case CSR::SENVCFG:
+        case CSR::MSTATEEN0:
+        case CSR::MSTATEEN1:
+        case CSR::MSTATEEN2:
+        case CSR::MSTATEEN3:
+        case CSR::SSTATEEN0:
+        case CSR::STIMECMP: 
+        case CSR::STIMECMPH: 
+        case CSR::MSECCFG: 
+        case CSR::MSECCFGH: 
         case CSR::MHARTID:
-            break; // ignore writes
-
-        // MSCRATCH — OpenSBI uses this heavily, must work correctly  
-        case CSR::MSCRATCH:
-            csrs_[addr] = val;
-            break;
+        case CSR::MVENDORID:
+        case CSR::MARCHID:
+        case CSR::MIMPID:
+            return true;
 
         default:
             csrs_[addr] = val;
-            break;
+            return true;
     }
 
     return true;

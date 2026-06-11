@@ -30,10 +30,7 @@ CPU::CPU (CPUConfig config, Bus& bus, Clint& clint, PLIC& plic)
         
     if (config_.extension_c) { 
         misa |= (1U << 2);
-        ADDRESS_MISALIGNMENT_MASK = 0x1;
-    } else {
-        ADDRESS_MISALIGNMENT_MASK = 0x3;
-    }
+    } 
 
     if (config_.extension_a) {
         misa |= (1U << 0);
@@ -74,15 +71,23 @@ StepResult CPU::step() {
 
     uint32_t instr_len;
 
+    bool use_compress = csrs_[CSR::MISA] & 0x4;
+
+    ADDRESS_MISALIGNMENT_MASK = use_compress ? 0x1 : 0x3;
+
     // Fetch
     try {
-        if (pc_ & ADDRESS_MISALIGNMENT_MASK) trap(0, pc_, false);
+        if (pc_ & ADDRESS_MISALIGNMENT_MASK) {
+            trap(ExceptionCause::MISALIGNED_INSTRUCTION, pc_, false);
+            return sr; 
+        }
+            
 
         uint32_t first_half_address = mmu_.translate(pc_, MMU::AccessType::FETCH);
         uint16_t first_half = bus_.read16(first_half_address);
         
         if ((first_half & 0x3) != 0x3) {
-            if (!config_.extension_c) {
+            if (!use_compress) {
                 // Illegal if C is disabled
                 trap(ExceptionCause::ILLEGAL_INSTRUCTION, first_half, false); 
                 return sr;
