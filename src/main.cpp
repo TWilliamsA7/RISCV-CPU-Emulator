@@ -35,11 +35,12 @@ int main(int argc, char** argv) {
     }
 
     char* elf_path = argv[optind];
+    char* disk_path = argv[optind + 1];
 
 
     Clint clint;
     PLIC plic;
-    Bus bus = Bus(clint, plic);
+    Bus bus = Bus(clint, plic, disk_path);
     CPU cpu(config, bus, clint, plic);
 
     load_elf(elf_path, bus, &cpu);
