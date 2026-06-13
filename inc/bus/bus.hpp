@@ -24,7 +24,7 @@ class Bus {
         static constexpr uint32_t DRAM_BASE = 0x80000000;
 
         // Size of avaiable DRAM
-        static constexpr uint32_t DRAM_SIZE = 1024 * 1024 * 128;
+        static constexpr uint32_t DRAM_SIZE = 1024 * 1024 * 16;
 
         // Read 32 bit value located at addr 
         uint32_t read32(uint32_t addr);
@@ -59,6 +59,10 @@ class Bus {
 
         void load_binary(std::vector<uint8_t>::const_iterator bin_start, std::vector<uint8_t>::const_iterator bin_end, uint32_t addr);
 
+        void write8_unlocked(uint32_t addr, uint8_t val);
+        void write16_unlocked(uint32_t addr, uint16_t val);
+        void write32_unlocked(uint32_t addr, uint32_t val);
+
     private:
 
         // Dynamic Random Access Memory
@@ -81,5 +85,5 @@ class Bus {
 
         std::string deferred_uart_input_;
 
-        void write32_unlocked(uint32_t addr, uint32_t val);
+        
 };

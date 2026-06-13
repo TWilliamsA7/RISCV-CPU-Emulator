@@ -172,6 +172,20 @@ void Bus::write32_unlocked(uint32_t addr, uint32_t val) {
     }
 }
 
+void Bus::write8_unlocked(uint32_t addr, uint8_t val) {
+    if (addr >= Bus::DRAM_BASE && addr < Bus::DRAM_BASE + Bus::DRAM_SIZE) {
+        dram_[addr - Bus::DRAM_BASE] = val;
+    }
+}
+
+void Bus::write16_unlocked(uint32_t addr, uint16_t val) {
+    if (addr >= Bus::DRAM_BASE && addr < Bus::DRAM_BASE + Bus::DRAM_SIZE) {
+        uint32_t offset = addr - Bus::DRAM_BASE;
+        dram_[offset]     = val & 0xFF;
+        dram_[offset + 1] = (val >> 8) & 0xFF;
+    }
+}
+
 
 void Bus::load_binary(std::vector<uint8_t>::const_iterator bin_start, std::vector<uint8_t>::const_iterator bin_end, uint32_t addr) {
     if (addr >= DRAM_BASE && addr <= (DRAM_BASE + DRAM_SIZE)) {
