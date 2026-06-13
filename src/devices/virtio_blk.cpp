@@ -173,13 +173,9 @@ void VirtioBlk::handle_request(uint16_t head) {
         disk_.seekg(sector * SECTOR_SIZE);
         if (!disk_) { bus_.write8_unlocked(status_addr, 1); return; }
 
-        std::vector<uint8_t> buf(len);
-        disk_.read(reinterpret_cast<char*>(buf.data()), len);
+        uint32_t offset = data_addr - Bus::DRAM_BASE;
+        disk_.read(reinterpret_cast<char*>(bus_.dram_.data() + offset), len);
         if (!disk_) { bus_.write8_unlocked(status_addr, 1); return; }
-
-        for (uint32_t i = 0; i < len; i++) {
-            bus_.write8_unlocked(data_addr + i, buf[i]);
-        }
 
     } else if (type == VIRTIO_BLK_T_OUT) {
         // Write from guest memory to disk

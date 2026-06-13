@@ -65,6 +65,8 @@ class Bus {
 
     private:
 
+        friend class VirtioBlk;
+
         // Dynamic Random Access Memory
         std::vector<uint8_t> dram_;
 
