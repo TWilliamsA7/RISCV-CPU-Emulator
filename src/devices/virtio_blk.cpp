@@ -88,18 +88,20 @@ void VirtioBlk::write32(uint32_t offset, uint32_t val) {
 }
 
 void VirtioBlk::process_queue() {
+    
     if (!queue_ready_ || !desc_addr_ || !avail_addr_ || !used_addr_)
-        return;
-
+    return;
+    
     // Read available ring index
     // avail ring layout: uint16 flags, uint16 idx, uint16 ring[QUEUE_SIZE]
     uint16_t avail_idx = (uint16_t)bus_.read16(avail_addr_ + 2);
+
+
 
     while (last_avail_idx_ != avail_idx) {
         // Get next descriptor head index from available ring
         uint32_t ring_offset = avail_addr_ + 4 + (last_avail_idx_ % QUEUE_SIZE) * 2;
         uint16_t head = (uint16_t)bus_.read16(ring_offset);
-
         handle_request(head);
 
         // Write to used ring
@@ -107,11 +109,11 @@ void VirtioBlk::process_queue() {
         //                   struct{uint32 id, uint32 len}[QUEUE_SIZE]
         uint16_t used_idx = (uint16_t)bus_.read16(used_addr_ + 2);
         uint32_t used_ring_entry = used_addr_ + 4 + (used_idx % QUEUE_SIZE) * 8;
-        bus_.write32(used_ring_entry,     head); // id
-        bus_.write32(used_ring_entry + 4, 0);    // len (bytes written)
+        bus_.write32_unlocked(used_ring_entry,     head); // id
+        bus_.write32_unlocked(used_ring_entry + 4, 0);    // len (bytes written)
 
         // Increment used idx
-        bus_.write16(used_addr_ + 2, used_idx + 1);
+        bus_.write16_unlocked(used_addr_ + 2, used_idx + 1);
 
         last_avail_idx_++;
     }
@@ -169,14 +171,15 @@ void VirtioBlk::handle_request(uint16_t head) {
     if (type == VIRTIO_BLK_T_IN) {
         // Read from disk into guest memory
         disk_.seekg(sector * SECTOR_SIZE);
-        if (!disk_) { bus_.write8(status_addr, 1); return; }
+        if (!disk_) { bus_.write8_unlocked(status_addr, 1); return; }
 
         std::vector<uint8_t> buf(len);
         disk_.read(reinterpret_cast<char*>(buf.data()), len);
-        if (!disk_) { bus_.write8(status_addr, 1); return; }
+        if (!disk_) { bus_.write8_unlocked(status_addr, 1); return; }
 
-        for (uint32_t i = 0; i < len; i++)
-            bus_.write8(data_addr + i, buf[i]);
+        for (uint32_t i = 0; i < len; i++) {
+            bus_.write8_unlocked(data_addr + i, buf[i]);
+        }
 
     } else if (type == VIRTIO_BLK_T_OUT) {
         // Write from guest memory to disk
@@ -185,12 +188,12 @@ void VirtioBlk::handle_request(uint16_t head) {
             buf[i] = bus_.read8(data_addr + i);
 
         disk_.seekp(sector * SECTOR_SIZE);
-        if (!disk_) { bus_.write8(status_addr, 1); return; }
+        if (!disk_) { bus_.write8_unlocked(status_addr, 1); return; }
 
         disk_.write(reinterpret_cast<char*>(buf.data()), len);
         disk_.flush();
-        if (!disk_) { bus_.write8(status_addr, 1); return; }
+        if (!disk_) { bus_.write8_unlocked(status_addr, 1); return; }
     }
 
-    bus_.write8(status_addr, status);
+    bus_.write8_unlocked(status_addr, status);
 }
