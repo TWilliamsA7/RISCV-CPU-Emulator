@@ -28,10 +28,14 @@ CPU::CPU (CPUConfig config, Bus& bus, Clint& clint, PLIC& plic)
     if (config_.extension_m) {
         misa |= (1U << 12);
     }
+
         
     if (config_.extension_c) { 
         misa |= (1U << 2);
-    } 
+        ADDRESS_MISALIGNMENT_MASK = 0x1;
+    } else {
+        ADDRESS_MISALIGNMENT_MASK = 0x3;
+    }
 
     if (config_.extension_a) {
         misa |= (1U << 0);
@@ -79,8 +83,6 @@ StepResult CPU::step() {
     uint32_t instr_len;
 
     bool use_compress = csrs_[CSR::MISA] & 0x4;
-
-    ADDRESS_MISALIGNMENT_MASK = use_compress ? 0x1 : 0x3;
 
     // Fetch
     try {
@@ -142,7 +144,8 @@ StepResult CPU::step() {
 }
 
 void CPU::updateCycle() {
-    clint_.updateMtime();
+    if (clint_.mtime >= clint_.mtimecmp)
+        clint_.updateMtime();
 
     uint32_t low_before = csrs_[CSR::MCYCLE]; 
     csrs_[CSR::MCYCLE]++;

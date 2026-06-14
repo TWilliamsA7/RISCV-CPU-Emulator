@@ -58,7 +58,9 @@ uint8_t Bus::read8(uint32_t addr) {
 uint16_t Bus::read16(uint32_t addr) {
     if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
-        return dram_[offset] | (dram_[offset+1] << 8);
+        uint32_t result;
+        std::memcpy(&result, &dram_[offset], 2);
+        return result;
     }
     
     throw BusAccessError(std::to_string(addr) + " is outside of mapped range");
@@ -73,7 +75,9 @@ uint32_t Bus::read32(uint32_t addr) {
         return clint_.read32(addr - Clint::BASE);
     if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
-        return dram_[offset] | (dram_[offset+1] << 8) | (dram_[offset+2] << 16) | (dram_[offset+3] << 24);
+        uint32_t result;
+        std::memcpy(&result, &dram_[offset], 4);
+        return result;
     }
     if (addr >= PLIC::BASE && addr < PLIC::BASE + PLIC::SIZE) {
         return plic_.read32(addr - PLIC::BASE);
@@ -108,8 +112,7 @@ void Bus::write16(uint32_t addr, uint16_t val) {
 
     if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
-        dram_[offset] = val & 0xFF;
-        dram_[offset + 1] = (val >> 8) & 0xFF;
+        std::memcpy(&dram_[offset], &val, 2);
 
         if (cpu_ptr_) {
             cpu_ptr_->invalidateReservation(addr);
@@ -136,10 +139,7 @@ void Bus::write32(uint32_t addr, uint32_t val) {
         plic_.write32(addr - PLIC::BASE, val);
     } else if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
-        dram_[offset] = val & 0xFF;
-        dram_[offset + 1] = (val >> 8) & 0xFF;
-        dram_[offset + 2] = (val >> 16) & 0xFF;
-        dram_[offset + 3] = (val >> 24) & 0xFF;
+        std::memcpy(&dram_[offset], &val, 4);
 
         if (cpu_ptr_) {
             cpu_ptr_->invalidateReservation(addr);
@@ -165,10 +165,7 @@ uint32_t Bus::atomic_rmw_w(uint32_t addr, std::function<uint32_t(uint32_t)> oper
 void Bus::write32_unlocked(uint32_t addr, uint32_t val) {
     if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
-        dram_[offset]     = val & 0xFF;
-        dram_[offset + 1] = (val >> 8) & 0xFF;
-        dram_[offset + 2] = (val >> 16) & 0xFF;
-        dram_[offset + 3] = (val >> 24) & 0xFF;
+        std::memcpy(&dram_[offset], &val, 4);
     }
 }
 
@@ -181,8 +178,7 @@ void Bus::write8_unlocked(uint32_t addr, uint8_t val) {
 void Bus::write16_unlocked(uint32_t addr, uint16_t val) {
     if (addr >= Bus::DRAM_BASE && addr < Bus::DRAM_BASE + Bus::DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
-        dram_[offset]     = val & 0xFF;
-        dram_[offset + 1] = (val >> 8) & 0xFF;
+        std::memcpy(&dram_[offset], &val, 2);
     }
 }
 

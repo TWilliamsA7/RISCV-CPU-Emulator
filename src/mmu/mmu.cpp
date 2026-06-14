@@ -141,11 +141,11 @@ uint32_t MMU::translate(uint32_t va, AccessType type) {
 
             if (i == 1) {
                 uint32_t ppn1 = (pte >> 20) & 0xFFF;
-                tlb_fill(cpu_.tlb_, vpn[i], asid, ppn1, flags, true);
+                tlb_fill(cpu_.tlb_, full_vpn, asid, ppn1, flags, true);
                 pa = (ppn1 << 22) | (va & PPN_MASK);
             } else {
                 uint32_t ppn = (pte >> 10);
-                tlb_fill(cpu_.tlb_, vpn[i], asid, ppn, flags);
+                tlb_fill(cpu_.tlb_, full_vpn, asid, ppn, flags);
                 pa = (ppn << 12) | (va & 0xFFF);
             }
 

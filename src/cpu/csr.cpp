@@ -101,7 +101,7 @@ bool CPU::writeCSR(uint16_t addr, uint32_t val) {
             csrs_[CSR::MIDELEG] = val & 0xFFFF;
             break;
         case CSR::SSTATUS: {
-            uint32_t mask = 0x000DE122;
+            uint32_t mask = 0x800DE122;
             csrs_[CSR::MSTATUS] = (csrs_[CSR::MSTATUS] & ~mask) | (val & mask);
             break;
         }

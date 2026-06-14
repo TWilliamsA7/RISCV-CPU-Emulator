@@ -224,7 +224,7 @@ void CPU::execSLTI(const DecodedInstr& i) {
 void CPU::execSLTIU(const DecodedInstr& i) {
     uint32_t o = regs_[i.rd];
     uint32_t a = regs_[i.rs1];
-    writeReg(i.rd, static_cast<uint32_t>(a < i.imm ? 1 : 0));
+    writeReg(i.rd, (a < static_cast<uint32_t>(i.imm)) ? 1u : 0u);
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
     
 }
@@ -256,15 +256,16 @@ void CPU::execSRLI(const DecodedInstr& i) {
 }
 
 void CPU::execSRAI(const DecodedInstr& i) {
-    if ((i.imm >> 5) != 0x20) {
+    uint32_t shamt = i.imm & 0x1F;
+    uint32_t funct7 = (static_cast<uint32_t>(i.imm) >> 5) & 0x7F;
+    if (funct7 != 0x20) {
         trap(ExceptionCause::ILLEGAL_INSTRUCTION, i.raw, false);
         return;
     }
-
     uint32_t o = regs_[i.rd];
     int32_t a = static_cast<int32_t>(regs_[i.rs1]);
-    writeReg(i.rd, static_cast<uint32_t>(a >> (i.imm & 0x1F)));
-    sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd]};
+    writeReg(i.rd, static_cast<uint32_t>(a >> shamt));
+    sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
 }
 
 void CPU::execLW(const DecodedInstr& i) {
@@ -358,7 +359,9 @@ void CPU::execSW(const DecodedInstr& i) {
 
     try {
         uint32_t pa = mmu_.translate(a, MMU::AccessType::STORE);
-        uint32_t o = bus_.is_mmio(pa) ? 0 : bus_.read32(pa);
+        uint32_t o = 0;
+        if (config_.verbose && !bus_.is_mmio(pa))
+            o = bus_.read32(pa);
         bus_.write32(pa, regs_[i.rs2]);
         sr.mem_write = MemWrite{ a, o, regs_[i.rs2], 4};
     } catch (const BusAccessError&) {
@@ -374,7 +377,9 @@ void CPU::execSH(const DecodedInstr& i) {
 
     try {
         uint32_t pa = mmu_.translate(a, MMU::AccessType::STORE);
-        uint32_t o = bus_.is_mmio(pa) ? 0 : static_cast<uint32_t>(bus_.read16(pa));
+        uint32_t o = 0;
+        if (config_.verbose && !bus_.is_mmio(pa))
+            o = bus_.read16(pa);
         bus_.write16(pa, static_cast<uint16_t>(regs_[i.rs2]));
         sr.mem_write = MemWrite{ a, o, regs_[i.rs2], 2};
     } catch (const BusAccessError&) {
@@ -389,7 +394,9 @@ void CPU::execSB(const DecodedInstr& i) {
 
     try {
         uint32_t pa = mmu_.translate(a, MMU::AccessType::STORE);
-        uint32_t o = bus_.is_mmio(pa) ? 0 : static_cast<uint32_t>(bus_.read8(pa));
+        uint32_t o = 0;
+        if (config_.verbose && !bus_.is_mmio(pa))
+            o = bus_.read8(pa);
         bus_.write8(pa, static_cast<uint8_t>(regs_[i.rs2]));
         sr.mem_write = MemWrite{ a, o, regs_[i.rs2], 1};
     } catch (const BusAccessError&) {  
@@ -901,8 +908,6 @@ void CPU::execSC_W(const DecodedInstr& i) {
         }
         reservation_valid_ = false;
 
-        uint32_t newMem = bus_.read32(paddr);
-
         sr.reg_write = RegWrite{ i.rd, oReg, regs_[i.rd] };
         
 
@@ -913,7 +918,6 @@ void CPU::execSC_W(const DecodedInstr& i) {
         reservation_valid_ = false;
         trap(ExceptionCause::STORE_PAGE_FAULT, regs_[i.rs1], false);
     }
-    reservation_valid_ = false;
 }
 
 void CPU::execAMOSWAP_W(const DecodedInstr& i) {
