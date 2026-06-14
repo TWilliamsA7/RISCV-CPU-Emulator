@@ -7,6 +7,7 @@
 #include "clint/clint.hpp"
 #include "plic/plic.hpp"
 #include "devices/uart.hpp"
+#include "devices/virtio_blk.hpp"
 #include <mutex>
 #include <functional>
 #include <string>
@@ -17,13 +18,13 @@ class CPU;
 class Bus {
     public:
 
-        Bus(Clint& clint, PLIC& plic);
+        Bus(Clint& clint, PLIC& plic, const std::string& disk_path);
 
         // Starting point of DRAM addresses
         static constexpr uint32_t DRAM_BASE = 0x80000000;
 
         // Size of avaiable DRAM
-        static constexpr uint32_t DRAM_SIZE = 1024 * 1024 * 128;
+        static constexpr uint32_t DRAM_SIZE = 1024 * 1024 * 16;
 
         // Read 32 bit value located at addr 
         uint32_t read32(uint32_t addr);
@@ -56,7 +57,15 @@ class Bus {
         // Atomic Read-Modify-Write
         uint32_t atomic_rmw_w(uint32_t addr, std::function<uint32_t(uint32_t)> operation);
 
+        void load_binary(std::vector<uint8_t>::const_iterator bin_start, std::vector<uint8_t>::const_iterator bin_end, uint32_t addr);
+
+        void write8_unlocked(uint32_t addr, uint8_t val);
+        void write16_unlocked(uint32_t addr, uint16_t val);
+        void write32_unlocked(uint32_t addr, uint32_t val);
+
     private:
+
+        friend class VirtioBlk;
 
         // Dynamic Random Access Memory
         std::vector<uint8_t> dram_;
@@ -70,11 +79,13 @@ class Bus {
         // UART: Universal Asynchronous Reciever/Transmitter
         UART uart_;
 
+        VirtioBlk virtio_blk_;
+
         std::mutex mem_mutex_;
 
         CPU* cpu_ptr_;
 
         std::string deferred_uart_input_;
 
-        void write32_unlocked(uint32_t addr, uint32_t val);
+        
 };

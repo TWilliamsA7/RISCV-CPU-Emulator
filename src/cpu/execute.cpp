@@ -758,6 +758,7 @@ void CPU::execREMU(const DecodedInstr& i) {
 
 
 void CPU::execMRET(const DecodedInstr& i) {
+
     if (privilege_level_ != PrivilegeLevel::MACHINE) {
         trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
         return;

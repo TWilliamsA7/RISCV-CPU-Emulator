@@ -5,7 +5,12 @@
 #include "errors/errors.hpp"
 #include <iostream>
 
-Bus::Bus(Clint& clint, PLIC& plic) : clint_(clint), plic_(plic), uart_([&plic](uint32_t irq){ plic.set_pending(irq);}) {
+Bus::Bus(Clint& clint, PLIC& plic, const std::string& disk_path) 
+    : clint_(clint), 
+    plic_(plic), 
+    uart_([&plic](uint32_t irq){ plic.set_pending(irq);}),
+    virtio_blk_(disk_path, [&plic](uint32_t irq){ plic.set_pending(irq); }, *this)
+{
     dram_ = std::vector<uint8_t>(Bus::DRAM_SIZE, 0);
 }
 
@@ -74,6 +79,9 @@ uint32_t Bus::read32(uint32_t addr) {
         return plic_.read32(addr - PLIC::BASE);
     }
 
+    if (addr >= VirtioBlk::BASE && addr < VirtioBlk::BASE + VirtioBlk::SIZE)
+        return virtio_blk_.read32(addr - VirtioBlk::BASE);
+
     throw BusAccessError(std::to_string(addr) + " is outside of mapped range");
 }
 
@@ -136,7 +144,8 @@ void Bus::write32(uint32_t addr, uint32_t val) {
         if (cpu_ptr_) {
             cpu_ptr_->invalidateReservation(addr);
         }
-    }
+    } else if (addr >= VirtioBlk::BASE && addr < VirtioBlk::BASE + VirtioBlk::SIZE)
+        virtio_blk_.write32(addr - VirtioBlk::BASE, val);
 }
 
 uint32_t Bus::atomic_rmw_w(uint32_t addr, std::function<uint32_t(uint32_t)> operation) {
@@ -160,5 +169,28 @@ void Bus::write32_unlocked(uint32_t addr, uint32_t val) {
         dram_[offset + 1] = (val >> 8) & 0xFF;
         dram_[offset + 2] = (val >> 16) & 0xFF;
         dram_[offset + 3] = (val >> 24) & 0xFF;
+    }
+}
+
+void Bus::write8_unlocked(uint32_t addr, uint8_t val) {
+    if (addr >= Bus::DRAM_BASE && addr < Bus::DRAM_BASE + Bus::DRAM_SIZE) {
+        dram_[addr - Bus::DRAM_BASE] = val;
+    }
+}
+
+void Bus::write16_unlocked(uint32_t addr, uint16_t val) {
+    if (addr >= Bus::DRAM_BASE && addr < Bus::DRAM_BASE + Bus::DRAM_SIZE) {
+        uint32_t offset = addr - Bus::DRAM_BASE;
+        dram_[offset]     = val & 0xFF;
+        dram_[offset + 1] = (val >> 8) & 0xFF;
+    }
+}
+
+
+void Bus::load_binary(std::vector<uint8_t>::const_iterator bin_start, std::vector<uint8_t>::const_iterator bin_end, uint32_t addr) {
+    if (addr >= DRAM_BASE && addr <= (DRAM_BASE + DRAM_SIZE)) {
+        std::copy(bin_start, bin_end, dram_.begin() + (addr - DRAM_BASE));
+    } else {
+        throw new std::runtime_error("Cannot load binary outside of DRAM!");
     }
 }

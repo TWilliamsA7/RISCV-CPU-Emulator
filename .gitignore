@@ -12,6 +12,9 @@ plans/
 # Binaries
 *.bin
 *.elf
+bin/
+kernel/
+disk/
 
 # Command Visualization
 out.txt
@@ -19,3 +22,4 @@ dump.txt
 
 # Validation Tests
 validation/
+

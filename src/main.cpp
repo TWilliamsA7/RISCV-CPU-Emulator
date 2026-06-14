@@ -10,9 +10,10 @@ int main(int argc, char** argv) {
     CPUConfig config;
     std::string uart_input;
     std::string wfi_uart_input;
+    bool use_sbi = false;
     int opt;
 
-    while ((opt = getopt(argc, argv, "bmcvaU:W:")) != -1) {
+    while ((opt = getopt(argc, argv, "bmcvaU:W:s")) != -1) {
         switch (opt) {
             case 'm': config.extension_m = true; break;
             case 'c': config.extension_c = true; break;
@@ -21,8 +22,9 @@ int main(int argc, char** argv) {
             case 'b': config.mode = ExecutionMode::BARE_METAL; break;
             case 'U': uart_input = optarg; break;
             case 'W': wfi_uart_input = optarg; break;
+            case 's': use_sbi = true; break;
             default:
-                std::cerr << "Usage: " << argv[0] << " [-m] [-c] [-b] [-a] [-U uart_input] [-W wfi_uart_input] <elf_file>" << std::endl;
+                std::cerr << "Usage: " << argv[0] << " [-m] [-c] [-b] [-a] [-U uart_input] [-W wfi_uart_input] [-s] <elf_file> <bin>" << std::endl;
                 return 1;
         }
     }
@@ -33,13 +35,17 @@ int main(int argc, char** argv) {
     }
 
     char* elf_path = argv[optind];
+    char* disk_path = argv[optind + 1];
+
 
     Clint clint;
     PLIC plic;
-    Bus bus = Bus(clint, plic);
+    Bus bus = Bus(clint, plic, disk_path);
     CPU cpu(config, bus, clint, plic);
 
-    load_elf(elf_path, bus, cpu);
+    load_elf(elf_path, bus, &cpu);
+
+
     if (!uart_input.empty())
         bus.inject_uart_input(uart_input);
     if (!wfi_uart_input.empty())

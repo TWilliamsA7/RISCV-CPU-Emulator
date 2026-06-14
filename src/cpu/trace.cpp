@@ -501,6 +501,7 @@ std::string CPU::csrName(uint16_t csr) const {
         case MISA: return "MISA";
         case MTVEC: return "MTVEC";
         case MSTATUS: return "MSTATUS";
+        case MSTATUSH: return "MSTATUSH";
         case MIDELEG: return "MIDELEG";
         case MEDELEG: return "MEDELEG";
         case MCAUSE: return "MCAUSE";
@@ -524,6 +525,21 @@ std::string CPU::csrName(uint16_t csr) const {
         case STVAL: return "STVAL";
         case SIP: return "SIP";
         case SATP: return "SATP";
+        case MENVCFG: return "MENVCFG";
+        case MENVCFGH: return "MENVCFGH";
+        case SENVCFG: return "SENVCFG";
+        case MSTATEEN0: return "MSTATEEN0";
+        case MSTATEEN1: return "MSTATEEN1";
+        case MSTATEEN2: return "MSTATEEN2";
+        case MSTATEEN3: return "MSTATEEN3";
+        case SSTATEEN0: return "SSTATEEN0";
+        case MCOUNTEREN: return "MCOUNTEREN";
+        case SCOUNTEREN: return "SCOUNTEREN";
+        case MCOUNTINHIBIT: return "MCOUNTINHIBIT";
+        case MSCRATCH: return "MSCRATCH";
+        case MHARTID: return "MHARTID";  
+        case TIME: return "TIME";
+        case TIMEH: return "TIMEH";
         default: return hex32(csr);
     }
 }

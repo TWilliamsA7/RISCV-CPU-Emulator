@@ -1,5 +1,6 @@
 add_library(elf
     elf.cpp
+    binary.cpp
 )
 
 target_include_directories(elf PUBLIC
