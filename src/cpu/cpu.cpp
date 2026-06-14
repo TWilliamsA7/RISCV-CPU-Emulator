@@ -44,9 +44,15 @@ CPU::CPU (CPUConfig config, Bus& bus, Clint& clint, PLIC& plic)
 void CPU::run() {
     state_ = CPUState::ACTIVE;
 
+    uint64_t insn_counter = 0;
+
     while (state_ != CPUState::HALTED) {
 
-        updateCycle();
+        insn_counter++;
+
+        if ((insn_counter & 1023) == 0) {
+            updateCycle();
+        }
 
         if (state_ == CPUState::WAITING_FOR_INTERRUPT) {
             if (csrs_[CSR::MIP] & csrs_[CSR::MIE]) {
