@@ -82,7 +82,7 @@ class CPU {
         // Registers
         std::array<uint32_t, 32> regs_;
         // Control Status Registers
-        std::unordered_map<uint16_t, uint32_t> csrs_;
+        std::array<uint32_t, 4096> csrs_;
 
         // Reservation
 

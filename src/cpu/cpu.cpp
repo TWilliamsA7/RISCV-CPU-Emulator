@@ -12,6 +12,7 @@
 CPU::CPU (CPUConfig config, Bus& bus, Clint& clint, PLIC& plic) 
     : config_(config), bus_(bus), clint_(clint), pc_(0x80000000), mmu_(*this), plic_(plic) {
     regs_.fill(0);
+    csrs_.fill(0);
     csrs_[CSR::MVENDORID] = 0xF00DFACE;
     privilege_level_ = PrivilegeLevel::MACHINE;
     csrs_[CSR::MSTATUS] = (3 << 11);

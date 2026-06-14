@@ -45,8 +45,8 @@ std::optional<uint32_t> CPU::readCSR(uint16_t addr) {
             return 0;
 
         default:
-            auto it = csrs_.find(addr);
-            if (it != csrs_.end()) return it->second;
+            if (addr < 4096)
+                return csrs_[addr];
             return 0;
     }
 }
