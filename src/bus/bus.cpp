@@ -86,7 +86,7 @@ uint32_t Bus::read32(uint32_t addr) {
 }
 
 void Bus::write8(uint32_t addr, uint8_t val) {
-    std::lock_guard<std::mutex> lock(mem_mutex_);
+    // std::lock_guard<std::mutex> lock(mem_mutex_);
 
     if (addr >= UART::BASE && addr < UART::BASE + UART::SIZE) {
         uart_.write8(addr - UART::BASE, val);
@@ -104,7 +104,7 @@ void Bus::write8(uint32_t addr, uint8_t val) {
 }
 
 void Bus::write16(uint32_t addr, uint16_t val) {
-    std::lock_guard<std::mutex> lock(mem_mutex_);
+    // std::lock_guard<std::mutex> lock(mem_mutex_);
 
     if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
@@ -118,7 +118,7 @@ void Bus::write16(uint32_t addr, uint16_t val) {
 }
 
 void Bus::write32(uint32_t addr, uint32_t val) {
-    std::lock_guard<std::mutex> lock(mem_mutex_);
+    // std::lock_guard<std::mutex> lock(mem_mutex_);
 
     if (addr == 0x80001000 && val != 0) {
         if (val == 1U) {
@@ -149,7 +149,7 @@ void Bus::write32(uint32_t addr, uint32_t val) {
 }
 
 uint32_t Bus::atomic_rmw_w(uint32_t addr, std::function<uint32_t(uint32_t)> operation) {
-    std::lock_guard<std::mutex> lock(mem_mutex_);
+   std::lock_guard<std::mutex> lock(mem_mutex_);
 
     uint32_t old_val = read32(addr);
 
