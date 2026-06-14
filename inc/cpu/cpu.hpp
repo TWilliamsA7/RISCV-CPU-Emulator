@@ -11,6 +11,7 @@
 #include "core/state.hpp"
 #include "bus/bus.hpp"
 #include "mmu/mmu.hpp"
+#include "mmu/tlb.hpp"
 
 enum class ExecutionMode {
     BARE_METAL,
@@ -65,6 +66,13 @@ class CPU {
 
         friend class MMU;
 
+        // Defines read, write, execute permissions
+        enum PrivilegeLevel {
+            USER = 0,
+            SUPERVISOR = 1,
+            MACHINE = 3,
+        };
+
     private:
         // Program Counter
         uint32_t pc_;
@@ -83,12 +91,7 @@ class CPU {
         // Address of the current reservation if it exists
         uint32_t reservation_addr_;
 
-        // Defines read, write, execute permissions
-        enum PrivilegeLevel {
-            USER = 0,
-            SUPERVISOR = 1,
-            MACHINE = 3,
-        };
+
 
         // Current Execution Priviledge Level
         PrivilegeLevel privilege_level_;
@@ -115,6 +118,9 @@ class CPU {
 
         // MMU peripheral
         MMU mmu_;
+
+        // TLB
+        TLB tlb_;
 
         // Configuration for CPU
         CPUConfig config_;

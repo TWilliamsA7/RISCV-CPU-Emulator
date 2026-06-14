@@ -117,27 +117,13 @@ bool CPU::writeCSR(uint16_t addr, uint32_t val) {
         }
 
         case CSR::MISA: {
-            // uint32_t old_misa = csrs_[CSR::MISA];
-
-            // uint32_t misa = val;
-            // misa &= SUPPORTED_EXTENSIONS_MASK;
-            // misa |= REQUIRED_EXTENSIONS_MASK;
-
-            // bool old_c = old_misa & (1u << 2);
-            // bool new_c = misa     & (1u << 2);
-
-            // // IALIGN would change 16 -> 32
-            // if (old_c && !new_c) {
-            //     uint32_t next_insn_addr = pc_ + sr.dInstr.instr_len;
-
-            //     if (next_insn_addr & 0x3) {
-            //         // WARL suppression: leave misa unchanged
-            //         misa = old_misa;
-            //     }
-            // }
-
-            // csrs_[CSR::MISA] = misa;
             break;
+        }
+
+        case CSR::SATP: {
+            csrs_[CSR::SATP] = val;
+            tlb_flush_all(tlb_);
+            return true;
         }
 
         case CSR::MENVCFG:

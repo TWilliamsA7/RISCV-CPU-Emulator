@@ -3,6 +3,7 @@
 #pragma once
 
 #include <cstdint>
+#include "mmu/tlb.hpp"
 
 class CPU;
 
@@ -16,6 +17,7 @@ class MMU {
         static constexpr uint8_t LEVELS = 2;
         static constexpr uint32_t VPN_MASK = 0x3FF;
         static constexpr uint32_t PPN_MASK = 0x3FFFFF;
+        static constexpr uint16_t ASID_MASK = 0x1FF;
 
         static constexpr uint32_t PTE_V = (1 << 0);
         static constexpr uint32_t PTE_R = (1 << 1);
@@ -37,6 +39,6 @@ class MMU {
         uint32_t translate(uint32_t va, AccessType type);
         
     private:
-        void triggerPageFault(AccessType type);
         CPU& cpu_;
+        void check_tlb_permissions(const TLBEntry& e, MMU::AccessType at, uint32_t priv, uint32_t va);
 };

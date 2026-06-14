@@ -652,7 +652,7 @@ void CPU::execCSRRCI(const DecodedInstr& i) {
 
     
     if (uimm != 0) {
-        if (!writeCSR(csr_addr, old_val.value() & ~uimm));
+        if (!writeCSR(csr_addr, old_val.value() & ~uimm)) return;
     }
     
     sr.reg_write = RegWrite{ i.rd, o, regs_[i.rd] };
@@ -854,6 +854,16 @@ void CPU::execSFENCE_VMA(const DecodedInstr& i) {
             trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
             return;
         }
+    }
+
+    if (!i.rs1 && !i.rs2) {
+        tlb_flush_all(tlb_);
+    } else if (!i.rs1 && i.rs2) {
+        tlb_flush_asid(tlb_, static_cast<uint16_t>(regs_[i.rs2] & 0x1FF));
+    } else if (i.rs1 && !i.rs2) {
+        tlb_flush_va(tlb_, regs_[i.rs1]);
+    } else {
+        tlb_flush_va_asid(tlb_, regs_[i.rs1], static_cast<uint16_t>(regs_[i.rs2] & 0x1FF));
     }
 }
 
