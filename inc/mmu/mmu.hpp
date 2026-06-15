@@ -13,6 +13,7 @@ class MMU {
         explicit MMU(CPU& cpu);
 
         static constexpr uint32_t PAGE_SIZE = 4096;
+        static constexpr uint32_t PAGE_MASK = ~(PAGE_SIZE - 1);
         static constexpr uint8_t PTE_SIZE = 4;
         static constexpr uint8_t LEVELS = 2;
         static constexpr uint32_t VPN_MASK = 0x3FF;

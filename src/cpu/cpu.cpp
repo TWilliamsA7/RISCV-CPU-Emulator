@@ -103,24 +103,40 @@ StepResult CPU::step() {
         }
             
 
-        uint32_t first_half_address = mmu_.translate(pc_, MMU::AccessType::FETCH);
-        uint16_t first_half = bus_.read16(first_half_address);
-        
-        if ((first_half & 0x3) != 0x3) {
-            if (!use_compress) {
-                // Illegal if C is disabled
-                trap(ExceptionCause::ILLEGAL_INSTRUCTION, first_half, false); 
-                return sr;
-            }
-            sr.instruction = decompress(first_half);
-            instr_len = 2;
-        } else {
-            // 32-bit instruction
-            uint32_t second_half_address = mmu_.translate(pc_ + 2, MMU::AccessType::FETCH);
-            uint16_t second_half = bus_.read16(second_half_address);
-            sr.instruction = (second_half << 16) | first_half;
-            instr_len = 4;
-        } 
+    uint32_t phys_pc = mmu_.translate(pc_, MMU::AccessType::FETCH);
+
+    // fast path: assume instruction fits in same page
+    uint32_t raw = bus_.read32(phys_pc);
+    uint16_t first_half = raw & 0xFFFF; 
+
+    if ((first_half & 0x3) != 0x3) {
+        if (!use_compress) {
+            trap(ExceptionCause::ILLEGAL_INSTRUCTION, first_half, false);
+            return sr;
+        }
+
+        sr.instruction = decompress(first_half);
+        instr_len = 2;
+    }
+    else {
+        // check if we cross page boundary (rare case)
+        if ((pc_ & MMU::PAGE_MASK) == ((pc_ + 3) & MMU::PAGE_MASK)) {
+
+
+            sr.instruction = raw;
+        }
+        else {
+            // slow path: page split
+            uint32_t phys_pc2 =
+                mmu_.translate(pc_ + 2, MMU::AccessType::FETCH);
+
+            uint16_t second_half = bus_.read16(phys_pc2);
+
+            sr.instruction = (uint32_t(second_half) << 16) | first_half;
+        }
+
+        instr_len = 4;
+    }
     } catch (const BusAccessError& e) {
         trap(ExceptionCause::INSTRUCTION_ACCESS_FAULT, pc_, false);
         return sr;
