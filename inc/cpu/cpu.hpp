@@ -13,6 +13,7 @@
 #include "bus/bus.hpp"
 #include "mmu/mmu.hpp"
 #include "mmu/tlb.hpp"
+#include <cache/icache.hpp>
 
 enum class ExecutionMode {
     BARE_METAL,
@@ -124,6 +125,8 @@ class CPU {
 
         // TLB
         TLB tlb_;
+
+        ICache icache_;
 
         // Configuration for CPU
         CPUConfig config_;

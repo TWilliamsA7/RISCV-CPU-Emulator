@@ -89,6 +89,13 @@ uint32_t Bus::read32(uint32_t addr) {
     throw BusAccessError(std::to_string(addr) + " is outside of mapped range");
 }
 
+uint8_t* Bus::phys_ptr(uint32_t phys_addr) {
+    if (phys_addr >= DRAM_BASE && phys_addr < DRAM_BASE + DRAM_SIZE) {
+        return &dram_[phys_addr - DRAM_BASE];
+    }
+    throw BusAccessError("phys_ptr out of range: " + std::to_string(phys_addr));
+}
+
 void Bus::write8(uint32_t addr, uint8_t val) {
     // std::lock_guard<std::mutex> lock(mem_mutex_);
 

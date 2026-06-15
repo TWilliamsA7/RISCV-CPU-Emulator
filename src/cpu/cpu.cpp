@@ -10,7 +10,7 @@
 #include <thread>
 
 CPU::CPU (CPUConfig config, Bus& bus, Clint& clint, PLIC& plic) 
-    : config_(config), bus_(bus), clint_(clint), pc_(0x80000000), mmu_(*this), plic_(plic) {
+    : config_(config), bus_(bus), clint_(clint), pc_(0x80000000), mmu_(*this), plic_(plic), icache_(bus) {
     regs_.fill(0);
     csrs_.fill(0);
     csrs_[CSR::MVENDORID] = 0xF00DFACE;
@@ -61,10 +61,10 @@ void CPU::run() {
             updateCycle();
         }
 
-        // if ((insn_counter & 0xFFFFFF) == 0) {  // every ~16M instructions
-        //     auto elapsed = std::chrono::duration<double>(clock::now() - t0).count();
-        //     fprintf(stderr, "%.2f MIPS\n", insn_counter / elapsed / 1e6);
-        // }
+        if ((insn_counter & 0xFFFFFF) == 0) {  // every ~16M instructions
+            auto elapsed = std::chrono::duration<double>(clock::now() - t0).count();
+            fprintf(stderr, "%.2f MIPS\n", insn_counter / elapsed / 1e6);
+        }
 
         if (state_ == CPUState::WAITING_FOR_INTERRUPT) {
             if (csrs_[CSR::MIP] & csrs_[CSR::MIE]) {
@@ -103,40 +103,43 @@ StepResult CPU::step() {
         }
             
 
-    uint32_t phys_pc = mmu_.translate(pc_, MMU::AccessType::FETCH);
+        uint32_t phys_pc = mmu_.translate(pc_, MMU::AccessType::FETCH);
 
-    // fast path: assume instruction fits in same page
-    uint32_t raw = bus_.read32(phys_pc);
-    uint16_t first_half = raw & 0xFFFF; 
+        // get pointer to page
+        uint8_t* page = icache_.fetch_page(phys_pc);
 
-    if ((first_half & 0x3) != 0x3) {
-        if (!use_compress) {
-            trap(ExceptionCause::ILLEGAL_INSTRUCTION, first_half, false);
-            return sr;
-        }
+        uint32_t offset = phys_pc & 0xFFF;
+        uint8_t* inst_ptr = page + offset;
 
-        sr.instruction = decompress(first_half);
-        instr_len = 2;
-    }
-    else {
-        // check if we cross page boundary (rare case)
-        if ((pc_ & MMU::PAGE_MASK) == ((pc_ + 3) & MMU::PAGE_MASK)) {
+        // read first 16 bits
+        uint16_t first_half;
+        memcpy(&first_half, inst_ptr, sizeof(uint16_t));
 
+        if ((first_half & 0x3) != 0x3) {
+            if (!use_compress) {
+                trap(ExceptionCause::ILLEGAL_INSTRUCTION, first_half, false);
+                return sr;
+            }
 
-            sr.instruction = raw;
+            sr.instruction = decompress(first_half);
+            instr_len = 2;
         }
         else {
-            // slow path: page split
-            uint32_t phys_pc2 =
-                mmu_.translate(pc_ + 2, MMU::AccessType::FETCH);
+            uint16_t second_half;
 
-            uint16_t second_half = bus_.read16(phys_pc2);
+            if (offset < 4094) {
+                second_half = *(uint16_t*)(inst_ptr + 2);
+            }
+            else {
+                uint32_t phys_pc2 = mmu_.translate(pc_ + 2, MMU::AccessType::FETCH);
+                uint8_t* page2 = icache_.fetch_page(phys_pc2);
+                memcpy(&second_half, page2, sizeof(uint16_t));
+            }
 
             sr.instruction = (uint32_t(second_half) << 16) | first_half;
-        }
 
-        instr_len = 4;
-    }
+            instr_len = 4;
+        }
     } catch (const BusAccessError& e) {
         trap(ExceptionCause::INSTRUCTION_ACCESS_FAULT, pc_, false);
         return sr;

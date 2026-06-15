@@ -35,6 +35,8 @@ class Bus {
         // Read 8 bit value located at addr
         uint8_t read8(uint32_t addr);
 
+        uint8_t* phys_ptr(uint32_t phys_addr);
+
         // Write 32 bit value to addr
         void write32(uint32_t addr, uint32_t val);
 
