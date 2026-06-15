@@ -9,6 +9,7 @@
 #include <termios.h>
 #include <csignal>
 #include <sys/select.h>
+#include "cpu/cpu.hpp"
 
 static struct termios g_old_termios;
 static bool g_have_old_termios = false;
@@ -20,8 +21,9 @@ static void restore_termios() {
 
 static void signal_restore(int sig) {
     restore_termios();
-    std::signal(sig, SIG_DFL);
-    raise(sig);
+    
+    if (g_cpu)
+        g_cpu->halt();
 }
 
 void UART::set_raw_mode() {

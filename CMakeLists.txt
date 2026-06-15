@@ -1,5 +1,5 @@
 # Project Definition
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.10)
 project(riscv_emulator LANGUAGES CXX)
 
 # Build Options
@@ -23,6 +23,8 @@ include(FetchContent)
 
 if(WIN32)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -static-libgcc -static-libstdc++")
+elseif(UNIX)
+    find_package(Threads REQUIRED)
 endif()
 
 add_subdirectory(src)

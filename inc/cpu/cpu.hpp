@@ -6,7 +6,8 @@
 #include <unordered_map>
 #include <array>
 #include <string>
-#include <Optional>
+#include <optional>
+#include <atomic>
 #include "isa/isa.hpp"
 #include "core/state.hpp"
 #include "bus/bus.hpp"
@@ -48,6 +49,8 @@ class CPU {
 
         // Returns True if CPU is halted
         bool isHalted() const;
+
+        void halt();
 
 
         // === Trace Functions === //
@@ -409,3 +412,5 @@ class CPU {
             STORE_PAGE_FAULT = 15
         };
 };
+
+extern CPU* g_cpu;

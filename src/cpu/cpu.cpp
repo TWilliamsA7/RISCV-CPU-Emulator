@@ -49,6 +49,8 @@ CPU::CPU (CPUConfig config, Bus& bus, Clint& clint, PLIC& plic)
 void CPU::run() {
     state_ = CPUState::ACTIVE;
 
+    using clock = std::chrono::steady_clock;
+    auto t0 = clock::now();
     uint64_t insn_counter = 0;
 
     while (state_ != CPUState::HALTED) {
@@ -58,6 +60,11 @@ void CPU::run() {
         if ((insn_counter & 1023) == 0) {
             updateCycle();
         }
+
+        // if ((insn_counter & 0xFFFFFF) == 0) {  // every ~16M instructions
+        //     auto elapsed = std::chrono::duration<double>(clock::now() - t0).count();
+        //     fprintf(stderr, "%.2f MIPS\n", insn_counter / elapsed / 1e6);
+        // }
 
         if (state_ == CPUState::WAITING_FOR_INTERRUPT) {
             if (csrs_[CSR::MIP] & csrs_[CSR::MIE]) {
@@ -70,6 +77,10 @@ void CPU::run() {
 
         step();
     }
+}
+
+void CPU::halt() {
+    state_ = CPUState::HALTED;
 }
 
 

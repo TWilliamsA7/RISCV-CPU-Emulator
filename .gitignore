@@ -1,5 +1,5 @@
 # Build files
-build/
+build*/
 
 # Python Virtual Environment
 .venv
@@ -23,3 +23,7 @@ dump.txt
 # Validation Tests
 validation/
 
+# Profiling
+
+perf*
+callgrind*

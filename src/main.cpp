@@ -5,6 +5,8 @@
 #include <string>
 #include <unistd.h>
 
+CPU* g_cpu = nullptr;
+
 int main(int argc, char** argv) {
 
     CPUConfig config;
@@ -42,6 +44,7 @@ int main(int argc, char** argv) {
     PLIC plic;
     Bus bus = Bus(clint, plic, disk_path);
     CPU cpu(config, bus, clint, plic);
+    g_cpu = &cpu;
 
     load_elf(elf_path, bus, &cpu);
 

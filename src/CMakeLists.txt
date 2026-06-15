@@ -12,4 +12,8 @@ add_subdirectory(devices)
 
 add_executable(riscv_emulator main.cpp)
 
-target_link_libraries(riscv_emulator PRIVATE cpu core memory elf bus clint mmu plic devices)
+if(UNIX)
+    target_link_libraries(riscv_emulator PRIVATE cpu core memory elf bus clint mmu plic devices Threads::Threads)
+else()
+    target_link_libraries(riscv_emulator PRIVATE cpu core memory elf bus clint mmu plic devices)
+endif()

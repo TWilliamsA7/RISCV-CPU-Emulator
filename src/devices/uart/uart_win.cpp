@@ -7,6 +7,7 @@
 #include "devices/uart.hpp"
 #include "windows.h"
 #include "conio.h"
+#include "cpu/cpu.hpp"
 #include <atomic>
 #include <chrono>
 #include <thread>
@@ -25,6 +26,8 @@ static BOOL WINAPI console_ctrl_handler(DWORD type) {
         type == CTRL_CLOSE_EVENT || type == CTRL_LOGOFF_EVENT ||
         type == CTRL_SHUTDOWN_EVENT) {
         restore_console_mode();
+        if (g_cpu)
+            g_cpu->halt();
         return FALSE;
     }
     return FALSE;
