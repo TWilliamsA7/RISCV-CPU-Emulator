@@ -60,5 +60,7 @@ int main(int argc, char** argv) {
         return e.code;
     }
 
+    std::cout << "\nExiting Emulator...\n";
+
     return 0;
 }
