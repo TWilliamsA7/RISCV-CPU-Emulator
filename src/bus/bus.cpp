@@ -1,15 +1,15 @@
 // src/bus/bus.cpp
 
+
 #include "bus/bus.hpp"
-#include "cpu/cpu.hpp"
+#include "emulator.hpp"
 #include "errors/errors.hpp"
 #include <iostream>
 
-Bus::Bus(Clint& clint, PLIC& plic, const std::string& disk_path) 
-    : clint_(clint), 
-    plic_(plic), 
-    uart_([&plic](uint32_t irq){ plic.set_pending(irq);}),
-    virtio_blk_(disk_path, [&plic](uint32_t irq){ plic.set_pending(irq); }, *this)
+Bus::Bus(Emulator& sys) 
+    : sys_(sys), 
+    uart_([&sys](uint32_t irq){ sys.plic.set_pending(irq);}),
+    virtio_blk_(sys.config_.disk_path, [&sys](uint32_t irq){ sys.plic.set_pending(irq); }, *this)
 {
     dram_ = std::vector<uint8_t>(Bus::DRAM_SIZE, 0);
 }
@@ -72,7 +72,7 @@ uint32_t Bus::read32(uint32_t addr) {
         return uart_.read8(addr - UART::BASE);
 
     if (addr >= Clint::BASE && addr < Clint::BASE + Clint::SIZE)
-        return clint_.read32(addr - Clint::BASE);
+        return sys_.clint.read32(addr - Clint::BASE);
     if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
         uint32_t result;
@@ -80,7 +80,7 @@ uint32_t Bus::read32(uint32_t addr) {
         return result;
     }
     if (addr >= PLIC::BASE && addr < PLIC::BASE + PLIC::SIZE) {
-        return plic_.read32(addr - PLIC::BASE);
+        return sys_.plic.read32(addr - PLIC::BASE);
     }
 
     if (addr >= VirtioBlk::BASE && addr < VirtioBlk::BASE + VirtioBlk::SIZE)
@@ -145,9 +145,9 @@ void Bus::write32(uint32_t addr, uint32_t val) {
     }
 
     if (addr >= Clint::BASE && addr < Clint::BASE + Clint::SIZE) {
-        clint_.write32(addr - Clint::BASE, val);
+        sys_.clint.write32(addr - Clint::BASE, val);
     } else if (addr >= PLIC::BASE && addr < PLIC::BASE + PLIC::SIZE) {
-        plic_.write32(addr - PLIC::BASE, val);
+        sys_.plic.write32(addr - PLIC::BASE, val);
     } else if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
         std::memcpy(&dram_[offset], &val, 4);
