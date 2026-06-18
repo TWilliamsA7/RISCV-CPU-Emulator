@@ -22,4 +22,6 @@ class Emulator {
         MMU mmu;
 
         EmulatorConfig config_;
+
+        int emulate();
 };
