@@ -1,6 +1,7 @@
 // src/cpu/execute.cpp
 
 #include "cpu/cpu.hpp"
+#include "emulator.hpp"
 #include <iostream>
 #include <errors/errors.hpp>
 
@@ -274,9 +275,9 @@ void CPU::execLW(const DecodedInstr& i) {
     try {
         uint32_t o = regs_[i.rd];
 
-        uint32_t pa = mmu_.translate(a, MMU::AccessType::LOAD);
+        uint32_t pa = sys_.mmu.translate(a, MMU::AccessType::LOAD);
 
-        writeReg(i.rd, bus_.read32(pa));
+        writeReg(i.rd, sys_.bus.read32(pa));
         sr.reg_write = RegWrite { true, i.rd, o, regs_[i.rd]};
     } catch (const BusAccessError&) {
         trap(ExceptionCause::LOAD_ACCESS_FAULT, a, false);
@@ -291,9 +292,9 @@ void CPU::execLH(const DecodedInstr& i) {
     try {
         uint32_t o = regs_[i.rd];
 
-        uint32_t pa = mmu_.translate(a, MMU::AccessType::LOAD);
+        uint32_t pa = sys_.mmu.translate(a, MMU::AccessType::LOAD);
 
-        int16_t half = bus_.read16(pa);       
+        int16_t half = sys_.bus.read16(pa);       
         int32_t s = static_cast<int32_t>(half);
         writeReg(i.rd, static_cast<uint32_t>(s));
         sr.reg_write = RegWrite { true, i.rd, o, regs_[i.rd]};
@@ -308,9 +309,9 @@ void CPU::execLHU(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1]  + i.imm;
     
     try {
-        uint32_t pa = mmu_.translate(a, MMU::AccessType::LOAD);
+        uint32_t pa = sys_.mmu.translate(a, MMU::AccessType::LOAD);
         uint32_t o = regs_[i.rd];
-        uint32_t u = static_cast<uint32_t>(bus_.read16(pa));
+        uint32_t u = static_cast<uint32_t>(sys_.bus.read16(pa));
         writeReg(i.rd, u);
         sr.reg_write = RegWrite { true, i.rd, o, regs_[i.rd]};
     } catch (const BusAccessError&) {
@@ -326,9 +327,9 @@ void CPU::execLB(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1]  + i.imm;
 
     try {
-        uint32_t pa = mmu_.translate(a, MMU::AccessType::LOAD);
+        uint32_t pa = sys_.mmu.translate(a, MMU::AccessType::LOAD);
         uint32_t o = regs_[i.rd];
-        int8_t byte = static_cast<int8_t>(bus_.read8(pa));
+        int8_t byte = static_cast<int8_t>(sys_.bus.read8(pa));
         writeReg(i.rd, static_cast<uint32_t>(static_cast<int32_t>(byte)));
         sr.reg_write = RegWrite { true, i.rd, o, regs_[i.rd]};
     } catch (const BusAccessError&) {
@@ -342,9 +343,9 @@ void CPU::execLBU(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1] + i.imm;
 
     try {
-        uint32_t pa = mmu_.translate(a, MMU::AccessType::LOAD);
+        uint32_t pa = sys_.mmu.translate(a, MMU::AccessType::LOAD);
         uint32_t o = regs_[i.rd];
-        uint32_t u = static_cast<uint32_t>(bus_.read8(pa));
+        uint32_t u = static_cast<uint32_t>(sys_.bus.read8(pa));
         writeReg(i.rd, u);
         sr.reg_write = RegWrite { true, i.rd, o, regs_[i.rd]};
     } catch (const BusAccessError&) {
@@ -358,11 +359,11 @@ void CPU::execSW(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1] + i.imm;
 
     try {
-        uint32_t pa = mmu_.translate(a, MMU::AccessType::STORE);
+        uint32_t pa = sys_.mmu.translate(a, MMU::AccessType::STORE);
         uint32_t o = 0;
-        if (config_.verbose && !bus_.is_mmio(pa))
-            o = bus_.read32(pa);
-        bus_.write32(pa, regs_[i.rs2]);
+        if (sys_.config_.verbose && !sys_.bus.is_mmio(pa))
+            o = sys_.bus.read32(pa);
+        sys_.bus.write32(pa, regs_[i.rs2]);
         sr.mem_write = MemWrite{ true, a, o, regs_[i.rs2], 4};
     } catch (const BusAccessError&) {
         trap(ExceptionCause::STORE_ACCESS_FAULT, a, false);
@@ -376,11 +377,11 @@ void CPU::execSH(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1] + i.imm;
 
     try {
-        uint32_t pa = mmu_.translate(a, MMU::AccessType::STORE);
+        uint32_t pa = sys_.mmu.translate(a, MMU::AccessType::STORE);
         uint32_t o = 0;
-        if (config_.verbose && !bus_.is_mmio(pa))
-            o = bus_.read16(pa);
-        bus_.write16(pa, static_cast<uint16_t>(regs_[i.rs2]));
+        if (sys_.config_.verbose && !sys_.bus.is_mmio(pa))
+            o = sys_.bus.read16(pa);
+        sys_.bus.write16(pa, static_cast<uint16_t>(regs_[i.rs2]));
         sr.mem_write = MemWrite{ true, a, o, regs_[i.rs2], 2};
     } catch (const BusAccessError&) {
         trap(ExceptionCause::STORE_ACCESS_FAULT, a, false);
@@ -393,11 +394,11 @@ void CPU::execSB(const DecodedInstr& i) {
     uint32_t a = regs_[i.rs1] + i.imm; 
 
     try {
-        uint32_t pa = mmu_.translate(a, MMU::AccessType::STORE);
+        uint32_t pa = sys_.mmu.translate(a, MMU::AccessType::STORE);
         uint32_t o = 0;
-        if (config_.verbose && !bus_.is_mmio(pa))
-            o = bus_.read8(pa);
-        bus_.write8(pa, static_cast<uint8_t>(regs_[i.rs2]));
+        if (sys_.config_.verbose && !sys_.bus.is_mmio(pa))
+            o = sys_.bus.read8(pa);
+        sys_.bus.write8(pa, static_cast<uint8_t>(regs_[i.rs2]));
         sr.mem_write = MemWrite{ true, a, o, regs_[i.rs2], 1};
     } catch (const BusAccessError&) {  
         trap(ExceptionCause::STORE_ACCESS_FAULT, a, false);
@@ -539,7 +540,7 @@ void CPU::execAUIPC(const DecodedInstr& i) {
 }
 
 void CPU::execECALL(const DecodedInstr& i) {
-    if (config_.mode == ExecutionMode::BARE_METAL) {
+    if (sys_.config_.cpu_config.mode == ExecutionMode::BARE_METAL) {
         if (regs_[17] == 93) {
             std::cout << "Program exit via ECALL with code: " << regs_[10] << std::endl;
             state_ = CPUState::HALTED;
@@ -847,7 +848,7 @@ void CPU::execWFI(const DecodedInstr& i) {
         }
     }
     state_ = CPUState::WAITING_FOR_INTERRUPT;
-    bus_.release_deferred_uart_input();
+    sys_.bus.release_deferred_uart_input();
 }
 
 void CPU::execSFENCE_VMA(const DecodedInstr& i) {
@@ -879,10 +880,10 @@ void CPU::execSFENCE_VMA(const DecodedInstr& i) {
 
 void CPU::execLR_W(const DecodedInstr& i) {
     try {
-        uint32_t paddr = mmu_.translate(regs_[i.rs1], MMU::AccessType::LOAD);
+        uint32_t paddr = sys_.mmu.translate(regs_[i.rs1], MMU::AccessType::LOAD);
         uint32_t o = regs_[i.rd];
 
-        writeReg(i.rd, bus_.read32(paddr));
+        writeReg(i.rd, sys_.bus.read32(paddr));
 
         reservation_addr_ = paddr;
         reservation_valid_ = true;
@@ -897,12 +898,12 @@ void CPU::execLR_W(const DecodedInstr& i) {
 
 void CPU::execSC_W(const DecodedInstr& i) {
     try {
-        uint32_t paddr = mmu_.translate(regs_[i.rs1], MMU::AccessType::STORE);
+        uint32_t paddr = sys_.mmu.translate(regs_[i.rs1], MMU::AccessType::STORE);
         uint32_t oReg = regs_[i.rd];
-        uint32_t oMem = bus_.read32(paddr);
+        uint32_t oMem = sys_.bus.read32(paddr);
 
         if (reservation_valid_ && reservation_addr_ == paddr) {
-            bus_.write32(paddr, regs_[i.rs2]);
+            sys_.bus.write32(paddr, regs_[i.rs2]);
             writeReg(i.rd, 0);
             sr.mem_write = MemWrite{ true, regs_[i.rs1], oMem, regs_[i.rs2], 4 };
         } else {
@@ -926,7 +927,7 @@ void CPU::execSC_W(const DecodedInstr& i) {
 void CPU::execAMOSWAP_W(const DecodedInstr& i) {
     try {
         uint32_t oReg = regs_[i.rd];
-        uint32_t paddr = mmu_.translate(regs_[i.rs1], MMU::AccessType::STORE);
+        uint32_t paddr = sys_.mmu.translate(regs_[i.rs1], MMU::AccessType::STORE);
 
         if (paddr & 0x3) {
             trap(ExceptionCause::MISALIGNED_STORE_ADDRESS, paddr, false);
@@ -935,7 +936,7 @@ void CPU::execAMOSWAP_W(const DecodedInstr& i) {
 
         uint32_t operand = regs_[i.rs2];
 
-        uint32_t oMem = bus_.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return operand; });
+        uint32_t oMem = sys_.bus.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return operand; });
 
         writeReg(i.rd, oMem);
 
@@ -954,7 +955,7 @@ void CPU::execAMOSWAP_W(const DecodedInstr& i) {
 void CPU::execAMOADD_W(const DecodedInstr& i) {
     try {
         uint32_t oReg = regs_[i.rd];
-        uint32_t paddr = mmu_.translate(regs_[i.rs1], MMU::AccessType::STORE);
+        uint32_t paddr = sys_.mmu.translate(regs_[i.rs1], MMU::AccessType::STORE);
 
         if (paddr & 0x3) {
             trap(ExceptionCause::MISALIGNED_STORE_ADDRESS, paddr, false);
@@ -963,7 +964,7 @@ void CPU::execAMOADD_W(const DecodedInstr& i) {
 
         uint32_t operand = regs_[i.rs2];
 
-        uint32_t oMem = bus_.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return mem_val + operand; });
+        uint32_t oMem = sys_.bus.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return mem_val + operand; });
 
         writeReg(i.rd, oMem);
 
@@ -982,7 +983,7 @@ void CPU::execAMOADD_W(const DecodedInstr& i) {
 void CPU::execAMOAND_W(const DecodedInstr& i) {
     try {
         uint32_t oReg = regs_[i.rd];
-        uint32_t paddr = mmu_.translate(regs_[i.rs1], MMU::AccessType::STORE);
+        uint32_t paddr = sys_.mmu.translate(regs_[i.rs1], MMU::AccessType::STORE);
 
         if (paddr & 0x3) {
             trap(ExceptionCause::MISALIGNED_STORE_ADDRESS, paddr, false);
@@ -991,7 +992,7 @@ void CPU::execAMOAND_W(const DecodedInstr& i) {
 
         uint32_t operand = regs_[i.rs2];
 
-        uint32_t oMem = bus_.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return mem_val & operand; });
+        uint32_t oMem = sys_.bus.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return mem_val & operand; });
 
         writeReg(i.rd, oMem);
 
@@ -1010,7 +1011,7 @@ void CPU::execAMOAND_W(const DecodedInstr& i) {
 void CPU::execAMOOR_W(const DecodedInstr& i) {
     try {
         uint32_t oReg = regs_[i.rd];
-        uint32_t paddr = mmu_.translate(regs_[i.rs1], MMU::AccessType::STORE);
+        uint32_t paddr = sys_.mmu.translate(regs_[i.rs1], MMU::AccessType::STORE);
 
         if (paddr & 0x3) {
             trap(ExceptionCause::MISALIGNED_STORE_ADDRESS, paddr, false);
@@ -1019,7 +1020,7 @@ void CPU::execAMOOR_W(const DecodedInstr& i) {
 
         uint32_t operand = regs_[i.rs2];
 
-        uint32_t oMem = bus_.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return mem_val | operand; });
+        uint32_t oMem = sys_.bus.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return mem_val | operand; });
 
         writeReg(i.rd, oMem);
 
@@ -1038,7 +1039,7 @@ void CPU::execAMOOR_W(const DecodedInstr& i) {
 void CPU::execAMOXOR_W(const DecodedInstr& i) {
     try {
         uint32_t oReg = regs_[i.rd];
-        uint32_t paddr = mmu_.translate(regs_[i.rs1], MMU::AccessType::STORE);
+        uint32_t paddr = sys_.mmu.translate(regs_[i.rs1], MMU::AccessType::STORE);
 
         if (paddr & 0x3) {
             trap(ExceptionCause::MISALIGNED_STORE_ADDRESS, paddr, false);
@@ -1047,7 +1048,7 @@ void CPU::execAMOXOR_W(const DecodedInstr& i) {
 
         uint32_t operand = regs_[i.rs2];
 
-        uint32_t oMem = bus_.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return mem_val ^ operand; });
+        uint32_t oMem = sys_.bus.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return mem_val ^ operand; });
 
         writeReg(i.rd, oMem);
 
@@ -1066,7 +1067,7 @@ void CPU::execAMOXOR_W(const DecodedInstr& i) {
 void CPU::execAMOMAX_W(const DecodedInstr& i) {
     try {
         uint32_t oReg = regs_[i.rd];
-        uint32_t paddr = mmu_.translate(regs_[i.rs1], MMU::AccessType::STORE);
+        uint32_t paddr = sys_.mmu.translate(regs_[i.rs1], MMU::AccessType::STORE);
 
         if (paddr & 0x3) {
             trap(ExceptionCause::MISALIGNED_STORE_ADDRESS, paddr, false);
@@ -1075,7 +1076,7 @@ void CPU::execAMOMAX_W(const DecodedInstr& i) {
 
         int32_t operand = static_cast<int32_t>(regs_[i.rs2]);
 
-        uint32_t oMem = bus_.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return std::max(static_cast<int32_t>(mem_val), operand); });
+        uint32_t oMem = sys_.bus.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return std::max(static_cast<int32_t>(mem_val), operand); });
 
         writeReg(i.rd, oMem);
 
@@ -1093,7 +1094,7 @@ void CPU::execAMOMAX_W(const DecodedInstr& i) {
 void CPU::execAMOMAXU_W(const DecodedInstr& i) {
     try {
         uint32_t oReg = regs_[i.rd];
-        uint32_t paddr = mmu_.translate(regs_[i.rs1], MMU::AccessType::STORE);
+        uint32_t paddr = sys_.mmu.translate(regs_[i.rs1], MMU::AccessType::STORE);
 
         if (paddr & 0x3) {
             trap(ExceptionCause::MISALIGNED_STORE_ADDRESS, paddr, false);
@@ -1102,7 +1103,7 @@ void CPU::execAMOMAXU_W(const DecodedInstr& i) {
 
         uint32_t operand = regs_[i.rs2];
 
-        uint32_t oMem = bus_.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return std::max(mem_val, operand); });
+        uint32_t oMem = sys_.bus.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return std::max(mem_val, operand); });
 
         writeReg(i.rd, oMem);
 
@@ -1120,7 +1121,7 @@ void CPU::execAMOMAXU_W(const DecodedInstr& i) {
 void CPU::execAMOMIN_W(const DecodedInstr& i) {
     try {
         uint32_t oReg = regs_[i.rd];
-        uint32_t paddr = mmu_.translate(regs_[i.rs1], MMU::AccessType::STORE);
+        uint32_t paddr = sys_.mmu.translate(regs_[i.rs1], MMU::AccessType::STORE);
 
         if (paddr & 0x3) {
             trap(ExceptionCause::MISALIGNED_STORE_ADDRESS, paddr, false);
@@ -1129,7 +1130,7 @@ void CPU::execAMOMIN_W(const DecodedInstr& i) {
 
         int32_t operand = static_cast<int32_t>(regs_[i.rs2]);
 
-        uint32_t oMem = bus_.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return std::min(static_cast<int32_t>(mem_val), operand); });
+        uint32_t oMem = sys_.bus.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return std::min(static_cast<int32_t>(mem_val), operand); });
 
         writeReg(i.rd, oMem);
 
@@ -1147,7 +1148,7 @@ void CPU::execAMOMIN_W(const DecodedInstr& i) {
 void CPU::execAMOMINU_W(const DecodedInstr& i) {
     try {
         uint32_t oReg = regs_[i.rd];
-        uint32_t paddr = mmu_.translate(regs_[i.rs1], MMU::AccessType::STORE);
+        uint32_t paddr = sys_.mmu.translate(regs_[i.rs1], MMU::AccessType::STORE);
 
         if (paddr & 0x3) {
             trap(ExceptionCause::MISALIGNED_STORE_ADDRESS, paddr, false);
@@ -1156,7 +1157,7 @@ void CPU::execAMOMINU_W(const DecodedInstr& i) {
 
         uint32_t operand = regs_[i.rs2];
 
-        uint32_t oMem = bus_.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return std::min(mem_val, operand); });
+        uint32_t oMem = sys_.bus.atomic_rmw_w(paddr, [operand](uint32_t mem_val) { return std::min(mem_val, operand); });
 
         writeReg(i.rd, oMem);
 

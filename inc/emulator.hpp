@@ -7,6 +7,7 @@ struct EmulatorConfig {
     char* disk_path = nullptr;
 
     CPUConfig cpu_config;
+    bool verbose = false;
 };
 
 

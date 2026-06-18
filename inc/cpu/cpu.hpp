@@ -24,7 +24,6 @@ struct CPUConfig {
     ExecutionMode mode = ExecutionMode::SYSTEM;
     Extensions extensions;
     uint32_t starting_pc = 0x80000000;
-    bool verbose = false;
 };
 
 class Emulator;

@@ -1,6 +1,7 @@
 // src/cpu/csr.cpp
 
 #include "cpu/cpu.hpp"
+#include "emulator.hpp"
 
 uint32_t CPU::readCSR(uint16_t addr) {
 
@@ -25,9 +26,9 @@ uint32_t CPU::readCSR(uint16_t addr) {
         case CSR::SIP:
             return csrs_[CSR::MIP] & csrs_[CSR::MIDELEG];
         case CSR::TIME:
-            return (uint32_t)(clint_.mtime);
+            return (uint32_t)(sys_.clint.mtime);
         case CSR::TIMEH:
-            return (uint32_t)(clint_.mtime >> 32);
+            return (uint32_t)(sys_.clint.mtime >> 32);
 
         // Hardwired zero — defined but unimplemented extensions
         case CSR::MENVCFG:
