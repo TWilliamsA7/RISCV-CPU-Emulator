@@ -174,8 +174,7 @@ StepResult CPU::step() {
 }
 
 void CPU::updateCycle() {
-    if (clint_.mtime >= clint_.mtimecmp)
-        clint_.updateMtime();
+    clint_.updateMtime();
 
     uint32_t low_before = csrs_[CSR::MCYCLE]; 
     csrs_[CSR::MCYCLE]++;
