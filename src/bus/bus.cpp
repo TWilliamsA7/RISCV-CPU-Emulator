@@ -111,6 +111,7 @@ void Bus::write8(uint32_t addr, uint8_t val) {
         if (cpu_ptr_) {
             cpu_ptr_->invalidateReservation(addr);
             cpu_ptr_->icache_.invalidate_page(addr);
+            cpu_ptr_->clearDecodeCache();
         }
     }
 }
@@ -125,6 +126,7 @@ void Bus::write16(uint32_t addr, uint16_t val) {
         if (cpu_ptr_) {
             cpu_ptr_->invalidateReservation(addr);
             cpu_ptr_->icache_.invalidate_page(addr);
+            cpu_ptr_->clearDecodeCache();
         }
     }
 }
@@ -153,6 +155,7 @@ void Bus::write32(uint32_t addr, uint32_t val) {
         if (cpu_ptr_) {
             cpu_ptr_->invalidateReservation(addr);
             cpu_ptr_->icache_.invalidate_page(addr);
+            cpu_ptr_->clearDecodeCache();
         }
     } else if (addr >= VirtioBlk::BASE && addr < VirtioBlk::BASE + VirtioBlk::SIZE)
         virtio_blk_.write32(addr - VirtioBlk::BASE, val);
@@ -178,6 +181,7 @@ void Bus::write32_unlocked(uint32_t addr, uint32_t val) {
         if (cpu_ptr_) {
             cpu_ptr_->invalidateReservation(addr);
             cpu_ptr_->icache_.invalidate_page(addr);
+            cpu_ptr_->clearDecodeCache();
         }
     }
 }
@@ -188,6 +192,7 @@ void Bus::write8_unlocked(uint32_t addr, uint8_t val) {
         if (cpu_ptr_) {
             cpu_ptr_->invalidateReservation(addr);
             cpu_ptr_->icache_.invalidate_page(addr);
+            cpu_ptr_->clearDecodeCache();
         }
     }
 }
@@ -199,6 +204,7 @@ void Bus::write16_unlocked(uint32_t addr, uint16_t val) {
         if (cpu_ptr_) {
             cpu_ptr_->invalidateReservation(addr);
             cpu_ptr_->icache_.invalidate_page(addr);
+            cpu_ptr_->clearDecodeCache();
         }
     }
 }

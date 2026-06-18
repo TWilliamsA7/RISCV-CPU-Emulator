@@ -83,26 +83,40 @@ void CPU::halt() {
     state_ = CPUState::HALTED;
 }
 
+const DecodedInstr& CPU::fetch_and_decode(uint32_t pc) {
+    uint32_t index = (pc >> 1) & (DECODE_CACHE_SIZE - 1);
 
-StepResult CPU::step() {
-    clearStep();  
+    if (decoded_cache_[index].epoch == current_epoch_ && decoded_cache_[index].pc == pc) {
+        return decoded_cache_[index].decoded;
+    }
 
-    // Check for Asynchronous Interrupts 
-    checkInterrupts();
-    if (trap_occurred_) return sr;
+    DecodedInstr di = DecodedInstr();
 
-    uint32_t instr_len;
+    uint32_t len = fetchInstr(pc);
+
+    if (trap_occurred_) {
+        return sr.dInstr;
+    }
+
+    di = decode(sr.instruction);
+    di.instr_len = len;
+    sr.dInstr = di;
+
+    decoded_cache_[index].epoch = current_epoch_;
+    decoded_cache_[index].pc = pc;
+    decoded_cache_[index].decoded = di;
+    return decoded_cache_[index].decoded;
+}
+
+ const uint32_t CPU::fetchInstr(uint32_t pc) {
 
     bool use_compress = csrs_[CSR::MISA] & 0x4;
 
-    // Fetch
     try {
         if (pc_ & ADDRESS_MISALIGNMENT_MASK) {
             trap(ExceptionCause::MISALIGNED_INSTRUCTION, pc_, false);
-            return sr; 
+            return 0; 
         }
-            
-
         uint32_t phys_pc = mmu_.translate(pc_, MMU::AccessType::FETCH);
 
         // get pointer to page
@@ -118,11 +132,11 @@ StepResult CPU::step() {
         if ((first_half & 0x3) != 0x3) {
             if (!use_compress) {
                 trap(ExceptionCause::ILLEGAL_INSTRUCTION, first_half, false);
-                return sr;
+                return 0;
             }
 
             sr.instruction = decompress(first_half);
-            instr_len = 2;
+            return 2;
         }
         else {
             uint16_t second_half;
@@ -137,24 +151,29 @@ StepResult CPU::step() {
             }
 
             sr.instruction = (uint32_t(second_half) << 16) | first_half;
-
-            instr_len = 4;
+            return 4;
         }
     } catch (const BusAccessError& e) {
         trap(ExceptionCause::INSTRUCTION_ACCESS_FAULT, pc_, false);
-        return sr;
     } catch (const InstructionPageError&  e) {
         trap(ExceptionCause::INSTRUCTION_PAGE_FAULT, pc_, false);
-        return sr;
     }
+    return 0;
+}
 
-    // Decode and execute
-    sr.pc_before = pc_;
-    DecodedInstr di = decode(sr.instruction);
-    di.instr_len = instr_len;
-    sr.dInstr = di;
+
+StepResult CPU::step() {
+    clearStep();  
+
+    // Check for Asynchronous Interrupts 
+    checkInterrupts();
+    if (trap_occurred_) return sr;
+
+    
+    const DecodedInstr di = fetch_and_decode(pc_);
+    if (trap_occurred_) return sr;
+
     execute(di);
-
     if (trap_occurred_) return sr;
 
     csrs_[CSR::MINSTRET]++;
@@ -164,7 +183,7 @@ StepResult CPU::step() {
     if (set_next_pc_) {
         pc_ = next_pc_;
     } else {
-        pc_ += instr_len;
+        pc_ += di.instr_len;
     }
 
     sr.pc_after = pc_;
@@ -229,6 +248,18 @@ void CPU::clearStep() {
     sr.csr_write.valid = false;
     set_next_pc_ = false;
     trap_occurred_ = false;
+}
+
+void CPU::clearDecodeCache() {
+    current_epoch_++;
+        
+    if (current_epoch_ == 0) {
+        current_epoch_ = 1;
+        for (auto& entry : decoded_cache_) {
+            entry.pc = 0xFFFFFFFF;
+            entry.epoch = 0;
+        }
+    }
 }
 
 void CPU::writeReg(uint8_t rd, uint32_t value) {

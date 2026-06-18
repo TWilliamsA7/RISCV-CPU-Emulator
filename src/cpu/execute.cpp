@@ -874,6 +874,7 @@ void CPU::execSFENCE_VMA(const DecodedInstr& i) {
         tlb_flush_va_asid(tlb_, regs_[i.rs1], static_cast<uint16_t>(regs_[i.rs2] & 0x1FF));
     }
     icache_.flush();
+    clearDecodeCache();
 }
 
 void CPU::execLR_W(const DecodedInstr& i) {

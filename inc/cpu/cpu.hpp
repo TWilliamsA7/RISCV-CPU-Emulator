@@ -13,6 +13,7 @@
 #include "mmu/mmu.hpp"
 #include "mmu/tlb.hpp"
 #include <cache/icache.hpp>
+#include <cache/cache_entry.hpp>
 
 enum class ExecutionMode {
     BARE_METAL,
@@ -129,6 +130,11 @@ class CPU {
 
         ICache icache_;
 
+        uint32_t current_epoch_ = 0;
+        static constexpr uint16_t DECODE_CACHE_SIZE = 4096;
+        CacheEntry decoded_cache_[DECODE_CACHE_SIZE];
+        void clearDecodeCache();
+
         // Configuration for CPU
         CPUConfig config_;
 
@@ -175,11 +181,17 @@ class CPU {
     
         // Determine Trap Level
         PrivilegeLevel getTrapTargetLevel(uint32_t cause, bool is_interrupt);
+
+
+
+        const uint32_t fetchInstr(uint32_t pc);
         
         // === Execute and Decode === //
 
         // Decode a 32 bit instruction
         static DecodedInstr decode(uint32_t instr);
+
+        inline const DecodedInstr& fetch_and_decode(uint32_t pc);
 
         // Decompress a 16 bit instruction into a 32 bit instruction
         static uint32_t decompress(uint16_t i);

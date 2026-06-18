@@ -338,7 +338,6 @@ int32_t get_imm6(uint16_t i) {
     return imm;
 }
 
-
 uint32_t CPU::decompress(uint16_t i) {
     uint32_t op = i & 0x3;
     uint32_t funct3 = (i >> 13) & 0x7;
