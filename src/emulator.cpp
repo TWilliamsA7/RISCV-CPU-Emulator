@@ -33,5 +33,7 @@ int Emulator::emulate() {
         return e.code;
     }
 
+    std::cout << "\nExiting Emulator...\n";
+
     return 0;
 }
