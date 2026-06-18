@@ -161,8 +161,8 @@ StepResult CPU::step() {
     if (csrs_[CSR::MINSTRET] == 0)
         csrs_[CSR::MINSTRETH]++;
 
-    if (next_pc_.has_value()) {
-        pc_ = next_pc_.value();
+    if (set_next_pc_) {
+        pc_ = next_pc_;
     } else {
         pc_ += instr_len;
     }
@@ -224,10 +224,10 @@ void CPU::clearStep() {
     sr.pc_before = 0;
     sr.pc_after = 0;
     sr.instruction = 0x0;
-    sr.mem_write.reset();
-    sr.reg_write.reset();
-    sr.csr_write.reset();
-    next_pc_.reset();
+    sr.mem_write.valid = false;
+    sr.reg_write.valid = false;
+    sr.csr_write.valid = false;
+    set_next_pc_ = false;
     trap_occurred_ = false;
 }
 

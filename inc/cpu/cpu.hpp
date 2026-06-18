@@ -6,7 +6,6 @@
 #include <unordered_map>
 #include <array>
 #include <string>
-#include <optional>
 #include <atomic>
 #include "isa/isa.hpp"
 #include "core/state.hpp"
@@ -82,7 +81,8 @@ class CPU {
         // Program Counter
         uint32_t pc_;
         // Next Program Counter
-        std::optional<uint32_t> next_pc_;
+        bool set_next_pc_ = false;
+        uint32_t next_pc_;
 
         // Registers
         std::array<uint32_t, 32> regs_;
@@ -159,7 +159,7 @@ class CPU {
         bool writeCSR(uint16_t addr, uint32_t val);
 
         // Read val of CSR addr if it exists
-        std::optional<uint32_t> readCSR(uint16_t addr);
+        uint32_t readCSR(uint16_t addr);
 
 
         // === Trap == //

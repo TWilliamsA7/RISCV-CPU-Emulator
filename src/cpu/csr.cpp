@@ -2,18 +2,18 @@
 
 #include "cpu/cpu.hpp"
 
-std::optional<uint32_t> CPU::readCSR(uint16_t addr) {
+uint32_t CPU::readCSR(uint16_t addr) {
 
     uint32_t required_privilege = (addr >> 8) & 0x3;
     if (privilege_level_ < required_privilege) {
         trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
-        return std::nullopt;
+        return 0;
     }
 
     if (addr == CSR::SATP && privilege_level_ == PrivilegeLevel::SUPERVISOR) {
         if ((csrs_[CSR::MSTATUS] >> 20) & 1) {  // TVM bit
             trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
-            return std::nullopt;
+            return 0;
         }
     }
 
