@@ -2,6 +2,7 @@
 
 #include "cache/icache.hpp"
 #include "bus/bus.hpp"
+#include <cstring>
 
 ICache::ICache(Bus& bus) : bus_(bus) { }
 
