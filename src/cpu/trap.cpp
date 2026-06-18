@@ -3,13 +3,33 @@
 #include "cpu/cpu.hpp"
 #include <iostream>
 
-void CPU::trap(uint32_t cause, uint32_t tval, bool is_interrupt, PrivilegeLevel target_level) {
+CPU::PrivilegeLevel CPU::getTrapTargetLevel(uint32_t cause, bool is_interrupt) {
+    if (privilege_level_ == PrivilegeLevel::MACHINE) {
+        return PrivilegeLevel::MACHINE;
+    }
+    
+    bool delegate = false;
+    if (is_interrupt) {
+        delegate = (csrs_[CSR::MIDELEG] >> cause) & 1;
+    } else {
+        delegate = (csrs_[CSR::MEDELEG] >> cause) & 1;
+    }
+    
+    return delegate ? PrivilegeLevel::SUPERVISOR : PrivilegeLevel::MACHINE;
+}
+
+void CPU::trap(uint32_t cause, uint32_t tval, bool is_interrupt) {
     trap_occurred_ = true;
+
+    PrivilegeLevel target_level = getTrapTargetLevel(cause, is_interrupt);
+
 
     if (config_.verbose) {
         std::cout << "TRAP " << (is_interrupt ? "(INTERRUPT) " : "")
             << "CAUSE: " << cause << " VAL: " << tval << "\n";
     }
+
+    // fprintf(stderr, "U-Mode TRAP | Priv: %d | Cause %d | Val %d | STVEC %d\n")
 
 
     uint32_t cause_val = is_interrupt ? (cause | (1U << 31)) : cause;
@@ -79,7 +99,7 @@ void CPU::checkInterrupts() {
 
     uint32_t mstatus = csrs_[CSR::MSTATUS];
 
-    for (int id : {11, 9, 3, 1, 7, 5}) {
+    for (int id : {11, 3, 7, 9, 1, 5}) {
         if (!(mip_mie & (1 << id))) continue;
 
         bool delegate = (csrs_[CSR::MIDELEG] >> id) & 1;
@@ -87,13 +107,13 @@ void CPU::checkInterrupts() {
         if (delegate && privilege_level_ <= PrivilegeLevel::SUPERVISOR) {
             bool sie = (mstatus >> 1) & 1;
             if (privilege_level_ < PrivilegeLevel::SUPERVISOR || sie) {
-                trap(id, 0, true, PrivilegeLevel::SUPERVISOR);
+                trap(id, 0, true);
                 return;
             }
         } else {
             bool mie = (mstatus >> 3) & 1;
             if (privilege_level_ < PrivilegeLevel::MACHINE || mie) {
-                trap(id, 0, true, PrivilegeLevel::MACHINE);
+                trap(id, 0, true);
                 return;
             }
         }

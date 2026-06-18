@@ -548,18 +548,13 @@ void CPU::execECALL(const DecodedInstr& i) {
         default: cause = ExceptionCause::M_MODE_ENVIRONMENT_CALL; break;
     }
 
-    bool delegate = (csrs_[CSR::MEDELEG] >> cause) & 1;
-    PrivilegeLevel target = (delegate && privilege_level_ < PrivilegeLevel::MACHINE) ? PrivilegeLevel::SUPERVISOR : PrivilegeLevel::MACHINE;
-    trap(cause, 0, false, target);
+    trap(cause, 0, false);
 }
 
 void CPU::execEBREAK(const DecodedInstr& i) {
     uint32_t cause = ExceptionCause::BREAKPOINT;
     bool delegate = (csrs_[CSR::MEDELEG] >> cause) & 1;
-    PrivilegeLevel target = (delegate && privilege_level_ < PrivilegeLevel::MACHINE)
-        ? PrivilegeLevel::SUPERVISOR
-        : PrivilegeLevel::MACHINE;
-    trap(cause, pc_, false, target);
+    trap(cause, pc_, false);
 }
 
 void CPU::execFENCE(const DecodedInstr& i) {
@@ -832,16 +827,13 @@ void CPU::execSRET(const DecodedInstr& i) {
 void CPU::execWFI(const DecodedInstr& i) {
     if (privilege_level_ == PrivilegeLevel::USER) {
         bool delegate = (csrs_[CSR::MEDELEG] >> ExceptionCause::ILLEGAL_INSTRUCTION) & 1;
-        PrivilegeLevel target = (delegate && privilege_level_ < PrivilegeLevel::MACHINE)
-            ? PrivilegeLevel::SUPERVISOR : PrivilegeLevel::MACHINE;
-        trap(ExceptionCause::ILLEGAL_INSTRUCTION, i.raw, false, target);
+        trap(ExceptionCause::ILLEGAL_INSTRUCTION, i.raw, false);
         return;
     }
     if (privilege_level_ == PrivilegeLevel::SUPERVISOR) {
         bool mstatus_tw = (csrs_[CSR::MSTATUS] >> 21) & 1;
         if (mstatus_tw) {
-            // TW illegal instruction always goes to M-mode per spec
-            trap(ExceptionCause::ILLEGAL_INSTRUCTION, i.raw, false, PrivilegeLevel::MACHINE);
+            trap(ExceptionCause::ILLEGAL_INSTRUCTION, i.raw, false);
             return;
         }
     }

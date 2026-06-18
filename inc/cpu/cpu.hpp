@@ -171,8 +171,10 @@ class CPU {
         void checkInterrupts();
 
         // Execute trap sequence depending on the privilege and interrupts
-        void trap(uint32_t cause, uint32_t tval, bool is_interrupt, PrivilegeLevel target_level = PrivilegeLevel::MACHINE);
+        void trap(uint32_t cause, uint32_t tval, bool is_interrupt);
     
+        // Determine Trap Level
+        PrivilegeLevel getTrapTargetLevel(uint32_t cause, bool is_interrupt);
         
         // === Execute and Decode === //
 

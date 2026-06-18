@@ -24,7 +24,7 @@ class Bus {
         static constexpr uint32_t DRAM_BASE = 0x80000000;
 
         // Size of avaiable DRAM
-        static constexpr uint32_t DRAM_SIZE = 1024 * 1024 * 16;
+        static constexpr uint32_t DRAM_SIZE = 1024 * 1024 * 128;
 
         // Read 32 bit value located at addr 
         uint32_t read32(uint32_t addr);
