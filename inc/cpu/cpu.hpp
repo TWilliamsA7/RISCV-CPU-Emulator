@@ -69,6 +69,7 @@ class CPU {
         void invalidateReservation(uint32_t addr);
 
         friend class MMU;
+        friend class Bus;
 
         // Defines read, write, execute permissions
         enum PrivilegeLevel {

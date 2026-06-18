@@ -36,3 +36,14 @@ uint8_t* ICache::fetch_page(uint32_t phys_addr)
 
     return e.data;
 }
+
+void ICache::invalidate_page(uint32_t phys_addr) {
+    uint32_t phys_page = phys_addr >> 12;
+    uint32_t idx = phys_page % NUM_PAGES;
+    if (cache_[idx].valid && cache_[idx].phys_page == phys_page)
+        cache_[idx].valid = false;
+}
+
+void ICache::flush() {
+    for (auto& e: cache_) e.valid = false;
+}

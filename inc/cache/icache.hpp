@@ -15,6 +15,8 @@ class ICache {
         static constexpr uint32_t NUM_PAGES = 64;
 
         uint8_t* fetch_page(uint32_t phys_addr);
+        void invalidate_page(uint32_t phys_addr);
+        void flush();
 
     private:
         struct Entry {

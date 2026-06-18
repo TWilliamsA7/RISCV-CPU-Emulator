@@ -110,6 +110,7 @@ void Bus::write8(uint32_t addr, uint8_t val) {
 
         if (cpu_ptr_) {
             cpu_ptr_->invalidateReservation(addr);
+            cpu_ptr_->icache_.invalidate_page(addr);
         }
     }
 }
@@ -123,6 +124,7 @@ void Bus::write16(uint32_t addr, uint16_t val) {
 
         if (cpu_ptr_) {
             cpu_ptr_->invalidateReservation(addr);
+            cpu_ptr_->icache_.invalidate_page(addr);
         }
     }
 }
@@ -150,6 +152,7 @@ void Bus::write32(uint32_t addr, uint32_t val) {
 
         if (cpu_ptr_) {
             cpu_ptr_->invalidateReservation(addr);
+            cpu_ptr_->icache_.invalidate_page(addr);
         }
     } else if (addr >= VirtioBlk::BASE && addr < VirtioBlk::BASE + VirtioBlk::SIZE)
         virtio_blk_.write32(addr - VirtioBlk::BASE, val);
@@ -162,9 +165,7 @@ uint32_t Bus::atomic_rmw_w(uint32_t addr, std::function<uint32_t(uint32_t)> oper
 
     uint32_t new_val = operation(old_val);
 
-    write32_unlocked(addr, new_val);
-
-    if (cpu_ptr_) cpu_ptr_->invalidateReservation(addr);
+    write32_unlocked(addr, new_val);        
 
     return old_val;
 }
@@ -173,12 +174,21 @@ void Bus::write32_unlocked(uint32_t addr, uint32_t val) {
     if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
         std::memcpy(&dram_[offset], &val, 4);
+
+        if (cpu_ptr_) {
+            cpu_ptr_->invalidateReservation(addr);
+            cpu_ptr_->icache_.invalidate_page(addr);
+        }
     }
 }
 
 void Bus::write8_unlocked(uint32_t addr, uint8_t val) {
     if (addr >= Bus::DRAM_BASE && addr < Bus::DRAM_BASE + Bus::DRAM_SIZE) {
         dram_[addr - Bus::DRAM_BASE] = val;
+        if (cpu_ptr_) {
+            cpu_ptr_->invalidateReservation(addr);
+            cpu_ptr_->icache_.invalidate_page(addr);
+        }
     }
 }
 
@@ -186,6 +196,10 @@ void Bus::write16_unlocked(uint32_t addr, uint16_t val) {
     if (addr >= Bus::DRAM_BASE && addr < Bus::DRAM_BASE + Bus::DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
         std::memcpy(&dram_[offset], &val, 2);
+        if (cpu_ptr_) {
+            cpu_ptr_->invalidateReservation(addr);
+            cpu_ptr_->icache_.invalidate_page(addr);
+        }
     }
 }
 
