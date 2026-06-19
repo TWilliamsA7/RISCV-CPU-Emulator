@@ -13,6 +13,21 @@ add_subdirectory("cache")
 
 add_executable(riscv_emulator main.cpp emulator.cpp)
 
+include(CheckIPOSupported)
+check_ipo_supported(RESULT ipo_supported OUTPUT ipo_error)
+
+if(ipo_supported)
+    message(STATUS "IPO/LTO supported, enabling it.")
+    set_target_properties(riscv_emulator PROPERTIES INTERPROCEDURAL_OPTIMIZATION TRUE)
+else()
+    message(STATUS "IPO/LTO not supported: ${ipo_error}")
+    # Fallback: manually set flags if IPO property isn't supported
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(riscv_emulator PRIVATE -flto)
+        target_link_options(riscv_emulator PRIVATE -flto)
+    endif()
+endif()
+
 if(UNIX)
     target_link_libraries(riscv_emulator PRIVATE cpu core memory elf bus clint mmu plic devices "cache" Threads::Threads)
 else()
