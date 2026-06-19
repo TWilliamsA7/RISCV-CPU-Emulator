@@ -4,6 +4,7 @@
 #include "emulator.hpp"
 #include "errors/errors.hpp"
 
+
 #include <algorithm>
 #include <cassert>
 #include <iostream>
@@ -118,7 +119,7 @@ const uint32_t CPU::fetchInstr(uint32_t pc) {
             trap(ExceptionCause::MISALIGNED_INSTRUCTION, pc_, false);
             return 0; 
         }
-        uint32_t phys_pc = sys_.mmu.translate(pc_, MMU::AccessType::FETCH);
+        uint32_t phys_pc = sys_.mmu.translate(pc_, AccessType::FETCH);
 
         // get pointer to page
         uint8_t* page = icache_.fetch_page(phys_pc);
@@ -146,7 +147,7 @@ const uint32_t CPU::fetchInstr(uint32_t pc) {
                 second_half = *(uint16_t*)(inst_ptr + 2);
             }
             else {
-                uint32_t phys_pc2 = sys_.mmu.translate(pc_ + 2, MMU::AccessType::FETCH);
+                uint32_t phys_pc2 = sys_.mmu.translate(pc_ + 2, AccessType::FETCH);
                 uint8_t* page2 = icache_.fetch_page(phys_pc2);
                 memcpy(&second_half, page2, sizeof(uint16_t));
             }

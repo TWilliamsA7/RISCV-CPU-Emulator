@@ -4,7 +4,7 @@
 #include "emulator.hpp"
 #include <iostream>
 
-CPU::PrivilegeLevel CPU::getTrapTargetLevel(uint32_t cause, bool is_interrupt) {
+PrivilegeLevel CPU::getTrapTargetLevel(uint32_t cause, bool is_interrupt) {
     if (privilege_level_ == PrivilegeLevel::MACHINE) {
         return PrivilegeLevel::MACHINE;
     }
