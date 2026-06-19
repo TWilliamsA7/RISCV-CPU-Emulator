@@ -7,7 +7,7 @@
 
 Emulator::Emulator(EmulatorConfig config) : 
     config_(config), 
-    clint(*this), plic(*this), 
+    clint(), plic(), 
     bus(*this), cpu(*this), mmu(*this) {
 
     if (config_.elf_path == nullptr) {
@@ -33,7 +33,7 @@ int Emulator::emulate() {
         return e.code;
     }
 
-    std::cout << "\nExiting Emulator...\n";
+    std::cout << "\n[INFO] Exiting Emulator...\n";
 
     return 0;
 }

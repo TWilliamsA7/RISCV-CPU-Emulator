@@ -2,6 +2,8 @@
 
 #include "cpu/cpu.hpp"
 
+#pragma once
+
 struct EmulatorConfig {
     char* elf_path = nullptr;
     char* disk_path = nullptr;
@@ -16,13 +18,13 @@ class Emulator {
 
         Emulator(EmulatorConfig config);
 
+        EmulatorConfig config_;
         Clint clint;
         PLIC plic;
         Bus bus;
         CPU cpu;
         MMU mmu;
 
-        EmulatorConfig config_;
 
         int emulate();
 };
