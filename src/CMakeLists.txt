@@ -11,7 +11,7 @@ add_subdirectory(plic)
 add_subdirectory(devices)
 add_subdirectory("cache")
 
-add_executable(riscv_emulator main.cpp)
+add_executable(riscv_emulator main.cpp emulator.cpp)
 
 if(UNIX)
     target_link_libraries(riscv_emulator PRIVATE cpu core memory elf bus clint mmu plic devices "cache" Threads::Threads)
