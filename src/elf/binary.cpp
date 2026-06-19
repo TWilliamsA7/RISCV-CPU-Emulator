@@ -10,7 +10,7 @@ void load_binary(const std::string& filename, Bus& bus, uint32_t addr) {
 
     // Check if the file opened successfully
     if (!inputFile.is_open()) {
-        throw new std::runtime_error("Error: Unable to open binary");
+        throw std::runtime_error("Error: Unable to open binary");
     }
 
     std::size_t fileSize = std::filesystem::file_size(filename);

@@ -23,6 +23,7 @@ struct Profile {
     Extensions extensions;
 
     std::string elf_path;
+    std::string bin_path;
     std::string disk_path;
     bool verbose;
 };

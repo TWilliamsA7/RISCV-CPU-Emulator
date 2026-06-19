@@ -13,7 +13,6 @@ int main(int argc, char** argv) {
         std::cout << "[WARN] Excess Arguments Detected\n";
     }
 
-
     Profile profile;
 
     try {

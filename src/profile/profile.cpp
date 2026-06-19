@@ -27,7 +27,7 @@ Profile loadProfile(std::string profile_path) {
     } else if (config["platform"] == "linux") {
         profile.platform = Platform::LINUX;
     } else {
-        throw new std::runtime_error("[ERROR] Invalid platform selected");
+        throw std::runtime_error("[ERROR] Invalid platform selected");
     }
 
     // if (config.contains("dram-start")) {
@@ -62,15 +62,17 @@ Profile loadProfile(std::string profile_path) {
 
     if (config.contains("elf-path")) {
         profile.elf_path = config["elf-path"];
+    } else if (config.contains("binary-path")) {
+        profile.bin_path = config["binary-path"];
     } else {
-        throw new std::runtime_error("[ERROR] Missing Elf Path");
+        throw std::runtime_error("[ERROR] Missing Path to ELF or Binary");
     }
 
     if (profile.platform == Platform::XV6 || profile.platform == Platform::LINUX) {
         if (config.contains("disk-path")) {
             profile.disk_path = config["disk-path"];
         } else {
-            throw new std::runtime_error("[ERROR] Cannot Run Selected Platform Without Disk");
+            throw std::runtime_error("[ERROR] Cannot Run Selected Platform Without Disk");
         }
     }
 

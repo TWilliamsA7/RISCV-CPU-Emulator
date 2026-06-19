@@ -11,8 +11,8 @@ Emulator::Emulator(EmulatorConfig config) :
     bus(*this), cpu(*this), mmu(*this) {}
 
 void Emulator::initialize() {
-    if (config_.profile.elf_path.size() == 0) {
-        throw std::runtime_error("[ERROR] Missing ELF path...\n");
+    if (config_.profile.elf_path.size() == 0 && config_.profile.bin_path.size() == 0) {
+        throw std::runtime_error("[ERROR] Missing ELF/Bin path...\n");
     }
 
     if (config_.cpu_config.mode == ExecutionMode::SYSTEM && config_.profile.disk_path.size() == 0) {
@@ -23,7 +23,11 @@ void Emulator::initialize() {
 
     std::cout << "[INFO] Initializing Emulator...\n";
 
-    load_elf(config_.profile.elf_path, bus, cpu);
+    if (config_.profile.elf_path.size() != 0) {
+        load_elf(config_.profile.elf_path, bus, cpu);
+    } else {
+        load_binary(config_.profile.bin_path, bus, config_.profile.dram_start);
+    }
 
     std::cout << "[INFO] Emulator Ready\n";
 }
