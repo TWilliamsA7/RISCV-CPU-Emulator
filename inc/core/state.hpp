@@ -4,15 +4,16 @@
 
 #include "isa/isa.hpp"
 #include <cstdint>
-#include <optional>
 
 struct RegWrite {
+    bool valid = false;
     uint8_t rd;
     uint32_t old_val;
     uint32_t new_val;
 };
 
 struct MemWrite {
+    bool valid = false;
     uint32_t addr;
     uint32_t old_val;
     uint32_t new_val;
@@ -20,6 +21,7 @@ struct MemWrite {
 };
 
 struct CsrWrite {
+    bool valid = false;
     uint16_t addr;
     uint32_t old_val;
     uint32_t new_val;
@@ -31,7 +33,7 @@ struct StepResult {
     DecodedInstr dInstr;
     uint32_t pc_after;
 
-    std::optional<RegWrite> reg_write;
-    std::optional<MemWrite> mem_write;
-    std::optional<CsrWrite> csr_write;
+    RegWrite reg_write;
+    MemWrite mem_write;
+    CsrWrite csr_write;
 };

@@ -4,16 +4,16 @@
 
 #include <fstream>
 
-void load_elf(const std::string& filename, Bus& bus, CPU* cpu) {
+void load_elf(const std::string& filename, Bus& bus, CPU& cpu) {
     std::ifstream file(filename, std::ios::binary);
     Elf32_Ehdr header;
     file.read(reinterpret_cast<char*>(&header), sizeof(header));
 
     // Verify RISC-V
-    if (header.e_machine != 0xF3) throw std::runtime_error("Not a RISC-V ELF");
+    if (header.e_machine != 0xF3) throw std::runtime_error("[ERROR] Not a RISC-V ELF");
 
     // Set initial PC
-    if (cpu) cpu->setPC(header.e_entry);
+    cpu.setPC(header.e_entry);
 
     // Load segments
     file.seekg(header.e_phoff);

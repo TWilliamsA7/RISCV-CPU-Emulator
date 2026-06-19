@@ -12,19 +12,20 @@
 #include <functional>
 #include <string>
 
+class Emulator;
 class CPU;
 
 // Interface for reading and writing to perhiperals
 class Bus {
     public:
 
-        Bus(Clint& clint, PLIC& plic, const std::string& disk_path);
+        Bus(Emulator& sys);
 
         // Starting point of DRAM addresses
         static constexpr uint32_t DRAM_BASE = 0x80000000;
 
         // Size of avaiable DRAM
-        static constexpr uint32_t DRAM_SIZE = 1024 * 1024 * 16;
+        static constexpr uint32_t DRAM_SIZE = 1024 * 1024 * 128;
 
         // Read 32 bit value located at addr 
         uint32_t read32(uint32_t addr);
@@ -34,6 +35,8 @@ class Bus {
 
         // Read 8 bit value located at addr
         uint8_t read8(uint32_t addr);
+
+        uint8_t* phys_ptr(uint32_t phys_addr);
 
         // Write 32 bit value to addr
         void write32(uint32_t addr, uint32_t val);
@@ -65,16 +68,12 @@ class Bus {
 
     private:
 
+        Emulator& sys_;
+
         friend class VirtioBlk;
 
         // Dynamic Random Access Memory
         std::vector<uint8_t> dram_;
-
-        // CLINT: Core Local Interruptor
-        Clint& clint_;
-
-        // PLIC: Platform-Level Interrupt Controller
-        PLIC& plic_;
 
         // UART: Universal Asynchronous Reciever/Transmitter
         UART uart_;

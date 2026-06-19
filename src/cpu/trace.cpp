@@ -452,8 +452,8 @@ void CPU::printTrace() const {
         << "\tNPC=" << hex32(sr.pc_after)
         << "\n";
 
-    if (sr.reg_write.has_value()) {
-        const RegWrite& rw = sr.reg_write.value();
+    if (sr.reg_write.valid) {
+        const RegWrite& rw = sr.reg_write;
 
         std::cout
             << "\tREG\t"
@@ -465,8 +465,8 @@ void CPU::printTrace() const {
             << "\n";
     }
 
-    if (sr.mem_write.has_value()) {
-        const MemWrite& mw = sr.mem_write.value();
+    if (sr.mem_write.valid) {
+        const MemWrite& mw = sr.mem_write;
 
         std::cout
             << "\tMEM\t"
@@ -481,8 +481,8 @@ void CPU::printTrace() const {
             << "B)\n";
     }
 
-    if (sr.csr_write.has_value()) {
-        const CsrWrite& cw = sr.csr_write.value();
+    if (sr.csr_write.valid) {
+        const CsrWrite& cw = sr.csr_write;
 
         std::cout
             << "\tCSR\t"

@@ -1,19 +1,20 @@
 // src/cpu/csr.cpp
 
 #include "cpu/cpu.hpp"
+#include "emulator.hpp"
 
-std::optional<uint32_t> CPU::readCSR(uint16_t addr) {
+uint32_t CPU::readCSR(uint16_t addr) {
 
     uint32_t required_privilege = (addr >> 8) & 0x3;
     if (privilege_level_ < required_privilege) {
         trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
-        return std::nullopt;
+        return 0;
     }
 
     if (addr == CSR::SATP && privilege_level_ == PrivilegeLevel::SUPERVISOR) {
         if ((csrs_[CSR::MSTATUS] >> 20) & 1) {  // TVM bit
             trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
-            return std::nullopt;
+            return 0;
         }
     }
 
@@ -25,9 +26,9 @@ std::optional<uint32_t> CPU::readCSR(uint16_t addr) {
         case CSR::SIP:
             return csrs_[CSR::MIP] & csrs_[CSR::MIDELEG];
         case CSR::TIME:
-            return (uint32_t)(clint_.mtime);
+            return (uint32_t)(sys_.clint.mtime);
         case CSR::TIMEH:
-            return (uint32_t)(clint_.mtime >> 32);
+            return (uint32_t)(sys_.clint.mtime >> 32);
 
         // Hardwired zero — defined but unimplemented extensions
         case CSR::MENVCFG:
@@ -45,8 +46,8 @@ std::optional<uint32_t> CPU::readCSR(uint16_t addr) {
             return 0;
 
         default:
-            auto it = csrs_.find(addr);
-            if (it != csrs_.end()) return it->second;
+            if (addr < 4096)
+                return csrs_[addr];
             return 0;
     }
 }
@@ -101,7 +102,7 @@ bool CPU::writeCSR(uint16_t addr, uint32_t val) {
             csrs_[CSR::MIDELEG] = val & 0xFFFF;
             break;
         case CSR::SSTATUS: {
-            uint32_t mask = 0x000DE122;
+            uint32_t mask = 0x800DE122;
             csrs_[CSR::MSTATUS] = (csrs_[CSR::MSTATUS] & ~mask) | (val & mask);
             break;
         }
@@ -117,27 +118,13 @@ bool CPU::writeCSR(uint16_t addr, uint32_t val) {
         }
 
         case CSR::MISA: {
-            // uint32_t old_misa = csrs_[CSR::MISA];
-
-            // uint32_t misa = val;
-            // misa &= SUPPORTED_EXTENSIONS_MASK;
-            // misa |= REQUIRED_EXTENSIONS_MASK;
-
-            // bool old_c = old_misa & (1u << 2);
-            // bool new_c = misa     & (1u << 2);
-
-            // // IALIGN would change 16 -> 32
-            // if (old_c && !new_c) {
-            //     uint32_t next_insn_addr = pc_ + sr.dInstr.instr_len;
-
-            //     if (next_insn_addr & 0x3) {
-            //         // WARL suppression: leave misa unchanged
-            //         misa = old_misa;
-            //     }
-            // }
-
-            // csrs_[CSR::MISA] = misa;
             break;
+        }
+
+        case CSR::SATP: {
+            csrs_[CSR::SATP] = val;
+            tlb_flush_all(tlb_);
+            return true;
         }
 
         case CSR::MENVCFG:

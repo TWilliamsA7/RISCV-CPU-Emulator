@@ -6,11 +6,15 @@
 #include <unordered_map>
 #include <array>
 #include <string>
-#include <Optional>
+#include <atomic>
 #include "isa/isa.hpp"
 #include "core/state.hpp"
 #include "bus/bus.hpp"
 #include "mmu/mmu.hpp"
+#include "mmu/tlb.hpp"
+#include "types.hpp"
+#include <cache/icache.hpp>
+#include <cache/cache_entry.hpp>
 
 enum class ExecutionMode {
     BARE_METAL,
@@ -18,17 +22,17 @@ enum class ExecutionMode {
 };
 
 struct CPUConfig {
-    bool extension_m = false;
-    bool extension_c = false;
-    bool extension_a = false;
-    bool verbose = false;
     ExecutionMode mode = ExecutionMode::SYSTEM;
+    Extensions extensions;
+    uint32_t starting_pc = 0x80000000;
 };
+
+class Emulator;
 
 class CPU {
     public:
         // Constructor with configured devices
-        CPU(CPUConfig config, Bus& bus, Clint& clint, PLIC& plic);
+        CPU(Emulator& sys);
 
         // Execute loaded instructions
         void run();
@@ -48,6 +52,8 @@ class CPU {
         // Returns True if CPU is halted
         bool isHalted() const;
 
+        void halt();
+
 
         // === Trace Functions === //
 
@@ -64,17 +70,25 @@ class CPU {
         void invalidateReservation(uint32_t addr);
 
         friend class MMU;
+        friend class Bus;
+
+        // Defines read, write, execute permissions
+
 
     private:
+
+        Emulator& sys_;
+
         // Program Counter
         uint32_t pc_;
         // Next Program Counter
-        std::optional<uint32_t> next_pc_;
+        bool set_next_pc_ = false;
+        uint32_t next_pc_;
 
         // Registers
         std::array<uint32_t, 32> regs_;
         // Control Status Registers
-        std::unordered_map<uint16_t, uint32_t> csrs_;
+        std::array<uint32_t, 4096> csrs_;
 
         // Reservation
 
@@ -83,12 +97,7 @@ class CPU {
         // Address of the current reservation if it exists
         uint32_t reservation_addr_;
 
-        // Defines read, write, execute permissions
-        enum PrivilegeLevel {
-            USER = 0,
-            SUPERVISOR = 1,
-            MACHINE = 3,
-        };
+
 
         // Current Execution Priviledge Level
         PrivilegeLevel privilege_level_;
@@ -104,20 +113,15 @@ class CPU {
         // Current CPU State
         CPUState state_;
 
-        // Bus peripheral
-        Bus& bus_;
+        // TLB
+        TLB tlb_;
 
-        // CLINT peripheral
-        Clint& clint_;
+        ICache icache_;
 
-        // PLIC peripheral
-        PLIC& plic_;
-
-        // MMU peripheral
-        MMU mmu_;
-
-        // Configuration for CPU
-        CPUConfig config_;
+        uint32_t current_epoch_ = 0;
+        static constexpr uint16_t DECODE_CACHE_SIZE = 4096;
+        CacheEntry decoded_cache_[DECODE_CACHE_SIZE];
+        void clearDecodeCache();
 
         // Supported Extensions Mask
         static constexpr uint32_t SUPPORTED_EXTENSIONS_MASK = (1U << 30) | (1U << 8) | (1U << 18) | (1U << 20) | (1U << 12) | (1U << 2) | (1U << 0);
@@ -146,7 +150,7 @@ class CPU {
         bool writeCSR(uint16_t addr, uint32_t val);
 
         // Read val of CSR addr if it exists
-        std::optional<uint32_t> readCSR(uint16_t addr);
+        uint32_t readCSR(uint16_t addr);
 
 
         // === Trap == //
@@ -158,13 +162,21 @@ class CPU {
         void checkInterrupts();
 
         // Execute trap sequence depending on the privilege and interrupts
-        void trap(uint32_t cause, uint32_t tval, bool is_interrupt, PrivilegeLevel target_level = PrivilegeLevel::MACHINE);
+        void trap(uint32_t cause, uint32_t tval, bool is_interrupt);
     
+        // Determine Trap Level
+        PrivilegeLevel getTrapTargetLevel(uint32_t cause, bool is_interrupt);
+
+
+
+        const uint32_t fetchInstr(uint32_t pc);
         
         // === Execute and Decode === //
 
         // Decode a 32 bit instruction
         static DecodedInstr decode(uint32_t instr);
+
+        inline const DecodedInstr& fetch_and_decode(uint32_t pc);
 
         // Decompress a 16 bit instruction into a 32 bit instruction
         static uint32_t decompress(uint16_t i);
@@ -403,3 +415,5 @@ class CPU {
             STORE_PAGE_FAULT = 15
         };
 };
+
+extern CPU* g_cpu;
