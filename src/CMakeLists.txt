@@ -10,6 +10,19 @@ add_subdirectory(mmu)
 add_subdirectory(plic)
 add_subdirectory(devices)
 add_subdirectory("cache")
+add_subdirectory(profile)
+
+if(POLICY CMP0135)
+    cmake_policy(SET CMP0135 NEW)
+endif()
+
+FetchContent_Declare(
+    nlohmann_json
+    URL https://github.com/nlohmann/json/releases/download/v3.11.3/include.zip
+    DOWNLOAD_EXTRACT_TIMESTAMP true
+)
+
+FetchContent_MakeAvailable(nlohmann_json)
 
 add_executable(riscv_emulator main.cpp emulator.cpp)
 
@@ -30,8 +43,14 @@ else()
     endif()
 endif()
 
+if(NOT TARGET nlohmann_json::nlohmann_json)
+    add_library(nlohmann_json INTERFACE)
+    target_include_directories(nlohmann_json INTERFACE "${nlohmann_json_SOURCE_DIR}/include")
+    add_library(nlohmann_json::nlohmann_json ALIAS nlohmann_json)
+endif()
+
 if(UNIX)
-    target_link_libraries(riscv_emulator PRIVATE cpu core memory elf bus clint mmu plic devices "cache" Threads::Threads)
+    target_link_libraries(riscv_emulator PRIVATE cpu core memory elf bus clint mmu plic devices "cache" profile Threads::Threads)
 else()
-    target_link_libraries(riscv_emulator PRIVATE cpu core memory elf bus clint mmu plic devices "cache")
+    target_link_libraries(riscv_emulator PRIVATE cpu core memory elf bus clint mmu plic devices "cache" profile)
 endif()
