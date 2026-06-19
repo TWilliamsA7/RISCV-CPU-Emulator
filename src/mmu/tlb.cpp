@@ -6,7 +6,7 @@ static inline int set_of(uint32_t vpn) {
     return static_cast<int>(vpn & 0xF);
 }
 
-static int plru_victim(uint8_t state) {
+static inline int plru_victim(uint8_t state) {
     // bit2==0 → left (W0,W1) recently used → right subtree is victim
     // bit2==1 → right (W2,W3) recently used → left subtree is victim
     if ((state >> 2) & 1) {
@@ -18,7 +18,7 @@ static int plru_victim(uint8_t state) {
     }
 }
 
-static uint8_t plru_update(uint8_t state, int way) {
+static inline uint8_t plru_update(uint8_t state, int way) {
     switch (way) {
         case 0:
             // accessed left→left; mark bit2=0 (left recently used), bit1=0 (W0 recently used)
@@ -44,34 +44,23 @@ static uint8_t plru_update(uint8_t state, int way) {
 
 TLBEntry* tlb_lookup(TLB& tlb, uint32_t vpn, uint16_t asid) {
     const int set = set_of(vpn);
- 
+
+    // This small loop will be completely unrolled/inlined by the compiler
     for (int way = 0; way < TLB_WAYS; ++way) {
         TLBEntry& e = tlb.entries[set][way];
- 
-        if (!e.valid)
-            continue;
- 
-        // VPN match: for superpages, only the top 10 bits (VPN[1]) matter.
-        bool vpn_match;
-        if (e.superpage) {
-            vpn_match = ((e.vpn >> 10) == (vpn >> 10));
-        } else {
-            vpn_match = (e.vpn == vpn);
-        }
- 
-        if (!vpn_match)
-            continue;
- 
-        // ASID match: global entries are always a match regardless of ASID.
-        if (!e.flags.global && e.asid != asid)
-            continue;
- 
-        // Hit — update PLRU and return the entry.
+
+        if (!e.valid) continue;
+
+        bool vpn_match = e.superpage ? ((e.vpn >> 10) == (vpn >> 10)) : (e.vpn == vpn);
+        if (!vpn_match) continue;
+
+        if (!e.flags.global && e.asid != asid) continue;
+
+        // Hit
         tlb.plru[set].bits = plru_update(tlb.plru[set].bits, way);
         return &e;
     }
- 
-    return nullptr; // miss
+    return nullptr; 
 }
 
 void tlb_fill(TLB& tlb, uint32_t vpn, uint16_t asid,
