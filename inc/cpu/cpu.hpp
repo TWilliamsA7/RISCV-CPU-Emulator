@@ -12,6 +12,7 @@
 #include "bus/bus.hpp"
 #include "mmu/mmu.hpp"
 #include "mmu/tlb.hpp"
+#include "types.hpp"
 #include <cache/icache.hpp>
 #include <cache/cache_entry.hpp>
 
@@ -72,11 +73,7 @@ class CPU {
         friend class Bus;
 
         // Defines read, write, execute permissions
-        enum PrivilegeLevel {
-            USER = 0,
-            SUPERVISOR = 1,
-            MACHINE = 3,
-        };
+
 
     private:
 
