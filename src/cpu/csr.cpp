@@ -127,6 +127,32 @@ bool CPU::writeCSR(uint16_t addr, uint32_t val) {
             return true;
         }
 
+        case CSR::PMPADDR0:
+        case CSR::PMPADDR1:
+        case CSR::PMPADDR2:
+        case CSR::PMPADDR3:
+        case CSR::PMPADDR4:
+        case CSR::PMPADDR5:
+        case CSR::PMPADDR6:
+        case CSR::PMPADDR7:
+        case CSR::PMPADDR8:
+        case CSR::PMPADDR9:
+        case CSR::PMPADDR10:
+        case CSR::PMPADDR11:
+        case CSR::PMPADDR12:
+        case CSR::PMPADDR13:
+        case CSR::PMPADDR14:
+        case CSR::PMPADDR15:
+            write_pmpaddr(addr, val);
+            return true;
+
+        case CSR::PMPCFG0:
+        case CSR::PMPCFG1:
+        case CSR::PMPCFG2:
+        case CSR::PMPCFG3:
+            write_pmpcfg(addr, val);
+            return true;
+
         case CSR::MENVCFG:
         case CSR::MENVCFGH:
         case CSR::SENVCFG:
