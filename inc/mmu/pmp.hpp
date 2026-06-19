@@ -5,7 +5,7 @@
 #include "cpu/cpu.hpp"
 #include "mmu.hpp"
 
-inline void check_pmp(CPU& cpu, uint32_t pa, MMU::AccessType at) {
+inline void check_pmp(CPU& cpu, uint32_t pa, AccessType at) {
     (void)cpu; (void)pa; (void)at;
     // no-op
 }
