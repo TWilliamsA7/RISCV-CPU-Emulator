@@ -5,7 +5,7 @@
 #include <iostream>
 #include <cstdlib>
 
-UART::UART(Emulator sys, std::function<void(uint32_t)> set_pending_cb)
+UART::UART(Emulator& sys, std::function<void(uint32_t)> set_pending_cb)
     : sys_(sys), set_pending_(set_pending_cb) {
     load_test_input();
     start_input_thread();  

@@ -51,7 +51,7 @@ class UART {
         static constexpr uint8_t IIR_THRI   = 0x02; // TX interrupt
         static constexpr uint8_t IIR_RDI    = 0x04; // RX interrupt
 
-        explicit UART(Emulator sys, std::function<void(uint32_t)> set_pending_cb);
+        explicit UART(Emulator& sys, std::function<void(uint32_t)> set_pending_cb);
         ~UART();
 
         uint8_t read8(uint32_t offset);
@@ -91,9 +91,11 @@ class UART {
         void restore_terminal();
         static bool read_char(uint8_t& ch);
 
+        static UART* s_instance;
     #ifdef PLATFORM_WINDOWS
         static BOOL WINAPI console_ctrl_handler(DWORD type);
-        static UART* s_instance;
+    #elif defined(PLATFORM_POSIX)
+        static void signal_restore(int sig);
     #endif
 
 };

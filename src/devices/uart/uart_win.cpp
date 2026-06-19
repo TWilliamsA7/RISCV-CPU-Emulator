@@ -31,8 +31,8 @@ BOOL WINAPI UART::console_ctrl_handler(DWORD type) {
     }
     if (type == CTRL_CLOSE_EVENT || type == CTRL_LOGOFF_EVENT || type == CTRL_SHUTDOWN_EVENT) {
         restore_console_mode();
-        if (g_cpu)
-            g_cpu->halt();
+        if (s_instance)
+            s_instance->sys_.cpu.halt();;
         
         return FALSE; 
     }
@@ -73,11 +73,10 @@ bool UART::read_char(uint8_t& ch) {
     int c = _getch();
     if (c == EOF) return false;
     
-    // 💡 CATCH CTRL+C HERE
-    if (c == 3) { // 3 is the ASCII value for Ctrl+C
-        if (g_cpu) {
-            g_cpu->halt();
-        }
+
+    if (c == 3) {
+        if (s_instance)
+            s_instance->sys_.cpu.halt();
         return false; 
     }
 
