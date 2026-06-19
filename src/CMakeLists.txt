@@ -13,6 +13,8 @@ add_subdirectory("cache")
 
 add_executable(riscv_emulator main.cpp emulator.cpp)
 
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -march=native -fno-plt -funroll-loops")
+
 include(CheckIPOSupported)
 check_ipo_supported(RESULT ipo_supported OUTPUT ipo_error)
 
