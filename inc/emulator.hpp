@@ -1,15 +1,13 @@
 // inc/emulator.hpp
 
 #include "cpu/cpu.hpp"
+#include "profile/profile.hpp"
 
 #pragma once
 
 struct EmulatorConfig {
-    char* elf_path = nullptr;
-    char* disk_path = nullptr;
-
+    Profile profile;
     CPUConfig cpu_config;
-    bool verbose = false;
 };
 
 

@@ -189,7 +189,7 @@ StepResult CPU::step() {
     }
 
     sr.pc_after = pc_;
-    if (sys_.config_.verbose) printTrace();
+    if (sys_.config_.profile.verbose) printTrace();
 
     return sr;
 }
