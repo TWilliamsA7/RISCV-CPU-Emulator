@@ -7,13 +7,21 @@ int main(int argc, char** argv) {
     EmulatorConfig config;
 
     if (argc < 2) {
-        std::cerr << "[ERROR] Usage: ./riscv_emulator [profile.json]";
+        std::cerr << "[ERROR] Usage: ./riscv_emulator [profile.json]\n";
         return 1;
     } else if (argc > 2) {
-        std::cout << "[WARN] Excess Arguments Detected";
+        std::cout << "[WARN] Excess Arguments Detected\n";
     }
 
-    Profile profile = loadProfile(argv[1]);
+
+    Profile profile;
+
+    try {
+        profile = loadProfile(argv[1]);
+    } catch (std::runtime_error& e) {
+        std::cerr << e.what();
+        return 1;
+    }
 
     std::cout << "[INFO] Successfully loaded profile from: " << profile.source_path << std::endl;
 
