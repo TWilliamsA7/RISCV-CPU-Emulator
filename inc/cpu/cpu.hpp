@@ -152,6 +152,9 @@ class CPU {
         // Read val of CSR addr if it exists
         uint32_t readCSR(uint16_t addr);
 
+        void write_pmpcfg(uint16_t addr, uint32_t val);
+        void write_pmpaddr(uint16_t addr, uint32_t val);
+
 
         // === Trap == //
 

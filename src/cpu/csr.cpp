@@ -152,3 +152,37 @@ bool CPU::writeCSR(uint16_t addr, uint32_t val) {
 
     return true;
 }
+
+void CPU::write_pmpcfg(uint16_t addr, uint32_t val) {
+    uint32_t current = addr - PMPCFG0;
+    uint32_t result = 0;
+    for (int i = 0; i < 4; i++) {
+        uint8_t cur_byte = (current >> (i * 8)) & 0xFF;
+        uint8_t new_byte = (val >> (i * 8)) & 0xFF;
+        // If locked, ignore write to this entry
+        if (cur_byte & 0x80) {
+            result |= (uint32_t)cur_byte << (i * 8);
+        } else {
+            new_byte &= 0x9F; // clear reserved bits 5-6
+            result |= (uint32_t)new_byte << (i * 8);
+        }
+    }
+    csrs_[addr] = result;
+}
+
+void CPU::write_pmpaddr(uint16_t addr, uint32_t val) {
+    uint16_t entry = addr - CSR::PMPADDR0;
+    uint16_t cfg_reg = (entry / 4) + 0x3A0;
+    int cfg_byte = entry % 4;
+    uint8_t cfg = (csrs_[cfg_reg] >> (cfg_byte * 8)) & 0xFF;
+    if (cfg & 0x80) return; // locked, ignore
+    
+    // Also check if next entry is TOR and locked (locks this addr too)
+    if (entry < 15) {
+        int ncfg_reg = ((entry + 1) / 4) + 0x3A0;
+        int ncfg_byte = (entry + 1) % 4;
+        uint8_t ncfg = (csrs_[ncfg_reg] >> (ncfg_byte * 8)) & 0xFF;
+        if ((ncfg & 0x80) && ((ncfg >> 3) & 0x3) == 1) return; // next is locked TOR
+    }
+    csrs_[addr] = val;
+}
