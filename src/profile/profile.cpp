@@ -30,15 +30,15 @@ Profile loadProfile(std::string profile_path) {
         throw new std::runtime_error("[ERROR] Invalid platform selected");
     }
 
-    if (config.contains("dram-start")) {
-        std::string ds = config["dram-start"];
-        profile.dram_start = std::stoi(ds, nullptr, 16);
-    }
+    // if (config.contains("dram-start")) {
+    //     std::string ds = config["dram-start"];
+    //     profile.dram_start = std::stoi(ds, nullptr, 16);
+    // }
 
-    if (config.contains("dram-size")) {
-        std::string ds = config["dram-size"];
-        profile.dram_size = std::stoi(ds, nullptr, 16);
-    }
+    // if (config.contains("dram-size")) {
+    //     std::string ds = config["dram-size"];
+    //     profile.dram_size = std::stoi(ds, nullptr, 16);
+    // }
 
     if (config.contains("starting-pc")) {
         std::string sp = config["starting-pc"];
