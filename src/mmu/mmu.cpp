@@ -4,7 +4,6 @@
 #include "emulator.hpp"
 #include "errors/errors.hpp"
 #include "mmu/tlb.hpp"
-#include "mmu/pmp.hpp"
 
 MMU::MMU(Emulator& sys): sys_(sys) {}
 
@@ -73,7 +72,7 @@ uint32_t MMU::translate(uint32_t va, AccessType type) {
         } else {
             pa = (hit->ppn << 12) | (va & 0xFFF);
         }
-        check_pmp(sys_.cpu, pa, type); 
+        sys_.cpu.pmp_check(pa, type, effective_level); 
         return pa;
     }
 
@@ -146,7 +145,7 @@ uint32_t MMU::translate_walk(uint32_t va, AccessType type, PrivilegeLevel effect
                 pa = (ppn << 12) | (va & 0xFFF);
             }
 
-            check_pmp(sys_.cpu, pa, type);
+            sys_.cpu.pmp_check(pa, type, effective_level);
             return pa;
         }
 
