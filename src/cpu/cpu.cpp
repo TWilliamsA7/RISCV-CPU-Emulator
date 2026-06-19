@@ -1,16 +1,16 @@
 // src/cpu/cpu.cpp
 
 #include "cpu/cpu.hpp"
-#include "memory/memory.hpp"
+#include "emulator.hpp"
 #include "errors/errors.hpp"
+
 
 #include <algorithm>
 #include <cassert>
 #include <iostream>
 #include <thread>
 
-CPU::CPU (CPUConfig config, Bus& bus, Clint& clint, PLIC& plic) 
-    : config_(config), bus_(bus), clint_(clint), pc_(0x80000000), mmu_(*this), plic_(plic), icache_(bus) {
+CPU::CPU(Emulator& sys) : sys_(sys), icache_(sys.bus) {
     regs_.fill(0);
     csrs_.fill(0);
     csrs_[CSR::MVENDORID] = 0xF00DFACE;
@@ -20,30 +20,32 @@ CPU::CPU (CPUConfig config, Bus& bus, Clint& clint, PLIC& plic)
     uint32_t misa = (1U << 30); // RV32
     misa |= (1 << 8); // I (Base)
 
-    if (config_.mode == ExecutionMode::SYSTEM) {
+    if (sys_.config_.cpu_config.mode == ExecutionMode::SYSTEM) {
         misa |= (1 << 18); // S (Supervisor extension)
         misa |= (1 << 20); // U (User extension)
     }
 
-    if (config_.extension_m) {
+    if (sys_.config_.cpu_config.extensions.m) {
         misa |= (1U << 12);
     }
 
         
-    if (config_.extension_c) { 
+    if (sys_.config_.cpu_config.extensions.c) { 
         misa |= (1U << 2);
         ADDRESS_MISALIGNMENT_MASK = 0x1;
     } else {
         ADDRESS_MISALIGNMENT_MASK = 0x3;
     }
 
-    if (config_.extension_a) {
+    if (sys_.config_.cpu_config.extensions.a) {
         misa |= (1U << 0);
     }
 
     csrs_[CSR::MISA] = misa;
 
-    bus_.register_cpu(this);
+    pc_ = sys.config_.cpu_config.starting_pc;
+
+    sys_.bus.register_cpu(this);
 }
 
 void CPU::run() {
@@ -108,7 +110,7 @@ const DecodedInstr& CPU::fetch_and_decode(uint32_t pc) {
     return decoded_cache_[index].decoded;
 }
 
- const uint32_t CPU::fetchInstr(uint32_t pc) {
+const uint32_t CPU::fetchInstr(uint32_t pc) {
 
     bool use_compress = csrs_[CSR::MISA] & 0x4;
 
@@ -117,7 +119,7 @@ const DecodedInstr& CPU::fetch_and_decode(uint32_t pc) {
             trap(ExceptionCause::MISALIGNED_INSTRUCTION, pc_, false);
             return 0; 
         }
-        uint32_t phys_pc = mmu_.translate(pc_, MMU::AccessType::FETCH);
+        uint32_t phys_pc = sys_.mmu.translate(pc_, AccessType::FETCH);
 
         // get pointer to page
         uint8_t* page = icache_.fetch_page(phys_pc);
@@ -145,7 +147,7 @@ const DecodedInstr& CPU::fetch_and_decode(uint32_t pc) {
                 second_half = *(uint16_t*)(inst_ptr + 2);
             }
             else {
-                uint32_t phys_pc2 = mmu_.translate(pc_ + 2, MMU::AccessType::FETCH);
+                uint32_t phys_pc2 = sys_.mmu.translate(pc_ + 2, AccessType::FETCH);
                 uint8_t* page2 = icache_.fetch_page(phys_pc2);
                 memcpy(&second_half, page2, sizeof(uint16_t));
             }
@@ -187,13 +189,13 @@ StepResult CPU::step() {
     }
 
     sr.pc_after = pc_;
-    if (config_.verbose) printTrace();
+    if (sys_.config_.verbose) printTrace();
 
     return sr;
 }
 
 void CPU::updateCycle() {
-    clint_.updateMtime();
+    sys_.clint.updateMtime();
 
     uint32_t low_before = csrs_[CSR::MCYCLE]; 
     csrs_[CSR::MCYCLE]++;
@@ -208,33 +210,33 @@ void CPU::updateCycle() {
     csrs_[CSR::CYCLEH] = csrs_[CSR::MCYCLEH];
 
     // MSIP -> MIP bit 3
-    if (clint_.msip)
+    if (sys_.clint.msip)
         csrs_[CSR::MIP] |= (1 << 3);
     else
         csrs_[CSR::MIP] &= ~(1 << 3);
 
     // MTIP -> MIP bit 7 (timer)
-    if (clint_.mtime >= clint_.mtimecmp)
+    if (sys_.clint.mtime >= sys_.clint.mtimecmp)
         csrs_[CSR::MIP] |= (1 << 7);
     else
         csrs_[CSR::MIP] &= ~(1 << 7);
 
     // MEIP -> MIP bit 11 (machine external interrupt)
-    if (plic_.m_interrupt_pending()) {
+    if (sys_.plic.m_interrupt_pending()) {
         csrs_[CSR::MIP] |= (1 << 11);
     } else {
         csrs_[CSR::MIP] &= ~(1 << 11);
     }
 
     // SEIP -> MIP bit 9 (supervisor external interrupt)
-    if (plic_.s_interrupt_pending()) {
+    if (sys_.plic.s_interrupt_pending()) {
         csrs_[CSR::MIP] |= (1 << 9);
     } else {
         csrs_[CSR::MIP] &= ~(1 << 9);
     }
 
-    csrs_[CSR::TIME] = (uint32_t)(clint_.mtime);
-    csrs_[CSR::TIMEH] = (uint32_t)(clint_.mtime >> 32);
+    csrs_[CSR::TIME] = (uint32_t)(sys_.clint.mtime);
+    csrs_[CSR::TIMEH] = (uint32_t)(sys_.clint.mtime >> 32);
  
 }
 

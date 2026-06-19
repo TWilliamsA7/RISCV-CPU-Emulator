@@ -36,3 +36,9 @@ struct DecodedInstr {
     uint32_t raw = 0;
     uint32_t instr_len = 0;
 };
+
+struct Extensions {
+    bool m = false;
+    bool c = false;
+    bool a = false;
+};

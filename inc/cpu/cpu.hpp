@@ -12,6 +12,7 @@
 #include "bus/bus.hpp"
 #include "mmu/mmu.hpp"
 #include "mmu/tlb.hpp"
+#include "types.hpp"
 #include <cache/icache.hpp>
 #include <cache/cache_entry.hpp>
 
@@ -21,17 +22,17 @@ enum class ExecutionMode {
 };
 
 struct CPUConfig {
-    bool extension_m = false;
-    bool extension_c = false;
-    bool extension_a = false;
-    bool verbose = false;
     ExecutionMode mode = ExecutionMode::SYSTEM;
+    Extensions extensions;
+    uint32_t starting_pc = 0x80000000;
 };
+
+class Emulator;
 
 class CPU {
     public:
         // Constructor with configured devices
-        CPU(CPUConfig config, Bus& bus, Clint& clint, PLIC& plic);
+        CPU(Emulator& sys);
 
         // Execute loaded instructions
         void run();
@@ -72,13 +73,12 @@ class CPU {
         friend class Bus;
 
         // Defines read, write, execute permissions
-        enum PrivilegeLevel {
-            USER = 0,
-            SUPERVISOR = 1,
-            MACHINE = 3,
-        };
+
 
     private:
+
+        Emulator& sys_;
+
         // Program Counter
         uint32_t pc_;
         // Next Program Counter
@@ -113,18 +113,6 @@ class CPU {
         // Current CPU State
         CPUState state_;
 
-        // Bus peripheral
-        Bus& bus_;
-
-        // CLINT peripheral
-        Clint& clint_;
-
-        // PLIC peripheral
-        PLIC& plic_;
-
-        // MMU peripheral
-        MMU mmu_;
-
         // TLB
         TLB tlb_;
 
@@ -134,9 +122,6 @@ class CPU {
         static constexpr uint16_t DECODE_CACHE_SIZE = 4096;
         CacheEntry decoded_cache_[DECODE_CACHE_SIZE];
         void clearDecodeCache();
-
-        // Configuration for CPU
-        CPUConfig config_;
 
         // Supported Extensions Mask
         static constexpr uint32_t SUPPORTED_EXTENSIONS_MASK = (1U << 30) | (1U << 8) | (1U << 18) | (1U << 20) | (1U << 12) | (1U << 2) | (1U << 0);

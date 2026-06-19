@@ -1,9 +1,10 @@
 // src/cpu/trap.cpp
 
 #include "cpu/cpu.hpp"
+#include "emulator.hpp"
 #include <iostream>
 
-CPU::PrivilegeLevel CPU::getTrapTargetLevel(uint32_t cause, bool is_interrupt) {
+PrivilegeLevel CPU::getTrapTargetLevel(uint32_t cause, bool is_interrupt) {
     if (privilege_level_ == PrivilegeLevel::MACHINE) {
         return PrivilegeLevel::MACHINE;
     }
@@ -24,7 +25,7 @@ void CPU::trap(uint32_t cause, uint32_t tval, bool is_interrupt) {
     PrivilegeLevel target_level = getTrapTargetLevel(cause, is_interrupt);
 
 
-    if (config_.verbose) {
+    if (sys_.config_.verbose) {
         std::cout << "TRAP " << (is_interrupt ? "(INTERRUPT) " : "")
             << "CAUSE: " << cause << " VAL: " << tval << "\n";
     }

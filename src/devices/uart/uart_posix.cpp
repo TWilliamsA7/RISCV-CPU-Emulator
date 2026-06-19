@@ -5,12 +5,14 @@
 #ifdef PLATFORM_POSIX
 
 #include "devices/uart.hpp"
+#include "emulator.hpp"
 #include <unistd.h>
 #include <termios.h>
 #include <csignal>
 #include <sys/select.h>
 #include "cpu/cpu.hpp"
 
+UART* UART::s_instance = nullptr;
 static struct termios g_old_termios;
 static bool g_have_old_termios = false;
 
@@ -19,11 +21,11 @@ static void restore_termios() {
         tcsetattr(STDIN_FILENO, TCSANOW, &g_old_termios);
 }
 
-static void signal_restore(int sig) {
+void UART::signal_restore(int sig) {
     restore_termios();
     
-    if (g_cpu)
-        g_cpu->halt();
+    if (s_instance)
+        s_instance->sys_.cpu.halt();
 }
 
 void UART::set_raw_mode() {
@@ -32,6 +34,7 @@ void UART::set_raw_mode() {
         return;
 
     g_have_old_termios = true;
+    s_instance = this;
     t = g_old_termios;
     t.c_lflag &= ~(ICANON | ECHO);
     t.c_cc[VMIN]  = 1;

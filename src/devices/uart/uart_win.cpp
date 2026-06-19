@@ -5,7 +5,7 @@
 #ifdef PLATFORM_WINDOWS
 
 #include "devices/uart.hpp"
-#include "windows.h"
+#include "emulator.hpp"
 #include "conio.h"
 #include "cpu/cpu.hpp"
 #include <atomic>
@@ -16,21 +16,23 @@ static HANDLE g_stdin_handle = INVALID_HANDLE_VALUE;
 static DWORD g_old_mode = 0;
 static std::atomic<bool> g_have_old_mode{false};
 
+UART* UART::s_instance = nullptr;
+
 static void restore_console_mode() {
     if (g_have_old_mode && g_stdin_handle != INVALID_HANDLE_VALUE)
         SetConsoleMode(g_stdin_handle, g_old_mode);
 }
 
-static BOOL WINAPI console_ctrl_handler(DWORD type) {
+BOOL WINAPI UART::console_ctrl_handler(DWORD type) {
     if (type == CTRL_C_EVENT || type == CTRL_BREAK_EVENT) {
-        if (g_cpu)
-            g_cpu->halt();
+        if (s_instance)
+            s_instance->sys_.cpu.halt();
         return TRUE; 
     }
     if (type == CTRL_CLOSE_EVENT || type == CTRL_LOGOFF_EVENT || type == CTRL_SHUTDOWN_EVENT) {
         restore_console_mode();
-        if (g_cpu)
-            g_cpu->halt();
+        if (s_instance)
+            s_instance->sys_.cpu.halt();;
         
         return FALSE; 
     }
@@ -45,6 +47,7 @@ void UART::set_raw_mode() {
 
     if (GetConsoleMode(g_stdin_handle, &g_old_mode)) {
         g_have_old_mode = true;
+        s_instance = this;
         
         // 1. Strip out LINE, ECHO, and PROCESSED input flags
         DWORD new_mode = g_old_mode & ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT | ENABLE_PROCESSED_INPUT);
@@ -70,11 +73,10 @@ bool UART::read_char(uint8_t& ch) {
     int c = _getch();
     if (c == EOF) return false;
     
-    // 💡 CATCH CTRL+C HERE
-    if (c == 3) { // 3 is the ASCII value for Ctrl+C
-        if (g_cpu) {
-            g_cpu->halt();
-        }
+
+    if (c == 3) {
+        if (s_instance)
+            s_instance->sys_.cpu.halt();
         return false; 
     }
 

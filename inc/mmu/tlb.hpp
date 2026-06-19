@@ -63,15 +63,10 @@ struct TLB {
     }
 };
 
-// ----------------------------------------------------------------------------
-// Public API
-// ----------------------------------------------------------------------------
 
-// Look up a virtual page number + ASID.
-// Returns a pointer to the matching entry on hit, nullptr on miss.
-// Updates PLRU on hit.
-// `asid`  — current satp.ASID
-// `vpn`   — va[31:12]
+
+
+
 TLBEntry* tlb_lookup(TLB& tlb, uint32_t vpn, uint16_t asid);
 
 // Insert (or replace) a mapping.  Called after a successful page-table walk.
