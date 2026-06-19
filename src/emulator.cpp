@@ -8,8 +8,9 @@
 Emulator::Emulator(EmulatorConfig config) : 
     config_(config), 
     clint(), plic(), 
-    bus(*this), cpu(*this), mmu(*this) {
+    bus(*this), cpu(*this), mmu(*this) {}
 
+void Emulator::initialize() {
     if (config_.profile.elf_path.size() == 0) {
         throw std::runtime_error("[ERROR] Missing ELF path...\n");
     }
@@ -17,6 +18,8 @@ Emulator::Emulator(EmulatorConfig config) :
     if (config_.cpu_config.mode == ExecutionMode::SYSTEM && config_.profile.disk_path.size() == 0) {
         throw std::runtime_error("[ERROR] Missing disk path for system level execution...\n");
     }
+
+    bus.init_devices(config_.profile.disk_path);
 
     std::cout << "[INFO] Initializing Emulator...\n";
 

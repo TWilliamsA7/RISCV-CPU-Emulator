@@ -9,9 +9,13 @@
 Bus::Bus(Emulator& sys) 
     : sys_(sys), 
     uart_(sys, [&sys](uint32_t irq){ sys.plic.set_pending(irq);}),
-    virtio_blk_(sys.config_.profile.disk_path, [&sys](uint32_t irq){ sys.plic.set_pending(irq); }, *this)
+    virtio_blk_([&sys](uint32_t irq){ sys.plic.set_pending(irq); }, *this)
 {
     dram_ = std::vector<uint8_t>(Bus::DRAM_SIZE, 0);
+}
+
+void Bus::init_devices(const std::string& disk_path) {
+    virtio_blk_.init(disk_path);
 }
 
 void Bus::register_cpu(CPU* cpu) { cpu_ptr_ = cpu; }

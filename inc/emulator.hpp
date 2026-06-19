@@ -23,6 +23,6 @@ class Emulator {
         CPU cpu;
         MMU mmu;
 
-
+        void initialize();
         int emulate();
 };

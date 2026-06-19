@@ -16,9 +16,8 @@ public:
     static constexpr uint32_t QUEUE_SIZE = 8;
     static constexpr uint32_t SECTOR_SIZE = 512;
 
-    VirtioBlk(const std::string& disk_path,
-              std::function<void(uint32_t)> set_pending,
-              Bus& bus);
+    VirtioBlk(std::function<void(uint32_t)> set_pending, Bus& bus);
+    void init(const std::string& disk_path);
 
     uint32_t read32(uint32_t offset);
     void     write32(uint32_t offset, uint32_t val);
@@ -44,6 +43,7 @@ private:
     std::fstream disk_;
     std::function<void(uint32_t)> set_pending_;
     Bus& bus_;
+
 
     void process_queue();
     void handle_request(uint16_t head);

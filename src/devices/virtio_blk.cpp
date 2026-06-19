@@ -5,11 +5,12 @@
 #include <cstring>
 #include <stdexcept>
 
-VirtioBlk::VirtioBlk(const std::string& disk_path,
-                     std::function<void(uint32_t)> set_pending,
+VirtioBlk::VirtioBlk(std::function<void(uint32_t)> set_pending,
                      Bus& bus)
     : set_pending_(set_pending), bus_(bus)
-{
+{}
+
+void VirtioBlk::init(const std::string& disk_path) {
     disk_.open(disk_path, std::ios::in | std::ios::out | std::ios::binary);
     if (!disk_.is_open())
         throw std::runtime_error("Failed to open disk image: " + disk_path);
