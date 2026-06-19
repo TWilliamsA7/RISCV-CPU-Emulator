@@ -45,6 +45,11 @@ Profile loadProfile(std::string profile_path) {
         profile.starting_pc = std::stoi(sp, nullptr, 16);
     }
 
+    if (config.contains("dtb-address")) {
+        std::string da = config["dtb-address"];
+        profile.dtb_address = std::stoi(da, nullptr, 16);
+    }
+
     if (config.contains("extensions") && config["extensions"].is_array()) {
         for (auto& arg : config["extensions"]) {
                 std::string extension = arg.get<std::string>();

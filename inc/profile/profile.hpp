@@ -19,6 +19,7 @@ struct Profile {
     uint32_t starting_pc = 0x80000000;
     uint32_t dram_start = 0x80000000;
     uint32_t dram_size = 128 * 1000 * 1000;
+    uint32_t dtb_address = 0;
 
     Extensions extensions;
 

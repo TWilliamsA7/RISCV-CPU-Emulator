@@ -44,6 +44,7 @@ CPU::CPU(Emulator& sys) : sys_(sys), icache_(sys.bus) {
     csrs_[CSR::MISA] = misa;
 
     pc_ = sys.config_.cpu_config.starting_pc;
+    regs_[11] = sys.config_.profile.dtb_address;
 
     sys_.bus.register_cpu(this);
 }
