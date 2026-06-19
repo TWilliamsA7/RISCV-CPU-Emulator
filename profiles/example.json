@@ -1,0 +1,8 @@
+{
+  "name": "riscv-xv6",
+  "platform": "xv6",
+  "extensions": ["m", "c", "a"],
+  "elf-path": "<path-to-elf>",
+  "disk-path": "<path-to-disk>",
+  "verbose": false
+}

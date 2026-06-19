@@ -27,3 +27,8 @@ validation/
 
 perf*
 callgrind*
+
+# Profiles
+*.json
+!CMakePresets.json
+!profiles/example.json
