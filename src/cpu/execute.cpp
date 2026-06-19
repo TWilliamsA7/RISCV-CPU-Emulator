@@ -361,7 +361,7 @@ void CPU::execSW(const DecodedInstr& i) {
     try {
         uint32_t pa = sys_.mmu.translate(a, AccessType::STORE);
         uint32_t o = 0;
-        if (sys_.config_.verbose && !sys_.bus.is_mmio(pa))
+        if (sys_.config_.profile.verbose && !sys_.bus.is_mmio(pa))
             o = sys_.bus.read32(pa);
         sys_.bus.write32(pa, regs_[i.rs2]);
         sr.mem_write = MemWrite{ true, a, o, regs_[i.rs2], 4};
@@ -379,7 +379,7 @@ void CPU::execSH(const DecodedInstr& i) {
     try {
         uint32_t pa = sys_.mmu.translate(a, AccessType::STORE);
         uint32_t o = 0;
-        if (sys_.config_.verbose && !sys_.bus.is_mmio(pa))
+        if (sys_.config_.profile.verbose && !sys_.bus.is_mmio(pa))
             o = sys_.bus.read16(pa);
         sys_.bus.write16(pa, static_cast<uint16_t>(regs_[i.rs2]));
         sr.mem_write = MemWrite{ true, a, o, regs_[i.rs2], 2};
@@ -396,7 +396,7 @@ void CPU::execSB(const DecodedInstr& i) {
     try {
         uint32_t pa = sys_.mmu.translate(a, AccessType::STORE);
         uint32_t o = 0;
-        if (sys_.config_.verbose && !sys_.bus.is_mmio(pa))
+        if (sys_.config_.profile.verbose && !sys_.bus.is_mmio(pa))
             o = sys_.bus.read8(pa);
         sys_.bus.write8(pa, static_cast<uint8_t>(regs_[i.rs2]));
         sr.mem_write = MemWrite{ true, a, o, regs_[i.rs2], 1};

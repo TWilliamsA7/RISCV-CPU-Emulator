@@ -9,9 +9,14 @@
 Bus::Bus(Emulator& sys) 
     : sys_(sys), 
     uart_(sys, [&sys](uint32_t irq){ sys.plic.set_pending(irq);}),
-    virtio_blk_(sys.config_.disk_path, [&sys](uint32_t irq){ sys.plic.set_pending(irq); }, *this)
+    virtio_blk_([&sys](uint32_t irq){ sys.plic.set_pending(irq); }, *this)
 {
     dram_ = std::vector<uint8_t>(Bus::DRAM_SIZE, 0);
+}
+
+void Bus::init_devices(const std::string& disk_path) {
+    if (disk_path.size())
+        virtio_blk_.init(disk_path);
 }
 
 void Bus::register_cpu(CPU* cpu) { cpu_ptr_ = cpu; }
@@ -214,6 +219,6 @@ void Bus::load_binary(std::vector<uint8_t>::const_iterator bin_start, std::vecto
     if (addr >= DRAM_BASE && addr <= (DRAM_BASE + DRAM_SIZE)) {
         std::copy(bin_start, bin_end, dram_.begin() + (addr - DRAM_BASE));
     } else {
-        throw new std::runtime_error("Cannot load binary outside of DRAM!");
+        throw std::runtime_error("Cannot load binary outside of DRAM!");
     }
 }

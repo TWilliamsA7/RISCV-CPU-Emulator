@@ -27,6 +27,8 @@ class Bus {
         // Size of avaiable DRAM
         static constexpr uint32_t DRAM_SIZE = 1024 * 1024 * 128;
 
+        void init_devices(const std::string& disk_path);
+
         // Read 32 bit value located at addr 
         uint32_t read32(uint32_t addr);
 

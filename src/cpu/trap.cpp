@@ -25,7 +25,7 @@ void CPU::trap(uint32_t cause, uint32_t tval, bool is_interrupt) {
     PrivilegeLevel target_level = getTrapTargetLevel(cause, is_interrupt);
 
 
-    if (sys_.config_.verbose) {
+    if (sys_.config_.profile.verbose) {
         std::cout << "TRAP " << (is_interrupt ? "(INTERRUPT) " : "")
             << "CAUSE: " << cause << " VAL: " << tval << "\n";
     }
