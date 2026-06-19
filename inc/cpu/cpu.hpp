@@ -154,7 +154,7 @@ class CPU {
 
         void write_pmpcfg(uint16_t addr, uint32_t val);
         void write_pmpaddr(uint16_t addr, uint32_t val);
-
+        bool pmp_check(uint32_t paddr, AccessType access_type, PrivilegeLevel priv);
 
         // === Trap == //
 

@@ -212,3 +212,52 @@ void CPU::write_pmpaddr(uint16_t addr, uint32_t val) {
     }
     csrs_[addr] = val;
 }
+
+// Returns true if access is permitted
+bool CPU::pmp_check(uint32_t paddr, AccessType access_type, PrivilegeLevel priv) {
+    // M-mode bypasses PMP unless entry has L bit set
+    bool is_mmode = (priv == PrivilegeLevel::MACHINE);
+    
+    for (int i = 0; i < 16; i++) {
+        uint16_t cfg_reg = (i / 4) + CSR::PMPCFG0;
+        int cfg_byte = i % 4;
+        uint8_t cfg = (csrs_[cfg_reg] >> (cfg_byte * 8)) & 0xFF;
+        
+        uint8_t A = (cfg >> 3) & 0x3;
+        if (A == 0) continue; // OFF, skip
+        
+        bool match = false;
+
+        uint16_t current_pmpaddr_idx = CSR::PMPADDR0 + i;
+        uint16_t previous_pmpaddr_idx = CSR::PMPADDR0 + i - 1;
+        
+        if (A == 1) { // TOR
+            uint32_t lo = (i == 0) ? 0 : (csrs_[previous_pmpaddr_idx] << 2);
+            uint32_t hi = csrs_[current_pmpaddr_idx] << 2;
+            match = (paddr >= lo && paddr < hi);
+        } else if (A == 2) { // NA4
+            match = ((paddr >> 2) == csrs_[current_pmpaddr_idx]);
+        } else { // NAPOT
+            uint32_t addr = csrs_[current_pmpaddr_idx];
+            // Find trailing ones to determine size
+            uint32_t mask = ~(addr & (~addr + 1)); // isolate trailing ones + 1
+            uint32_t base = (addr & mask) << 2;
+            uint32_t size_mask = ~((mask << 2) | 0x3);
+            match = ((paddr & size_mask) == (base & size_mask));
+        }
+        
+        if (match) {
+            bool locked = (cfg & 0x80);
+            // M-mode: only enforced if L bit set
+            if (is_mmode && !locked) return true;
+            
+            bool r = cfg & 0x1, w = cfg & 0x2, x = cfg & 0x4;
+            if (access_type == AccessType::LOAD)    return r;
+            if (access_type == AccessType::STORE)   return w;
+            if (access_type == AccessType::FETCH) return x;
+        }
+    }
+    
+    // No matching entry: M-mode allowed, S/U denied
+    return is_mmode;
+}
