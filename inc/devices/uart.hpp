@@ -2,12 +2,22 @@
 
 #pragma once
 
+#include "platform/platform.hpp"
+
 #include <cstdint>
 #include <queue>
 #include <mutex>
 #include <thread>
 #include <atomic>
 #include <functional>
+
+#ifdef PLATFORM_WINDOWS
+
+#include "windows.h"
+
+#endif
+
+class Emulator;
 
 class UART {
     public:
@@ -41,7 +51,7 @@ class UART {
         static constexpr uint8_t IIR_THRI   = 0x02; // TX interrupt
         static constexpr uint8_t IIR_RDI    = 0x04; // RX interrupt
 
-        explicit UART(std::function<void(uint32_t)> set_pending_cb);
+        explicit UART(Emulator sys, std::function<void(uint32_t)> set_pending_cb);
         ~UART();
 
         uint8_t read8(uint32_t offset);
@@ -56,6 +66,8 @@ class UART {
         void load_test_input();
 
     private:
+        Emulator& sys_;
+
         uint8_t ier_ = 0;
         uint8_t lcr_ = 0;
         uint8_t mcr_ = 0;
@@ -78,4 +90,10 @@ class UART {
         void set_raw_mode();
         void restore_terminal();
         static bool read_char(uint8_t& ch);
+
+    #ifdef PLATFORM_WINDOWS
+        static BOOL WINAPI console_ctrl_handler(DWORD type);
+        static UART* s_instance;
+    #endif
+
 };
