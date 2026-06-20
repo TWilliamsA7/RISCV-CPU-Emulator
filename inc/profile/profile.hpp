@@ -26,6 +26,7 @@ struct Profile {
     std::string elf_path;
     std::string bin_path;
     std::string disk_path;
+    std::string dtb_path;
     bool verbose;
 };
 

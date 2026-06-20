@@ -45,10 +45,7 @@ Profile loadProfile(std::string profile_path) {
         profile.starting_pc = static_cast<uint32_t>(std::stoul(sp, nullptr, 16));
     }
 
-    if (config.contains("dtb-address")) {
-        std::string da = config["dtb-address"];
-        profile.dtb_address = static_cast<uint32_t>(std::stoul(da, nullptr, 16));
-    }
+
 
     if (config.contains("extensions") && config["extensions"].is_array()) {
         for (auto& arg : config["extensions"]) {
@@ -78,6 +75,20 @@ Profile loadProfile(std::string profile_path) {
             profile.disk_path = config["disk-path"];
         } else {
             throw std::runtime_error("[ERROR] Cannot Run Selected Platform Without Disk");
+        }
+    }
+
+    if (profile.platform == Platform::LINUX) {
+        if (config.contains("dtb-path")) 
+            profile.dtb_path = config["dtb-path"];
+        else 
+            throw std::runtime_error("[ERROR] Missing DTB Path");
+    
+        if (config.contains("dtb-address")) {
+            std::string da = config["dtb-address"];
+            profile.dtb_address = static_cast<uint32_t>(std::stoul(da, nullptr, 16));
+        } else {
+            throw std::runtime_error("[ERROR] Missing DTB Address");
         }
     }
 
