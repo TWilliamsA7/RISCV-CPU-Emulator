@@ -29,6 +29,10 @@ void Emulator::initialize() {
         load_binary(config_.profile.bin_path, bus, config_.profile.dram_start);
     }
 
+    if (config_.profile.dtb_path.size() != 0) {
+        load_binary(config_.profile.dtb_path, bus, config_.profile.dtb_address);
+    }
+
     std::cout << "[INFO] Emulator Ready\n";
 }
 
