@@ -25,7 +25,7 @@ class Bus {
         static constexpr uint32_t DRAM_BASE = 0x80000000;
 
         // Size of avaiable DRAM
-        static constexpr uint32_t DRAM_SIZE = 1024 * 1024 * 128;
+        static constexpr uint32_t DRAM_SIZE = 1024 * 1024 * 256;
 
         void init_devices(const std::string& disk_path);
 
