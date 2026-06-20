@@ -42,13 +42,43 @@ uint32_t CPU::readCSR(uint16_t addr) {
         case CSR::STIMECMP:
         case CSR::STIMECMPH:
         case CSR::MSECCFG:
-        case CSR::MSECCFGH:
-            return 0;
+        case CSR::MSECCFGH: {
+            if (sys_.config_.profile.platform == Platform::LINUX) {
+                trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
+                return 0;
+            } else {
+                return 0;
+            }
+        }
 
-        default:
+        default: {
+
+            if (sys_.config_.profile.platform == Platform::LINUX) {
+                // Deactivate zihpm (Hardware Performance Monitors)
+                if ((addr >= 0xB03 && addr <= 0xB1F) || (addr >= 0x323 && addr <= 0x33F)) {
+                    trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
+                    return 0;
+                }
+
+                // Deactivate sscofpmf (Supervisor Counter Overflow)
+                if (addr == 0xDA0) {
+                    trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
+                    return 0;
+                }
+
+                // Deactivate smaia (Machine Advanced Interrupt Architecture)
+                if (addr == 0x350 || addr == 0x351 || addr == 0x35C || 
+                    addr == 0x150 || addr == 0x151 || addr == 0x15C  || addr == 0xFB0 || addr == 0xDB0) {
+                    trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
+                    return 0;
+                }
+            }
+
             if (addr < 4096)
                 return csrs_[addr];
             return 0;
+            
+        }
     }
 }
 
@@ -164,16 +194,47 @@ bool CPU::writeCSR(uint16_t addr, uint32_t val) {
         case CSR::STIMECMP: 
         case CSR::STIMECMPH: 
         case CSR::MSECCFG: 
-        case CSR::MSECCFGH: 
+        case CSR::MSECCFGH: {
+            if (sys_.config_.profile.platform == Platform::LINUX) {
+                trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
+            } else {
+                return true;
+            }
+        }
+        
         case CSR::MHARTID:
         case CSR::MVENDORID:
         case CSR::MARCHID:
-        case CSR::MIMPID:
+        case CSR::MIMPID: 
             return true;
+            
 
-        default:
+        default: {
+
+            if (sys_.config_.profile.platform == Platform::LINUX) {
+                // Deactivate zihpm (Hardware Performance Monitors)
+                if ((addr >= 0xB03 && addr <= 0xB1F) || (addr >= 0x323 && addr <= 0x33F)) {
+                    trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
+                    return false;
+                }
+
+                // Deactivate sscofpmf (Supervisor Counter Overflow)
+                if (addr == 0xDA0) {
+                    trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
+                    return false;
+                }
+
+                // Deactivate smaia (Machine Advanced Interrupt Architecture)
+                if (addr == 0x350 || addr == 0x351 || addr == 0x35C || 
+                    addr == 0x150 || addr == 0x151 || addr == 0x15C || addr == 0xFB0 || addr == 0xDB0) {
+                    trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
+                    return false;
+                }
+            }
+
             csrs_[addr] = val;
             return true;
+        }
     }
 
     return true;
