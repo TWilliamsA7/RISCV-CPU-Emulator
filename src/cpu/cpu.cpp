@@ -65,9 +65,9 @@ void CPU::run() {
             updateCycle();
         }
 
-        // if ((insn_counter & 0xFFFFFF) == 0) {  // every ~16M instructions
+        // if ((insn_counter & 0xFFFFFFF) == 0) {  // every ~16M instructions
         //     auto elapsed = std::chrono::duration<double>(clock::now() - t0).count();
-        //     fprintf(stderr, "%.2f MIPS\n", insn_counter / elapsed / 1e6);
+        //     fprintf(stderr, "%.2f BIPS\n", insn_counter / elapsed / 1e9);
         // }
 
         if (state_ == CPUState::WAITING_FOR_INTERRUPT) {
