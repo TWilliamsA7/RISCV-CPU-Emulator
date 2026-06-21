@@ -90,6 +90,20 @@ Profile loadProfile(std::string profile_path) {
         } else {
             throw std::runtime_error("[ERROR] Missing DTB Address");
         }
+
+        if (config.contains("opensbi-path")) {
+            profile.opensbi_path = config["opensbi-path"];
+        } else {
+            throw std::runtime_error("[ERROR] Missing OpenSBI");
+        }
+
+        if (config.contains( "kernel-address")) {
+            std::string ka = config["kernel-address"];
+            profile.kernel_address = static_cast<uint32_t>(std::stoul(ka, nullptr, 16));
+        } else {
+            throw std::runtime_error("[ERROR] Missing Kernel Address");
+        }
+
     }
 
     return profile;

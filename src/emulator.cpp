@@ -23,11 +23,17 @@ void Emulator::initialize() {
 
     std::cout << "[INFO] Initializing Emulator...\n";
 
-    if (config_.profile.elf_path.size() != 0) {
-        load_elf(config_.profile.elf_path, bus, cpu);
+    if (config_.profile.opensbi_path.size() == 0) {
+        if (config_.profile.elf_path.size() != 0) {
+            load_elf(config_.profile.elf_path, bus, cpu);
+        } else {
+            load_binary(config_.profile.bin_path, bus, config_.profile.dram_start);
+        }
     } else {
-        load_binary(config_.profile.bin_path, bus, config_.profile.dram_start);
+        load_elf(config_.profile.opensbi_path, bus, cpu);
+        load_binary(config_.profile.bin_path, bus, config_.profile.kernel_address);
     }
+
 
     if (config_.profile.dtb_path.size() != 0) {
         load_binary(config_.profile.dtb_path, bus, config_.profile.dtb_address);

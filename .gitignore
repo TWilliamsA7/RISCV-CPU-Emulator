@@ -32,3 +32,6 @@ callgrind*
 *.json
 !CMakePresets.json
 !profiles/example.json
+
+# Linux Support files
+linux/
