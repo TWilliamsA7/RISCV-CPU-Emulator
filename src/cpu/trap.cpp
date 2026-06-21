@@ -30,35 +30,6 @@ void CPU::trap(uint32_t cause, uint32_t tval, bool is_interrupt) {
             << "CAUSE: " << cause << " VAL: " << tval << "\n";
     }
 
-    static int trap_count = 0;
-        if (trap_count < 5 && privilege_level_ != PrivilegeLevel::MACHINE) {
-                 printf("[TRAP %d] cause=%d pc=0x%08x stval=0x%08x priv=%d a0=0x%08x a1=0x%08x a6=0x%08x a7=0x%08x\n",
-        trap_count, cause, pc_, csrs_[CSR::STVAL], (int)privilege_level_,
-        regs_[10], regs_[11], regs_[16], regs_[17]);
-    trap_count++;
-
-        }
-
-    static bool first_ipf = true;
-    if (cause == 12 && first_ipf) {
-        first_ipf = false;
-        printf("[TRAP] First IPF: pc=0x%08x sepc=0x%08x stval=0x%08x satp=0x%08x stvec=0x%08x\n",
-            pc_,   // the PC that faulted
-            csrs_[CSR::SEPC],     // what sepc was before this trap
-            csrs_[CSR::STVAL],
-            csrs_[CSR::SATP],
-            csrs_[CSR::STVEC]);
-    }
-
-    if (cause == 1) {
-        printf("[PMP] Cause 1 at pc=0x%08x privilege=%d\n", pc_, privilege_level_);
-        for (int i = 0; i < 4; i++)
-            printf("[PMP] pmpcfg%d=0x%08x\n", i, csrs_[CSR::PMPCFG0 + i]);
-        for (int i = 0; i < 8; i++)
-            printf("[PMP] pmpaddr%d=0x%08x\n", i, csrs_[CSR::PMPADDR0 + i]);
-    }
-
-
     uint32_t cause_val = is_interrupt ? (cause | (1U << 31)) : cause;
     uint32_t mstatus = csrs_[CSR::MSTATUS];
 
@@ -150,7 +121,7 @@ void CPU::checkInterrupts() {
 bool CPU::handleSBI() {
     uint32_t ext = regs_[17]; // a7 - extension ID
     uint32_t fid = regs_[16]; // a6 - function ID
-    printf("[SBI] ext=0x%08x fid=0x%08x pc=0x%08x\n", ext, fid, pc_);
+    // printf("[SBI] ext=0x%08x fid=0x%08x pc=0x%08x\n", ext, fid, pc_);
 
     // SBI return: a0 = error code, a1 = value
     // SBI_SUCCESS = 0, SBI_ERR_NOT_SUPPORTED = -2

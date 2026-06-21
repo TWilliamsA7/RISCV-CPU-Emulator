@@ -249,10 +249,17 @@ void CPU::updateCycle() {
         csrs_[CSR::MIP] &= ~(1 << 3);
 
     // MTIP -> MIP bit 7 (timer)
-    if (sys_.clint.mtime >= sys_.clint.mtimecmp)
+    // MTIP -> MIP bit 7 (timer)
+    if (sys_.clint.mtime >= sys_.clint.mtimecmp) {
         csrs_[CSR::MIP] |= (1 << 7);
-    else
+        // Forward to STIP if timer interrupt is delegated to S-mode
+        if ((csrs_[CSR::MIDELEG] >> 5) & 1) {
+            csrs_[CSR::MIP] |= (1 << 5);  // set STIP
+            csrs_[CSR::MIP] &= ~(1 << 7); // clear MTIP — M-mode won't handle it
+        }
+    } else {
         csrs_[CSR::MIP] &= ~(1 << 7);
+    }
 
     // MEIP -> MIP bit 11 (machine external interrupt)
     if (sys_.plic.m_interrupt_pending()) {
