@@ -9,6 +9,7 @@
 #include <cassert>
 #include <iostream>
 #include <thread>
+#include <chrono>
 
 CPU::CPU(Emulator& sys) : sys_(sys), icache_(sys.bus) {
     regs_.fill(0);
@@ -167,6 +168,34 @@ const uint32_t CPU::fetchInstr(uint32_t pc) {
 
 StepResult CPU::step() {
     clearStep();  
+
+    sr.pc_before = pc_;
+
+    static auto start = std::chrono::steady_clock::now();
+    const std::chrono::milliseconds delay(5000);
+
+    static bool count_instr = false;
+    static int instr_count = 0;
+
+    if (!count_instr) {
+
+        auto currentTime = std::chrono::steady_clock::now();
+
+        auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - start);
+
+        if (elapsedTime >= delay) {
+            sys_.config_.profile.verbose = true;
+            count_instr = true;
+        }
+
+    }
+
+    if (count_instr) {
+        instr_count++;
+        if (instr_count > 100) {
+            halt();
+        }
+    }
 
     // Check for Asynchronous Interrupts 
     checkInterrupts();

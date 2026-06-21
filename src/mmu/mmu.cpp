@@ -68,7 +68,12 @@ uint32_t MMU::translate(uint32_t va, AccessType type) {
         uint32_t pa;
         if (hit->superpage) {
             uint32_t vpn0 = (va >> 12) & 0x3FF;
-            pa = ((hit->ppn & 0xFFFFF000u) << 2) | (vpn0 << 12) | (va & 0xFFF);
+            pa = (hit->ppn << 22) | (vpn0 << 12) | (va & 0xFFF);
+            if (va == 0xc0001048 || va == 0xc000104c) {
+                printf("[TLB SUPER] va=0x%08x ppn=0x%08x vpn0=0x%03x pa=0x%08x\n",
+                    va, hit->ppn, vpn0, pa);
+            }
+            
         } else {
             pa = (hit->ppn << 12) | (va & 0xFFF);
         }
@@ -89,15 +94,42 @@ uint32_t MMU::translate_walk(uint32_t va, AccessType type, PrivilegeLevel effect
     for (int i = LEVELS - 1; i >= 0; i--) {
         uint32_t pte_addr = a + (vpn[i] * PTE_SIZE);
 
+        if (va == 0x80401048) {
+            printf("[MMU DEBUG] va=0x%08x i=%d pte_addr=0x%08x satp=0x%08x\n",
+                va, i, pte_addr, sys_.cpu.csrs_[CPU::CSR::SATP]);
+        }
+
         try {
             pte = sys_.bus.read32(pte_addr);
         } catch (const BusAccessError&) {
+            if (va == 0x80401048)
+                printf("[MMU DEBUG] BusAccessError reading pte_addr=0x%08x\n", pte_addr);
             triggerPageFault(type);
+        }
+
+        if (va == 0x80401048) {
+            printf("[MMU DEBUG] i=%d pte=0x%08x V=%d R=%d W=%d X=%d U=%d\n",
+                i, pte,
+                (pte >> 0) & 1,  // V
+                (pte >> 1) & 1,  // R
+                (pte >> 2) & 1,  // W
+                (pte >> 3) & 1,  // X
+                (pte >> 4) & 1); // U
         }
 
         TLBFlags flags = pte_to_flags(pte);
 
         if (!(pte & PTE_V) || (!(pte & PTE_R) && (pte & PTE_W))) {
+
+            if (va == 0x80401048) {
+                uint32_t pt_root = (sys_.cpu.csrs_[CPU::CSR::SATP] & 0x3FFFFF) << 12;
+                printf("[PT ROOT] base=0x%08x\n", pt_root);
+                printf("[PT ROOT] entry[512]=0x%08x (identity 0x80000000)\n",
+                    sys_.bus.read32(pt_root + 512*4));
+                printf("[PT ROOT] entry[768]=0x%08x (kernel virtual 0xc0000000)\n",
+                    sys_.bus.read32(pt_root + 768*4));
+            }
+
             triggerPageFault(type);
         }
 
@@ -139,6 +171,11 @@ uint32_t MMU::translate_walk(uint32_t va, AccessType type, PrivilegeLevel effect
                 uint32_t ppn1 = (pte >> 20) & 0xFFF;
                 tlb_fill(sys_.cpu.tlb_, full_vpn, asid, ppn1, flags, true);
                 pa = (ppn1 << 22) | (va & PPN_MASK);
+
+                if (va == 0xc0001048 || va == 0xc000104c) {
+                    printf("[WALK SUPER] va=0x%08x ppn1=0x%08x pa=0x%08x\n",
+                        va, ppn1, pa);
+                }
             } else { // 4KB page
                 uint32_t ppn = (pte >> 10);
                 tlb_fill(sys_.cpu.tlb_, full_vpn, asid, ppn, flags, false);
