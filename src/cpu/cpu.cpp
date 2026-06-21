@@ -91,6 +91,8 @@ const DecodedInstr& CPU::fetch_and_decode(uint32_t pc) {
     uint32_t index = (pc >> 1) & (DECODE_CACHE_SIZE - 1);
 
     if (decoded_cache_[index].epoch == current_epoch_ && decoded_cache_[index].pc == pc) {
+        sr.instruction = decoded_cache_[index].raw;
+        sr.dInstr = decoded_cache_[index].decoded;
         return decoded_cache_[index].decoded;
     }
 
@@ -109,6 +111,7 @@ const DecodedInstr& CPU::fetch_and_decode(uint32_t pc) {
     decoded_cache_[index].epoch = current_epoch_;
     decoded_cache_[index].pc = pc;
     decoded_cache_[index].decoded = di;
+    decoded_cache_[index].raw = sr.instruction;
     return decoded_cache_[index].decoded;
 }
 
@@ -177,25 +180,25 @@ StepResult CPU::step() {
     static bool count_instr = false;
     static int instr_count = 0;
 
-    if (!count_instr) {
+    // if (!count_instr) {
 
-        auto currentTime = std::chrono::steady_clock::now();
+    //     auto currentTime = std::chrono::steady_clock::now();
 
-        auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - start);
+    //     auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - start);
 
-        if (elapsedTime >= delay) {
-            sys_.config_.profile.verbose = true;
-            count_instr = true;
-        }
+    //     if (elapsedTime >= delay) {
+    //         sys_.config_.profile.verbose = true;
+    //         count_instr = true;
+    //     }
 
-    }
+    // }
 
-    if (count_instr) {
-        instr_count++;
-        if (instr_count > 100) {
-            halt();
-        }
-    }
+    // if (count_instr) {
+    //     instr_count++;
+    //     if (instr_count > 100) {
+    //         halt();
+    //     }
+    // }
 
     // Check for Asynchronous Interrupts 
     checkInterrupts();
