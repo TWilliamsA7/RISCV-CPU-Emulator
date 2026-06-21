@@ -21,24 +21,24 @@ uint8_t UART::read_lsr() {
 }
 
 uint8_t UART::read_iir() {
-    // RX interrupt takes priority over TX
+    bool fifo_enabled = (fcr_ & 0x01);
+    uint8_t fifo_bits = fifo_enabled ? 0xC0 : 0x00; // bits 6-7 when FIFO enabled
+    
     if ((ier_ & IER_RDI) && !rx_fifo_.empty())
-        return IIR_RDI;
+        return fifo_bits | IIR_RDI;
     if (ier_ & IER_THRI)
-        return IIR_THRI;
-    return IIR_NO_INT;
+        return fifo_bits | IIR_THRI;
+    return fifo_bits | 0x01; // no interrupt pending, but report FIFO status
 }
 
 uint8_t UART::read8(uint32_t offset) {
     switch (offset) {
         case RBR: {
-            // If DLAB set in LCR, this is divisor latch low — just return 0
             if (lcr_ & 0x80) return 0;
             std::lock_guard<std::mutex> lock(rx_mutex_);
             if (!rx_fifo_.empty()) {
                 uint8_t ch = rx_fifo_.front();
                 rx_fifo_.pop();
-                // If FIFO now empty, interrupt clears naturally on next IIR read
                 return ch;
             }
             return 0;
@@ -67,12 +67,29 @@ void UART::write8(uint32_t offset, uint8_t val) {
         case IER:
             if (!(lcr_ & 0x80)) {
                 ier_ = val & 0x0F;
-                std::lock_guard<std::mutex> lock(rx_mutex_);
+                // Assert interrupt if RX data waiting
                 if ((ier_ & IER_RDI) && !rx_fifo_.empty())
+                    set_pending_(IRQ);
+                // Assert interrupt immediately if TX interrupt enabled — TX always ready
+                if (ier_ & IER_THRI)
                     set_pending_(IRQ);
             }
             break;
-        case FCR: break; // FIFO control — accept but ignore
+        case FCR: {
+            fcr_ = val;
+            if (val & 0x02) { // RX FIFO reset
+                std::lock_guard<std::mutex> lock(rx_mutex_);
+                while (!rx_fifo_.empty()) rx_fifo_.pop();
+            }
+            // Trigger level from bits 6-7
+            switch ((val >> 6) & 0x3) {
+                case 0: fifo_trigger_ = 1;  break;
+                case 1: fifo_trigger_ = 4;  break;
+                case 2: fifo_trigger_ = 8;  break;
+                case 3: fifo_trigger_ = 14; break;
+            }
+            break;    
+        }
         case LCR: lcr_ = val; break;
         case MCR: mcr_ = val & 0x1F; break;
         case SCR: scr_ = val; break;
@@ -85,9 +102,9 @@ void UART::rx_push(uint8_t ch) {
         std::lock_guard<std::mutex> lock(rx_mutex_);
         rx_fifo_.push(ch);
     }
-    // Assert PLIC interrupt if RX interrupts enabled
-    if (ier_ & IER_RDI)
+    if (ier_ & IER_RDI) {
         set_pending_(IRQ);
+    }
 }
 
 void UART::load_test_input() {

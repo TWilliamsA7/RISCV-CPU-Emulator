@@ -68,7 +68,7 @@ uint32_t MMU::translate(uint32_t va, AccessType type) {
         uint32_t pa;
         if (hit->superpage) {
             uint32_t vpn0 = (va >> 12) & 0x3FF;
-            pa = ((hit->ppn & 0xFFFFF000u) << 2) | (vpn0 << 12) | (va & 0xFFF);
+            pa = (hit->ppn << 22) | (vpn0 << 12) | (va & 0xFFF);     
         } else {
             pa = (hit->ppn << 12) | (va & 0xFFF);
         }

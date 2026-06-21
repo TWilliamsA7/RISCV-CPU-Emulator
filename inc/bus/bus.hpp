@@ -25,7 +25,7 @@ class Bus {
         static constexpr uint32_t DRAM_BASE = 0x80000000;
 
         // Size of avaiable DRAM
-        static constexpr uint32_t DRAM_SIZE = 1024 * 1024 * 128;
+        static constexpr uint32_t DRAM_SIZE = 1024 * 1024 * 256;
 
         void init_devices(const std::string& disk_path);
 
@@ -68,6 +68,7 @@ class Bus {
         void write16_unlocked(uint32_t addr, uint16_t val);
         void write32_unlocked(uint32_t addr, uint32_t val);
 
+        UART uart_;
     private:
 
         Emulator& sys_;
@@ -78,7 +79,6 @@ class Bus {
         std::vector<uint8_t> dram_;
 
         // UART: Universal Asynchronous Reciever/Transmitter
-        UART uart_;
 
         VirtioBlk virtio_blk_;
 

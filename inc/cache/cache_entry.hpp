@@ -6,4 +6,5 @@ struct CacheEntry {
     uint32_t epoch = 0;
     uint32_t pc = 0xFFFFFFFF;
     DecodedInstr decoded;
+    uint32_t raw = 0;
 };

@@ -72,6 +72,8 @@ class UART {
         uint8_t lcr_ = 0;
         uint8_t mcr_ = 0;
         uint8_t scr_ = 0;
+        uint8_t fcr_ = 0;
+        uint8_t fifo_trigger_ = 1;
 
         std::queue<uint8_t> rx_fifo_;
         std::mutex          rx_mutex_;

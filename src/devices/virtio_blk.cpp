@@ -23,8 +23,11 @@ uint32_t VirtioBlk::read32(uint32_t offset) {
         case VIRTIO_DEVICE_ID:     return 0x2;        // block device
         case VIRTIO_VENDOR_ID:     return 0x554D4551; // "QEMU"
         case VIRTIO_DEVICE_FEATS:
-            // Feature bits — report none
-            // xv6 only needs basic block read/write
+            if (device_feat_sel_ == 0) {
+                return 0; // feature bits 0-31, none needed
+            } else if (device_feat_sel_ == 1) {
+                return (1 << 0); // VIRTIO_F_VERSION_1 = bit 32, reported as bit 0 of page 1
+            }
             return 0;
         case VIRTIO_QUEUE_NUM_MAX: return QUEUE_SIZE;
         case VIRTIO_QUEUE_READY:   return queue_ready_;

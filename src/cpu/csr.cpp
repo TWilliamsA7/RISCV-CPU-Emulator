@@ -42,13 +42,43 @@ uint32_t CPU::readCSR(uint16_t addr) {
         case CSR::STIMECMP:
         case CSR::STIMECMPH:
         case CSR::MSECCFG:
-        case CSR::MSECCFGH:
-            return 0;
+        case CSR::MSECCFGH: {
+            if (sys_.config_.profile.platform == Platform::LINUX) {
+                trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
+                return 0;
+            } else {
+                return 0;
+            }
+        }
 
-        default:
+        default: {
+
+            if (sys_.config_.profile.platform == Platform::LINUX) {
+                // Deactivate zihpm (Hardware Performance Monitors)
+                if ((addr >= 0xB03 && addr <= 0xB1F) || (addr >= 0x323 && addr <= 0x33F)) {
+                    trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
+                    return 0;
+                }
+
+                // Deactivate sscofpmf (Supervisor Counter Overflow)
+                if (addr == 0xDA0) {
+                    trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
+                    return 0;
+                }
+
+                // Deactivate smaia (Machine Advanced Interrupt Architecture)
+                if (addr == 0x350 || addr == 0x351 || addr == 0x35C || 
+                    addr == 0x150 || addr == 0x151 || addr == 0x15C  || addr == 0xFB0 || addr == 0xDB0) {
+                    trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
+                    return 0;
+                }
+            }
+
             if (addr < 4096)
                 return csrs_[addr];
             return 0;
+            
+        }
     }
 }
 
@@ -164,16 +194,47 @@ bool CPU::writeCSR(uint16_t addr, uint32_t val) {
         case CSR::STIMECMP: 
         case CSR::STIMECMPH: 
         case CSR::MSECCFG: 
-        case CSR::MSECCFGH: 
+        case CSR::MSECCFGH: {
+            if (sys_.config_.profile.platform == Platform::LINUX) {
+                trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
+            } else {
+                return true;
+            }
+        }
+        
         case CSR::MHARTID:
         case CSR::MVENDORID:
         case CSR::MARCHID:
-        case CSR::MIMPID:
+        case CSR::MIMPID: 
             return true;
+            
 
-        default:
+        default: {
+
+            if (sys_.config_.profile.platform == Platform::LINUX) {
+                // Deactivate zihpm (Hardware Performance Monitors)
+                if ((addr >= 0xB03 && addr <= 0xB1F) || (addr >= 0x323 && addr <= 0x33F)) {
+                    trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
+                    return false;
+                }
+
+                // Deactivate sscofpmf (Supervisor Counter Overflow)
+                if (addr == 0xDA0) {
+                    trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
+                    return false;
+                }
+
+                // Deactivate smaia (Machine Advanced Interrupt Architecture)
+                if (addr == 0x350 || addr == 0x351 || addr == 0x35C || 
+                    addr == 0x150 || addr == 0x151 || addr == 0x15C || addr == 0xFB0 || addr == 0xDB0) {
+                    trap(ExceptionCause::ILLEGAL_INSTRUCTION, sr.instruction, false);
+                    return false;
+                }
+            }
+
             csrs_[addr] = val;
             return true;
+        }
     }
 
     return true;
@@ -215,47 +276,61 @@ void CPU::write_pmpaddr(uint16_t addr, uint32_t val) {
 
 // Returns true if access is permitted
 bool CPU::pmp_check(uint32_t paddr, AccessType access_type, PrivilegeLevel priv) {
-    // M-mode bypasses PMP unless entry has L bit set
     bool is_mmode = (priv == PrivilegeLevel::MACHINE);
-    
+
     for (int i = 0; i < 16; i++) {
         uint16_t cfg_reg = (i / 4) + CSR::PMPCFG0;
         int cfg_byte = i % 4;
         uint8_t cfg = (csrs_[cfg_reg] >> (cfg_byte * 8)) & 0xFF;
-        
-        uint8_t A = (cfg >> 3) & 0x3;
-        if (A == 0) continue; // OFF, skip
-        
-        bool match = false;
 
+        uint8_t A = (cfg >> 3) & 0x3;
+        if (A == 0) continue;
+
+        bool match = false;
         uint16_t current_pmpaddr_idx = CSR::PMPADDR0 + i;
-        uint16_t previous_pmpaddr_idx = CSR::PMPADDR0 + i - 1;
-        
+
         if (A == 1) { // TOR
-            uint32_t lo = (i == 0) ? 0 : (csrs_[previous_pmpaddr_idx] << 2);
+            uint32_t lo = (i == 0) ? 0 : (csrs_[CSR::PMPADDR0 + i - 1] << 2);
             uint32_t hi = csrs_[current_pmpaddr_idx] << 2;
             match = (paddr >= lo && paddr < hi);
         } else if (A == 2) { // NA4
-            match = ((paddr >> 2) == csrs_[current_pmpaddr_idx]);
+            uint32_t base = csrs_[current_pmpaddr_idx] << 2;
+            match = (paddr >= base && paddr < base + 4);
         } else { // NAPOT
             uint32_t addr = csrs_[current_pmpaddr_idx];
-            // Find trailing ones to determine size
-            uint32_t mask = ~(addr & (~addr + 1)); // isolate trailing ones + 1
-            uint32_t base = (addr & mask) << 2;
-            uint32_t size_mask = ~((mask << 2) | 0x3);
-            match = ((paddr & size_mask) == (base & size_mask));
+            if (addr == 0xffffffff) {
+                match = true; // entire address space
+            } else {
+                uint32_t size_minus1 = addr ^ (addr | (addr + 1));
+                uint32_t napot_mask = ~(size_minus1 << 1 | 1);
+                uint32_t base = (addr & napot_mask) << 2;
+                uint32_t range = (size_minus1 + 1) << 3;
+                match = (paddr >= base && paddr < base + range);
+            }
         }
-        
+
         if (match) {
             bool locked = (cfg & 0x80);
-            // M-mode: only enforced if L bit set
             if (is_mmode && !locked) return true;
-            
-            bool r = cfg & 0x1, w = cfg & 0x2, x = cfg & 0x4;
-            if (access_type == AccessType::LOAD)    return r;
-            if (access_type == AccessType::STORE)   return w;
-            if (access_type == AccessType::FETCH) return x;
+
+            bool r = (cfg >> 0) & 1;
+            bool w = (cfg >> 1) & 1;
+            bool x = (cfg >> 2) & 1;
+
+            bool permitted = (access_type == AccessType::FETCH) ? x :
+                             (access_type == AccessType::LOAD)  ? r : w;
+
+            if (paddr == 0x80000410)
+                printf("[PMP MATCH] entry=%d paddr=0x%08x cfg=0x%02x A=%d r=%d w=%d x=%d access=%d permitted=%d\n",
+                    i, paddr, cfg, A, (int)r, (int)w, (int)x, (int)access_type, (int)permitted);
+
+            return permitted;
         }
+    }
+
+
+    if (!is_mmode) {
+        printf("[PMP MATCH] No matching entry paddr=0x%08x\n", paddr);
     }
     
     // No matching entry: M-mode allowed, S/U denied

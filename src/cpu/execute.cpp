@@ -548,14 +548,18 @@ void CPU::execECALL(const DecodedInstr& i) {
         }
     }
 
-    uint32_t cause;
-    switch (privilege_level_) {
-        case PrivilegeLevel::USER: cause = ExceptionCause::U_MODE_ENVIRONMENT_CALL; break;
-        case PrivilegeLevel::SUPERVISOR: cause = ExceptionCause::S_MODE_ENVIRONMENT_CALL; break;
-        case PrivilegeLevel::MACHINE: cause = ExceptionCause::M_MODE_ENVIRONMENT_CALL; break;
-        default: cause = ExceptionCause::M_MODE_ENVIRONMENT_CALL; break;
+    // Handle SBI calls from S-mode before delegating
+    if (privilege_level_ == PrivilegeLevel::SUPERVISOR && sys_.config_.profile.opensbi_path.size()) {
+        if (handleSBI()) return;
     }
 
+    uint32_t cause;
+    switch (privilege_level_) {
+        case PrivilegeLevel::USER:       cause = ExceptionCause::U_MODE_ENVIRONMENT_CALL; break;
+        case PrivilegeLevel::SUPERVISOR: cause = ExceptionCause::S_MODE_ENVIRONMENT_CALL; break;
+        case PrivilegeLevel::MACHINE:    cause = ExceptionCause::M_MODE_ENVIRONMENT_CALL; break;
+        default:                         cause = ExceptionCause::M_MODE_ENVIRONMENT_CALL; break;
+    }
     trap(cause, 0, false);
 }
 

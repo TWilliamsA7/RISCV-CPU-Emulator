@@ -42,8 +42,10 @@ Profile loadProfile(std::string profile_path) {
 
     if (config.contains("starting-pc")) {
         std::string sp = config["starting-pc"];
-        profile.starting_pc = std::stoi(sp, nullptr, 16);
+        profile.starting_pc = static_cast<uint32_t>(std::stoul(sp, nullptr, 16));
     }
+
+
 
     if (config.contains("extensions") && config["extensions"].is_array()) {
         for (auto& arg : config["extensions"]) {
@@ -74,6 +76,34 @@ Profile loadProfile(std::string profile_path) {
         } else {
             throw std::runtime_error("[ERROR] Cannot Run Selected Platform Without Disk");
         }
+    }
+
+    if (profile.platform == Platform::LINUX) {
+        if (config.contains("dtb-path")) 
+            profile.dtb_path = config["dtb-path"];
+        else 
+            throw std::runtime_error("[ERROR] Missing DTB Path");
+    
+        if (config.contains("dtb-address")) {
+            std::string da = config["dtb-address"];
+            profile.dtb_address = static_cast<uint32_t>(std::stoul(da, nullptr, 16));
+        } else {
+            throw std::runtime_error("[ERROR] Missing DTB Address");
+        }
+
+        if (config.contains("opensbi-path")) {
+            profile.opensbi_path = config["opensbi-path"];
+        } else {
+            throw std::runtime_error("[ERROR] Missing OpenSBI");
+        }
+
+        if (config.contains( "kernel-address")) {
+            std::string ka = config["kernel-address"];
+            profile.kernel_address = static_cast<uint32_t>(std::stoul(ka, nullptr, 16));
+        } else {
+            throw std::runtime_error("[ERROR] Missing Kernel Address");
+        }
+
     }
 
     return profile;

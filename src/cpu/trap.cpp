@@ -30,9 +30,6 @@ void CPU::trap(uint32_t cause, uint32_t tval, bool is_interrupt) {
             << "CAUSE: " << cause << " VAL: " << tval << "\n";
     }
 
-    // fprintf(stderr, "U-Mode TRAP | Priv: %d | Cause %d | Val %d | STVEC %d\n")
-
-
     uint32_t cause_val = is_interrupt ? (cause | (1U << 31)) : cause;
     uint32_t mstatus = csrs_[CSR::MSTATUS];
 
@@ -118,5 +115,190 @@ void CPU::checkInterrupts() {
                 return;
             }
         }
+    }
+}
+
+bool CPU::handleSBI() {
+    uint32_t ext = regs_[17]; // a7 - extension ID
+    uint32_t fid = regs_[16]; // a6 - function ID
+    // printf("[SBI] ext=0x%08x fid=0x%08x pc=0x%08x\n", ext, fid, pc_);
+
+    // SBI return: a0 = error code, a1 = value
+    // SBI_SUCCESS = 0, SBI_ERR_NOT_SUPPORTED = -2
+
+    switch (ext) {
+
+        // ── Legacy (v0.1) extensions ──────────────────────────────────────
+        case 0x00: { // sbi_set_timer
+            uint64_t stime = ((uint64_t)regs_[11] << 32) | regs_[10];
+            sys_.clint.mtimecmp = stime;
+            // Clear pending timer interrupt, it will re-fire when mtime >= mtimecmp
+            csrs_[CSR::MIP] &= ~(1 << 7); // clear MTIP
+            regs_[10] = 0;
+            regs_[11] = 0;
+            next_pc_ = pc_ + 4;
+            set_next_pc_ = true;
+            return true;
+        }
+        case 0x01: { // sbi_console_putchar
+            char c = (char)(regs_[10] & 0xFF);
+            sys_.bus.uart_.write8(UART::THR, c);
+            regs_[10] = 0;
+            regs_[11] = 0;
+            next_pc_ = pc_ + 4;
+            set_next_pc_ = true;
+            return true;
+        }
+        case 0x02: { // sbi_console_getchar
+            regs_[10] = -1; // no char available
+            regs_[11] = 0;
+            next_pc_ = pc_ + 4;
+            set_next_pc_ = true;
+            return true;
+        }
+        case 0x04: { // sbi_clear_ipi
+            csrs_[CSR::MIP] &= ~(1 << 1); // clear MSIP
+            regs_[10] = 0;
+            regs_[11] = 0;
+            next_pc_ = pc_ + 4;
+            set_next_pc_ = true;
+            return true;
+        }
+        case 0x05: { // sbi_send_ipi — single hart, no-op
+            regs_[10] = 0;
+            regs_[11] = 0;
+            next_pc_ = pc_ + 4;
+            set_next_pc_ = true;
+            return true;
+        }
+        case 0x08: { // sbi_shutdown
+            std::cout << "SBI shutdown requested" << std::endl;
+            state_ = CPUState::HALTED;
+            return true;
+        }
+
+        // ── Base extension (0x10) ─────────────────────────────────────────
+        case 0x10: {
+            switch (fid) {
+                case 0: // sbi_get_spec_version — SBI 2.0
+                    regs_[10] = 0;
+                    regs_[11] = (2 << 24) | 0;
+                    break;
+                case 1: // sbi_get_impl_id — custom impl ID
+                    regs_[10] = 0;
+                    regs_[11] = 4; // SBI impl ID 4 = custom
+                    break;
+                case 2: // sbi_get_impl_version
+                    regs_[10] = 0;
+                    regs_[11] = 1;
+                    break;
+                case 3: { // sbi_probe_extension
+                    uint32_t probe_ext = regs_[10];
+                    bool supported = (probe_ext == 0x10 ||  // Base
+                                      probe_ext == 0x54494D45 || // TIME
+                                      probe_ext == 0x48534D ||   // HSM
+                                      probe_ext == 0x53525354 || // SRST
+                                      probe_ext == 0x00 ||  // legacy set_timer
+                                      probe_ext == 0x01 ||  // legacy putchar
+                                      probe_ext == 0x02 ||  // legacy getchar
+                                      probe_ext == 0x04 ||  // legacy clear_ipi
+                                      probe_ext == 0x05 ||  // legacy send_ipi
+                                      probe_ext == 0x08);   // legacy shutdown
+                    regs_[10] = 0;
+                    regs_[11] = supported ? 1 : 0;
+                    break;
+                }
+                case 4: // sbi_get_mvendorid
+                    regs_[10] = 0;
+                    regs_[11] = 0;
+                    break;
+                case 5: // sbi_get_marchid
+                    regs_[10] = 0;
+                    regs_[11] = 0;
+                    break;
+                case 6: // sbi_get_mimpid
+                    regs_[10] = 0;
+                    regs_[11] = 0;
+                    break;
+                default:
+                    regs_[10] = (uint32_t)-2; // SBI_ERR_NOT_SUPPORTED
+                    regs_[11] = 0;
+                    break;
+            }
+            next_pc_ = pc_ + 4;
+            set_next_pc_ = true;
+            return true;
+        }
+
+        // ── Timer extension (0x54494D45) ──────────────────────────────────
+        case 0x54494D45: {
+            if (fid == 0) { // sbi_set_timer
+                uint64_t stime = ((uint64_t)regs_[11] << 32) | regs_[10];
+                sys_.clint.mtimecmp = stime;
+                csrs_[CSR::MIP] &= ~(1 << 7); // clear MTIP
+                // Set STIP pending if needed — kernel will re-arm via this call
+                csrs_[CSR::MIP] &= ~(1 << 5); // clear STIP, let it re-fire naturally
+                regs_[10] = 0;
+                regs_[11] = 0;
+            } else {
+                regs_[10] = (uint32_t)-2;
+                regs_[11] = 0;
+            }
+            next_pc_ = pc_ + 4;
+            set_next_pc_ = true;
+            return true;
+        }
+
+        // ── HSM extension (0x48534D) ──────────────────────────────────────
+        case 0x48534D: {
+            switch (fid) {
+                case 0: // sbi_hart_start — single hart, always fail
+                    regs_[10] = (uint32_t)-2;
+                    regs_[11] = 0;
+                    break;
+                case 1: // sbi_hart_stop
+                    std::cout << "SBI hart stop" << std::endl;
+                    state_ = CPUState::HALTED;
+                    break;
+                case 2: // sbi_hart_get_status — 0 = started
+                    regs_[10] = 0;
+                    regs_[11] = 0;
+                    break;
+                case 3: // sbi_hart_suspend — treat as no-op
+                    regs_[10] = 0;
+                    regs_[11] = 0;
+                    break;
+                default:
+                    regs_[10] = (uint32_t)-2;
+                    regs_[11] = 0;
+                    break;
+            }
+            next_pc_ = pc_ + 4;
+            set_next_pc_ = true;
+            return true;
+        }
+
+        // ── System Reset extension (0x53525354) ───────────────────────────
+        case 0x53525354: {
+            if (fid == 0) { // sbi_system_reset
+                std::cout << "SBI system reset type=" << regs_[10]
+                          << " reason=" << regs_[11] << std::endl;
+                state_ = CPUState::HALTED;
+            } else {
+                regs_[10] = (uint32_t)-2;
+                regs_[11] = 0;
+            }
+            next_pc_ = pc_ + 4;
+            set_next_pc_ = true;
+            return true;
+        }
+
+        default:
+            // Unknown extension — not supported
+            regs_[10] = (uint32_t)-2; // SBI_ERR_NOT_SUPPORTED
+            regs_[11] = 0;
+            next_pc_ = pc_ + 4;
+            set_next_pc_ = true;
+            return true;
     }
 }

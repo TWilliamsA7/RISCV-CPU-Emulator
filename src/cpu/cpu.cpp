@@ -9,6 +9,7 @@
 #include <cassert>
 #include <iostream>
 #include <thread>
+#include <chrono>
 
 CPU::CPU(Emulator& sys) : sys_(sys), icache_(sys.bus) {
     regs_.fill(0);
@@ -44,6 +45,7 @@ CPU::CPU(Emulator& sys) : sys_(sys), icache_(sys.bus) {
     csrs_[CSR::MISA] = misa;
 
     pc_ = sys.config_.cpu_config.starting_pc;
+    regs_[11] = sys.config_.profile.dtb_address;
 
     sys_.bus.register_cpu(this);
 }
@@ -63,9 +65,9 @@ void CPU::run() {
             updateCycle();
         }
 
-        // if ((insn_counter & 0xFFFFFF) == 0) {  // every ~16M instructions
+        // if ((insn_counter & 0xFFFFFFF) == 0) {  // every ~16M instructions
         //     auto elapsed = std::chrono::duration<double>(clock::now() - t0).count();
-        //     fprintf(stderr, "%.2f MIPS\n", insn_counter / elapsed / 1e6);
+        //     fprintf(stderr, "%.2f BIPS\n", insn_counter / elapsed / 1e9);
         // }
 
         if (state_ == CPUState::WAITING_FOR_INTERRUPT) {
@@ -89,6 +91,8 @@ const DecodedInstr& CPU::fetch_and_decode(uint32_t pc) {
     uint32_t index = (pc >> 1) & (DECODE_CACHE_SIZE - 1);
 
     if (decoded_cache_[index].epoch == current_epoch_ && decoded_cache_[index].pc == pc) {
+        sr.instruction = decoded_cache_[index].raw;
+        sr.dInstr = decoded_cache_[index].decoded;
         return decoded_cache_[index].decoded;
     }
 
@@ -107,6 +111,7 @@ const DecodedInstr& CPU::fetch_and_decode(uint32_t pc) {
     decoded_cache_[index].epoch = current_epoch_;
     decoded_cache_[index].pc = pc;
     decoded_cache_[index].decoded = di;
+    decoded_cache_[index].raw = sr.instruction;
     return decoded_cache_[index].decoded;
 }
 
@@ -167,6 +172,34 @@ const uint32_t CPU::fetchInstr(uint32_t pc) {
 StepResult CPU::step() {
     clearStep();  
 
+    sr.pc_before = pc_;
+
+    static auto start = std::chrono::steady_clock::now();
+    const std::chrono::milliseconds delay(5000);
+
+    static bool count_instr = false;
+    static int instr_count = 0;
+
+    // if (!count_instr) {
+
+    //     auto currentTime = std::chrono::steady_clock::now();
+
+    //     auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - start);
+
+    //     if (elapsedTime >= delay) {
+    //         sys_.config_.profile.verbose = true;
+    //         count_instr = true;
+    //     }
+
+    // }
+
+    // if (count_instr) {
+    //     instr_count++;
+    //     if (instr_count > 100) {
+    //         halt();
+    //     }
+    // }
+
     // Check for Asynchronous Interrupts 
     checkInterrupts();
     if (trap_occurred_) return sr;
@@ -216,10 +249,17 @@ void CPU::updateCycle() {
         csrs_[CSR::MIP] &= ~(1 << 3);
 
     // MTIP -> MIP bit 7 (timer)
-    if (sys_.clint.mtime >= sys_.clint.mtimecmp)
+    // MTIP -> MIP bit 7 (timer)
+    if (sys_.clint.mtime >= sys_.clint.mtimecmp) {
         csrs_[CSR::MIP] |= (1 << 7);
-    else
+        // Forward to STIP if timer interrupt is delegated to S-mode
+        if ((csrs_[CSR::MIDELEG] >> 5) & 1) {
+            csrs_[CSR::MIP] |= (1 << 5);  // set STIP
+            csrs_[CSR::MIP] &= ~(1 << 7); // clear MTIP — M-mode won't handle it
+        }
+    } else {
         csrs_[CSR::MIP] &= ~(1 << 7);
+    }
 
     // MEIP -> MIP bit 11 (machine external interrupt)
     if (sys_.plic.m_interrupt_pending()) {

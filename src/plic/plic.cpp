@@ -10,7 +10,7 @@ PLIC::PLIC()
     claimed_.fill(0);
 }
 
-uint32_t PLIC::read32(uint32_t offset) const {
+uint32_t PLIC::read32(uint32_t offset) {
     if (offset < 0x1000)  // Priority
         return priority_[(offset >> 2) & 0x1F];
     if (offset == 0x1000) // Pending
@@ -24,7 +24,14 @@ uint32_t PLIC::read32(uint32_t offset) const {
         uint32_t local = (offset - 0x200000) % 0x1000;
         if (ctx < 2) {
             if (local == 0) return threshold_[ctx];
-            if (local == 4) return best_pending(ctx); // claim
+            if (local == 4) {
+                uint32_t src = best_pending(ctx);
+                if (src != 0) {
+                    claimed_[ctx] = src;
+                    pending_ &= ~(1u << src); // clear pending on claim
+                }
+                return src;
+            }
         }
     }
     return 0;
