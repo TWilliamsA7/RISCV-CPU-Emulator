@@ -29,6 +29,7 @@ struct Profile {
     std::string disk_path;
     std::string dtb_path;
     std::string opensbi_path;
+    std::string tap_name; // TAP/WinTun adapter name
     bool verbose;
 };
 

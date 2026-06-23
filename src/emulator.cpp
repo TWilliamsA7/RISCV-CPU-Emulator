@@ -19,7 +19,7 @@ void Emulator::initialize() {
         throw std::runtime_error("[ERROR] Missing disk path for system level execution...\n");
     }
 
-    bus.init_devices(config_.profile.disk_path);
+    bus.init_devices(config_.profile.disk_path, config_.profile.tap_name);
 
     std::cout << "[INFO] Initializing Emulator...\n";
 

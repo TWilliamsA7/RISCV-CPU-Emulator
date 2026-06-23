@@ -59,6 +59,6 @@ if(UNIX)
 else()
     target_link_libraries(riscv_emulator PRIVATE 
         cpu core memory elf bus clint mmu plic devices "cache" profile
-        nlohmann_json::nlohmann_json
+        nlohmann_json::nlohmann_json iphlpapi
     )
 endif()

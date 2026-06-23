@@ -104,6 +104,9 @@ Profile loadProfile(std::string profile_path) {
             throw std::runtime_error("[ERROR] Missing Kernel Address");
         }
 
+        if (config.contains("tap-name"))
+            profile.tap_name = config["tap-name"];
+
     }
 
     return profile;
