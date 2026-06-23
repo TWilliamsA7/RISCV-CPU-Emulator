@@ -61,6 +61,9 @@ uint8_t Bus::read8(uint32_t addr) {
         uint32_t offset = addr - Bus::DRAM_BASE;
         return dram_[offset];
     }
+
+    if (addr >= VirtioNet::BASE && addr < VirtioNet::BASE + VirtioNet::SIZE)
+        return virtio_net_.read8(addr - VirtioNet::BASE);
     
     throw BusAccessError(std::to_string(addr) + " is outside of mapped range");
 }

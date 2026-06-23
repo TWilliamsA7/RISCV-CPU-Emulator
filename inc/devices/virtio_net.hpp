@@ -27,6 +27,7 @@ public:
     // and starts the RX thread. tap_name is the interface/adapter name.
     void init(const std::string& tap_name);
 
+    uint8_t read8(uint32_t offset);
     uint32_t read32(uint32_t offset);
     void     write32(uint32_t offset, uint32_t val);
 

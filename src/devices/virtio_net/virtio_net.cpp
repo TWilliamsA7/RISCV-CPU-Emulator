@@ -8,16 +8,17 @@
 
 // ── virtio-net header prepended to every packet ───────────────────────────────
 // Spec section 5.1.6 virtio_net_hdr (without num_buffers — no MRG_RXBUF)
+// Replace the VirtioNetHdr struct with the v1 version that includes num_buffers:
 struct VirtioNetHdr {
     uint8_t  flags;
-    uint8_t  gso_type;     // VIRTIO_NET_HDR_GSO_NONE = 0
+    uint8_t  gso_type;
     uint16_t hdr_len;
     uint16_t gso_size;
     uint16_t csum_start;
     uint16_t csum_offset;
+    uint16_t num_buffers;  // add this — required when VIRTIO_F_VERSION_1 is negotiated
 };
-static constexpr uint32_t NET_HDR_SIZE = sizeof(VirtioNetHdr); // 10 bytes
-
+static constexpr uint32_t NET_HDR_SIZE = sizeof(VirtioNetHdr); // now 12 bytes
 VirtioNet::VirtioNet(std::function<void(uint32_t)> set_pending, Bus& bus)
     : set_pending_(set_pending), bus_(bus)
 {}
@@ -31,7 +32,6 @@ VirtioNet::~VirtioNet() {
 // ── MMIO register read ────────────────────────────────────────────────────────
 uint32_t VirtioNet::read32(uint32_t offset) {
     const Queue& q = queues_[queue_sel_];
-
     switch (offset) {
         case VIRTIO_MAGIC:        return 0x74726976; // "virt"
         case VIRTIO_VERSION:      return 0x2;        // non-legacy
@@ -67,7 +67,6 @@ uint32_t VirtioNet::read32(uint32_t offset) {
 // ── MMIO register write ───────────────────────────────────────────────────────
 void VirtioNet::write32(uint32_t offset, uint32_t val) {
     Queue& q = queues_[queue_sel_];
-
     switch (offset) {
         case VIRTIO_DEVICE_FEAT_SEL: device_feat_sel_ = val; break;
         case VIRTIO_DRIVER_FEATS:    driver_features_  = val; break;
@@ -107,6 +106,20 @@ void VirtioNet::write32(uint32_t offset, uint32_t val) {
 
         default: break;
     }
+}
+
+uint8_t VirtioNet::read8(uint32_t offset) {
+    if (offset >= 0x100 && offset < 0x106) {
+        // MAC bytes 0-5
+        return mac_[offset - 0x100];
+    }
+    if (offset == 0x106 || offset == 0x107) {
+        // status: VIRTIO_NET_S_LINK_UP = 1
+        return (offset == 0x106) ? 1 : 0;
+    }
+    // Fall back to 32-bit read for other registers
+    uint32_t val = read32(offset & ~0x3);
+    return (val >> ((offset & 0x3) * 8)) & 0xFF;
 }
 
 // ── Descriptor chain helper ───────────────────────────────────────────────────
@@ -197,6 +210,9 @@ void VirtioNet::rx_inject(const uint8_t* frame, uint32_t len) {
         if (first) {
             // Write virtio_net_hdr then the Ethernet frame into the buffer
             VirtioNetHdr hdr{};
+            hdr.flags       = 0;
+            hdr.gso_type    = 0;
+            hdr.num_buffers = 1; // spec: MUST be 1 when VIRTIO_NET_F_MRG_RXBUF not negotiated
             const uint8_t* hp = reinterpret_cast<const uint8_t*>(&hdr);
             for (uint32_t i = 0; i < NET_HDR_SIZE && i < dlen; i++)
                 bus_.write8_unlocked((uint32_t)addr + i, hp[i]);
