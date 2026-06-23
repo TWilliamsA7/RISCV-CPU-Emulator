@@ -9,14 +9,17 @@
 Bus::Bus(Emulator& sys) 
     : sys_(sys), 
     uart_(sys, [&sys](uint32_t irq){ sys.plic.set_pending(irq);}),
-    virtio_blk_([&sys](uint32_t irq){ sys.plic.set_pending(irq); }, *this)
+    virtio_blk_([&sys](uint32_t irq){ sys.plic.set_pending(irq); }, *this),
+    virtio_net_([&sys](uint32_t irq){ sys.plic.set_pending(irq); }, *this)
 {
     dram_ = std::vector<uint8_t>(Bus::DRAM_SIZE, 0);
 }
 
-void Bus::init_devices(const std::string& disk_path) {
+void Bus::init_devices(const std::string& disk_path, const std::string& tap_name) {
     if (disk_path.size())
         virtio_blk_.init(disk_path);
+    if (tap_name.size())
+        virtio_net_.init(tap_name);
 }
 
 void Bus::register_cpu(CPU* cpu) { cpu_ptr_ = cpu; }
@@ -43,7 +46,9 @@ void Bus::release_deferred_uart_input() {
 bool Bus::is_mmio(uint32_t addr) const {
     return (addr >= UART::BASE && addr < UART::BASE + UART::SIZE) ||
            (addr >= Clint::BASE && addr < Clint::BASE + Clint::SIZE) ||
-           (addr >= PLIC::BASE && addr < PLIC::BASE + PLIC::SIZE);
+           (addr >= PLIC::BASE && addr < PLIC::BASE + PLIC::SIZE) ||
+           (addr >= VirtioBlk::BASE && addr < VirtioBlk::BASE + VirtioBlk::SIZE) ||
+           (addr >= VirtioNet::BASE && addr < VirtioNet::BASE + VirtioNet::SIZE);
 }
 
 uint8_t Bus::read8(uint32_t addr) {
@@ -90,6 +95,9 @@ uint32_t Bus::read32(uint32_t addr) {
 
     if (addr >= VirtioBlk::BASE && addr < VirtioBlk::BASE + VirtioBlk::SIZE)
         return virtio_blk_.read32(addr - VirtioBlk::BASE);
+
+    if (addr >= VirtioNet::BASE && addr < VirtioNet::BASE + VirtioNet::SIZE)
+        return virtio_net_.read32(addr - VirtioNet::BASE);
 
     throw BusAccessError(std::to_string(addr) + " is outside of mapped range");
 }
@@ -164,6 +172,8 @@ void Bus::write32(uint32_t addr, uint32_t val) {
         }
     } else if (addr >= VirtioBlk::BASE && addr < VirtioBlk::BASE + VirtioBlk::SIZE)
         virtio_blk_.write32(addr - VirtioBlk::BASE, val);
+    else if (addr >= VirtioNet::BASE && addr < VirtioNet::BASE + VirtioNet::SIZE)
+        virtio_net_.write32(addr - VirtioNet::BASE, val);
 }
 
 uint32_t Bus::atomic_rmw_w(uint32_t addr, std::function<uint32_t(uint32_t)> operation) {

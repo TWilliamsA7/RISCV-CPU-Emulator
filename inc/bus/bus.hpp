@@ -8,6 +8,7 @@
 #include "plic/plic.hpp"
 #include "devices/uart.hpp"
 #include "devices/virtio_blk.hpp"
+#include "devices/virtio_net.hpp"
 #include <mutex>
 #include <functional>
 #include <string>
@@ -27,7 +28,7 @@ class Bus {
         // Size of avaiable DRAM
         static constexpr uint32_t DRAM_SIZE = 1024 * 1024 * 256;
 
-        void init_devices(const std::string& disk_path);
+        void init_devices(const std::string& disk_path, const std::string& tap_name);
 
         // Read 32 bit value located at addr 
         uint32_t read32(uint32_t addr);
@@ -74,6 +75,7 @@ class Bus {
         Emulator& sys_;
 
         friend class VirtioBlk;
+        friend class VirtioNet;
 
         // Dynamic Random Access Memory
         std::vector<uint8_t> dram_;
@@ -81,6 +83,8 @@ class Bus {
         // UART: Universal Asynchronous Reciever/Transmitter
 
         VirtioBlk virtio_blk_;
+
+        VirtioNet virtio_net_;
 
         std::mutex mem_mutex_;
 
