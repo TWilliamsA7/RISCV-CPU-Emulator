@@ -73,7 +73,7 @@ private:
     // POSIX: write() to tap_fd_.
     // Windows (virtio_net_win.cpp): strip Ethernet header, send via WinTun.
     void platform_send(const uint8_t* frame, uint32_t len);
-
+    void handle_arp(const uint8_t* frame, uint32_t len);
     // RX thread body — POSIX only.
     // Windows RX thread is started inline in virtio_net_win.cpp::init().
     void rx_thread_func();

@@ -223,19 +223,79 @@ void VirtioNet::platform_send(const uint8_t* frame, uint32_t len) {
     if (it == g_state_map.end() || !it->second->session) return;
     WintunState* wt = it->second;
 
-    if (len <= ETH_HDR_LEN) return; // too short to contain IP
+    if (len < ETH_HDR_LEN) return;
 
-    // Skip the 14-byte Ethernet header
+    uint16_t ethertype = ((uint16_t)frame[12] << 8) | frame[13];
+
+    // Handle ARP in-emulator — WinTun is Layer 3 and cannot process ARP
+    if (ethertype == 0x0806) {
+        handle_arp(frame, len);
+        return;
+    }
+
+    // IPv6 — drop for now, WinTun supports it but adds complexity
+    if (ethertype == 0x86DD) return;
+
+    // IPv4 — strip Ethernet header and send raw IP to WinTun
+    if (ethertype != 0x0800) return;
+
     const uint8_t* ip_pkt = frame + ETH_HDR_LEN;
-    DWORD ip_len = static_cast<DWORD>(len - ETH_HDR_LEN);
+    DWORD ip_len = (DWORD)(len - ETH_HDR_LEN);
 
-    // Allocate send buffer and copy
     BYTE* buf = g_AllocateSendPacket(wt->session, ip_len);
     if (buf) {
         memcpy(buf, ip_pkt, ip_len);
         g_SendPacket(wt->session, buf);
     }
-    // If buf is null the ring is full — silently drop (matches WinTun docs)
+}
+
+void VirtioNet::handle_arp(const uint8_t* frame, uint32_t len) {
+    // ARP packet layout after Ethernet header (28 bytes for IPv4 ARP):
+    // 2: hw type, 2: proto type, 1: hw len, 1: proto len, 2: operation
+    // 6: sender MAC, 4: sender IP, 6: target MAC, 4: target IP
+    if (len < ETH_HDR_LEN + 28){ return; }
+
+    const uint8_t* arp = frame + ETH_HDR_LEN;
+    uint16_t operation = ((uint16_t)arp[6] << 8) | arp[7];
+    if (operation != 1) return; // only handle ARP requests
+
+    // Extract target IP (bytes 24-27 of ARP payload)
+    uint32_t target_ip = ((uint32_t)arp[24] << 24)
+                       | ((uint32_t)arp[25] << 16)
+                       | ((uint32_t)arp[26] << 8)
+                       |  (uint32_t)arp[27];
+
+    // Only reply if they're asking for the host gateway 192.168.100.1
+    static constexpr uint32_t HOST_IP = (192u << 24) | (168u << 16) | (100u << 8) | 1u;
+    if (target_ip != HOST_IP) { return;}
+
+    // Build ARP reply — 42 bytes total (14 Ethernet + 28 ARP)
+    uint8_t reply[42]{};
+
+    // Ethernet header: dst = sender MAC, src = HOST_MAC
+    const uint8_t* sender_mac = arp + 8;
+    memcpy(reply,     sender_mac, 6); // dst
+    memcpy(reply + 6, HOST_MAC,   6); // src
+    reply[12] = 0x08; reply[13] = 0x06; // ARP ethertype
+
+    // ARP payload
+    reply[14] = 0x00; reply[15] = 0x01; // hw type: Ethernet
+    reply[16] = 0x08; reply[17] = 0x00; // proto: IPv4
+    reply[18] = 6;                       // hw addr len
+    reply[19] = 4;                       // proto addr len
+    reply[20] = 0x00; reply[21] = 0x02; // operation: reply
+
+    // Sender: HOST_MAC, HOST_IP
+    memcpy(reply + 22, HOST_MAC, 6);
+    reply[28] = 192; reply[29] = 168; reply[30] = 100; reply[31] = 1;
+
+    // Target: original sender MAC and IP
+    memcpy(reply + 32, sender_mac, 6);
+    const uint8_t* sender_ip = arp + 14;
+    memcpy(reply + 38, sender_ip, 4);
+
+    // Inject the reply directly into the guest RX queue
+    rx_inject(reply, sizeof(reply));
 }
 
 #endif // PLATFORM_WINDOWS
