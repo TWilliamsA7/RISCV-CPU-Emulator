@@ -4,10 +4,9 @@
 #include <cstdint>
 #include <functional>
 #include <vector>
-#include <thread>
 #include <atomic>
+#include <mutex>
 #include <string>
-#include <unordered_map>
 
 class Bus;
 
@@ -24,16 +23,14 @@ public:
     VirtioNet(std::function<void(uint32_t)> set_pending, Bus& bus);
     ~VirtioNet();
 
-    // Initialise the networking backend.
-    // With libslirp the tap_name argument is unused — pass "" or any string.
     void init(const std::string& tap_name);
 
     uint32_t read32(uint32_t offset);
     uint8_t  read8 (uint32_t offset);
     void     write32(uint32_t offset, uint32_t val);
 
-    // Inject a received Ethernet frame into the guest RX virtqueue.
-    // Called from the slirp poll thread via cb_send_packet.
+    // Called from the poll thread via cb_send_packet.
+    // Acquires queue_mutex_ internally.
     void rx_inject(const uint8_t* frame, uint32_t len);
 
 private:
@@ -46,10 +43,18 @@ private:
         uint16_t last_avail_idx = 0;
     };
 
+    // Protects queues_[] and all Queue member accesses.
+    // Acquired by the CPU thread in read32/write32/process_tx_queue
+    // and by the poll thread in rx_inject.
+    std::mutex queue_mutex_;
+
     Queue    queues_[2];
     uint32_t queue_sel_        = 0;
     uint32_t status_           = 0;
-    uint32_t interrupt_status_ = 0;
+
+    // Accessed from both threads — must be atomic.
+    std::atomic<uint32_t> interrupt_status_{0};
+
     uint32_t device_feat_sel_  = 0;
     uint32_t driver_feat_sel_  = 0;
     uint32_t driver_features_  = 0;
@@ -59,22 +64,19 @@ private:
     std::function<void(uint32_t)> set_pending_;
     Bus& bus_;
 
-    // Opaque pointer to backend state (SlirpState*).
-    // Avoids leaking libslirp/platform types into this header.
+    // Opaque pointer to SlirpState — avoids leaking libslirp types into header.
     void* backend_ = nullptr;
 
+    // Called with queue_mutex_ held.
     void process_tx_queue();
-
-    // Send one Ethernet frame to the host network via libslirp.
-    void platform_send(const uint8_t* frame, uint32_t len);
-
     void read_desc(uint16_t idx, uint32_t queue_idx,
                    uint64_t& addr, uint32_t& len,
                    uint16_t& flags, uint16_t& next);
-
     void push_used(uint32_t queue_idx, uint16_t head, uint32_t len);
 
-    // Virtio MMIO v2 register offsets
+    // Enqueues frame for the poll thread. Does NOT call slirp_* directly.
+    void platform_send(const uint8_t* frame, uint32_t len);
+
     static constexpr uint32_t VIRTIO_MAGIC          = 0x000;
     static constexpr uint32_t VIRTIO_VERSION        = 0x004;
     static constexpr uint32_t VIRTIO_DEVICE_ID      = 0x008;
@@ -104,5 +106,5 @@ private:
     static constexpr uint16_t VIRTQ_DESC_F_WRITE = 2;
 
     static constexpr uint32_t VIRTIO_NET_F_MAC   = (1u << 5);
-    static constexpr uint32_t VIRTIO_F_VERSION_1 = (1u << 0); // feature page 1
+    static constexpr uint32_t VIRTIO_F_VERSION_1 = (1u << 0);
 };
