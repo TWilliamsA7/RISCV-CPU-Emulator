@@ -184,24 +184,6 @@ static void check_ra_timeout(SlirpState* s) {
 // ── SlirpCb implementations ───────────────────────────────────────────────────
 static int64_t cb_send_packet(const void* pkt, size_t pkt_len, void* opaque) {
     auto* s = static_cast<SlirpState*>(opaque);
-    
-    if (pkt_len >= 14) {
-        const uint8_t* eth = static_cast<const uint8_t*>(pkt);
-        uint16_t eth_type = (eth[12] << 8) | eth[13];
-        const char* type_str = "UNKNOWN";
-        if (eth_type == 0x0800) type_str = "IPv4";
-        else if (eth_type == 0x0806) type_str = "ARP";
-        
-        std::cerr << "[cb_send_packet] len=" << pkt_len << " type=" << type_str << "\n";
-        
-        if (eth_type == 0x0800 && pkt_len >= 34) {
-            uint8_t proto = eth[23];
-            if (proto == 1) std::cerr << "    ICMP\n";
-            else if (proto == 6) std::cerr << "    TCP\n";
-            else if (proto == 17) std::cerr << "    UDP\n";
-        }
-    }
-    
     s->vnet->rx_inject(static_cast<const uint8_t*>(pkt), (uint32_t)pkt_len);
     return (int64_t)pkt_len;
 }
@@ -275,10 +257,8 @@ static void poll_thread_func(SlirpState* s) {
                 std::lock_guard<std::mutex> lk(s->tx_mutex);
                 std::swap(local, s->tx_queue);
             }
-            std::cerr << "[poll] draining " << local.size() << " TX frames\n";
             while (!local.empty()) {
                 auto& frame = local.front();
-                std::cerr << "[poll] slirp_input(" << frame.size() << " bytes)\n";
                 slirp_input(s->slirp, frame.data(), (int)frame.size());
                 local.pop();
                 had_tx = true;
@@ -346,8 +326,6 @@ void VirtioNet::init(const std::string& /*tap_name*/) {
         cfg.version = 6;
     #endif
 
-    std::cout << "[SLIRP] Config Version: " << cfg.version << "\n";
-
     cfg.restricted = 0;
     cfg.in_enabled = 1;
     cfg.in6_enabled = 0;
@@ -392,7 +370,6 @@ void VirtioNet::init(const std::string& /*tap_name*/) {
 void VirtioNet::platform_send(const uint8_t* frame, uint32_t len) {
     if (!backend_) return;
     auto* s = static_cast<SlirpState*>(backend_);
-    std::cerr << "[platform_send] TX " << len << " bytes\n";
     {
         std::lock_guard<std::mutex> lk(s->tx_mutex);
         s->tx_queue.emplace(frame, frame + len);

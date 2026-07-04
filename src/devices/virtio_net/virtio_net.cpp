@@ -176,10 +176,7 @@ void VirtioNet::rx_inject(const uint8_t* frame, uint32_t len) {
     std::lock_guard<std::mutex> lk(queue_mutex_);
 
     Queue& q = queues_[RXQ];
-    std::cerr << "[rx_inject] RXQ ready=" << q.ready 
-              << " desc=" << std::hex << q.desc_addr << std::dec << "\n";
     if (!q.ready || !q.desc_addr || !q.avail_addr || !q.used_addr) {
-        std::cerr << "[rx_inject] queue not ready, dropping\n";
         return;
     }
 
