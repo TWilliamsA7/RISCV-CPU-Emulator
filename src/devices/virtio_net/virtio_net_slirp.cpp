@@ -116,6 +116,9 @@ struct SlirpState {
     int wakeup_r = -1;
     int wakeup_w = -1;
 
+    struct sockaddr_in outbound_addr{};
+    struct sockaddr_in6 outbound_addr6{};
+
     std::thread       poll_thread;
     std::atomic<bool> running{false};
 };
@@ -181,6 +184,24 @@ static void check_ra_timeout(SlirpState* s) {
 // ── SlirpCb implementations ───────────────────────────────────────────────────
 static int64_t cb_send_packet(const void* pkt, size_t pkt_len, void* opaque) {
     auto* s = static_cast<SlirpState*>(opaque);
+    
+    if (pkt_len >= 14) {
+        const uint8_t* eth = static_cast<const uint8_t*>(pkt);
+        uint16_t eth_type = (eth[12] << 8) | eth[13];
+        const char* type_str = "UNKNOWN";
+        if (eth_type == 0x0800) type_str = "IPv4";
+        else if (eth_type == 0x0806) type_str = "ARP";
+        
+        std::cerr << "[cb_send_packet] len=" << pkt_len << " type=" << type_str << "\n";
+        
+        if (eth_type == 0x0800 && pkt_len >= 34) {
+            uint8_t proto = eth[23];
+            if (proto == 1) std::cerr << "    ICMP\n";
+            else if (proto == 6) std::cerr << "    TCP\n";
+            else if (proto == 17) std::cerr << "    UDP\n";
+        }
+    }
+    
     s->vnet->rx_inject(static_cast<const uint8_t*>(pkt), (uint32_t)pkt_len);
     return (int64_t)pkt_len;
 }
@@ -254,8 +275,10 @@ static void poll_thread_func(SlirpState* s) {
                 std::lock_guard<std::mutex> lk(s->tx_mutex);
                 std::swap(local, s->tx_queue);
             }
+            std::cerr << "[poll] draining " << local.size() << " TX frames\n";
             while (!local.empty()) {
                 auto& frame = local.front();
+                std::cerr << "[poll] slirp_input(" << frame.size() << " bytes)\n";
                 slirp_input(s->slirp, frame.data(), (int)frame.size());
                 local.pop();
                 had_tx = true;
@@ -305,23 +328,51 @@ void VirtioNet::init(const std::string& /*tap_name*/) {
 
     SlirpConfig cfg{};
     memset(&cfg, 0, sizeof(cfg));
-    cfg.version    = 1;
+    cfg.version = 1;
+
+    #if SLIRP_CONFIG_VERSION_MAX >= 2
+        cfg.version = 2;
+    #endif
+
+    #if SLIRP_CONFIG_VERSION_MAX >= 4
+        cfg.version = 4;
+    #endif
+
+    #if SLIRP_CONFIG_VERSION_MAX >= 5
+        cfg.version = 5;
+    #endif
+
+    #if SLIRP_CONFIG_VERSION_MAX >= 6
+        cfg.version = 6;
+    #endif
+
+    std::cout << "[SLIRP] Config Version: " << cfg.version << "\n";
+
     cfg.restricted = 0;
     cfg.in_enabled = 1;
+    cfg.in6_enabled = 0;
 
-    inet_pton(AF_INET, "10.0.2.0",      &cfg.vnetwork);
-    inet_pton(AF_INET, "255.255.255.0",  &cfg.vnetmask);
-    inet_pton(AF_INET, "10.0.2.2",      &cfg.vhost);
-    inet_pton(AF_INET, "10.0.2.15",     &cfg.vdhcp_start);
-    inet_pton(AF_INET, "10.0.2.3",      &cfg.vnameserver);
+    inet_pton(AF_INET, "10.0.2.0", &cfg.vnetwork);
+    inet_pton(AF_INET, "255.255.255.0", &cfg.vnetmask);
+    inet_pton(AF_INET, "10.0.2.2", &cfg.vhost);
+    inet_pton(AF_INET, "10.0.2.15", &cfg.vdhcp_start);
+    inet_pton(AF_INET, "10.0.2.3", &cfg.vnameserver);
     cfg.if_mtu = 1500;
     cfg.if_mru = 1500;
+    cfg.disable_host_loopback = 0;
+    cfg.enable_emu = 0;
 
-#if SLIRP_CONFIG_VERSION_MAX >= 6
-    cfg.version = 6;
-#endif
+    s->outbound_addr.sin_family = AF_INET;
+    s->outbound_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    s->outbound_addr.sin_port = 0;
+    cfg.outbound_addr = &s->outbound_addr;
 
-    // Pass &s->cb instead of a stack-local &cb.
+    // VERSION 3 FIELDS
+    cfg.disable_dns = 0;
+
+    // VERSION 4 FIELDS
+    cfg.disable_dhcp = 0;
+
     s->slirp = slirp_new(&cfg, &s->cb, s);
     if (!s->slirp) {
         delete s;
@@ -341,6 +392,7 @@ void VirtioNet::init(const std::string& /*tap_name*/) {
 void VirtioNet::platform_send(const uint8_t* frame, uint32_t len) {
     if (!backend_) return;
     auto* s = static_cast<SlirpState*>(backend_);
+    std::cerr << "[platform_send] TX " << len << " bytes\n";
     {
         std::lock_guard<std::mutex> lk(s->tx_mutex);
         s->tx_queue.emplace(frame, frame + len);
