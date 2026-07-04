@@ -49,7 +49,6 @@
        return WSAPoll(fds, (ULONG)n, timeout_ms);
    }
    static int make_wakeup_pair(int fds[2]) {
-       // Windows has no pipe() — use a loopback socket pair.
        SOCKET srv = socket(AF_INET, SOCK_STREAM, 0);
        struct sockaddr_in addr{};
        addr.sin_family      = AF_INET;
@@ -63,8 +62,8 @@
        connect(c, (sockaddr*)&addr, sizeof(addr));
        SOCKET a = accept(srv, nullptr, nullptr);
        closesocket(srv);
-       fds[0] = (int)a;   // read end
-       fds[1] = (int)c;   // write end
+       fds[0] = (int)a;
+       fds[1] = (int)c;
        return 0;
    }
    static void wakeup_write(int fd) { char b = 1; send((SOCKET)fd, &b, 1, 0); }
@@ -91,26 +90,29 @@
 #endif
 
 // ── Timer ─────────────────────────────────────────────────────────────────────
-// Plain deadline trackers — no GLib sources, no g_timeout_add.
 struct SlirpTimer {
     SlirpTimerCb cb;
     void*        cb_opaque;
-    int64_t      expire_timer_msec = -1; // -1 = not armed
+    int64_t      expire_timer_msec = -1;
 };
 
 // ── SlirpState ────────────────────────────────────────────────────────────────
 struct SlirpState {
-    Slirp*     slirp = nullptr;
-    VirtioNet* vnet  = nullptr;
+    Slirp*       slirp = nullptr;
+    VirtioNet*   vnet  = nullptr;
 
-    // Timers — poll thread only.
+    // THE FIX: SlirpCb must be stored in SlirpState, not on the stack.
+    // libslirp keeps pointers to this callback table for the lifetime of
+    // the slirp instance. If the SlirpCb is stack-local in init() and we
+    // return, the poll thread later invokes callbacks through dangling
+    // pointers → segfault.
+    SlirpCb cb{};
+
     std::vector<SlirpTimer*> timers;
 
-    // TX queue: CPU thread enqueues, poll thread dequeues.
     std::mutex                       tx_mutex;
     std::queue<std::vector<uint8_t>> tx_queue;
 
-    // Wakeup pipe: write end for CPU thread, read end polled by poll thread.
     int wakeup_r = -1;
     int wakeup_w = -1;
 
@@ -150,10 +152,7 @@ static int sys_to_slirp(short rev) {
     return r;
 }
 
-// ── Timer helpers (poll thread only) ─────────────────────────────────────────
-
-// Shrink timeout_ms down to the nearest armed timer deadline.
-// Mirrors slirp4netns update_ra_timeout exactly.
+// ── Timer helpers ─────────────────────────────────────────────────────────────
 static void update_ra_timeout(uint32_t& timeout_ms, SlirpState* s) {
     int64_t now = clock_now_ms();
     for (SlirpTimer* t : s->timers) {
@@ -165,9 +164,6 @@ static void update_ra_timeout(uint32_t& timeout_ms, SlirpState* s) {
     }
 }
 
-// Fire timers whose deadline has passed.
-// Mirrors slirp4netns check_ra_timeout exactly.
-// Iterates a snapshot so a fired cb can safely call timer_free/timer_mod.
 static void check_ra_timeout(SlirpState* s) {
     int64_t now = clock_now_ms();
     auto snapshot = s->timers;
@@ -182,9 +178,7 @@ static void check_ra_timeout(SlirpState* s) {
     }
 }
 
-// ── SlirpCb implementations (all called from poll thread) ────────────────────
-
-// Host → guest packet: called by slirp_pollfds_poll on the poll thread.
+// ── SlirpCb implementations ───────────────────────────────────────────────────
 static int64_t cb_send_packet(const void* pkt, size_t pkt_len, void* opaque) {
     auto* s = static_cast<SlirpState*>(opaque);
     s->vnet->rx_inject(static_cast<const uint8_t*>(pkt), (uint32_t)pkt_len);
@@ -214,28 +208,20 @@ static void cb_timer_mod(void* timer, int64_t expire_ms, void* /*opaque*/) {
     static_cast<SlirpTimer*>(timer)->expire_timer_msec = expire_ms;
 }
 
-// register/unregister: NOP on Linux (QEMU also makes these NOP on Linux).
-// On Windows this would call qemu_fd_register; we don't need it because
-// we discover sockets via the fill callback's append pattern.
 static void cb_register_poll_socket(slirp_os_socket /*sock*/, void* /*opaque*/) {}
 static void cb_unregister_poll_socket(slirp_os_socket /*sock*/, void* /*opaque*/) {}
 
-// notify: wake the poll thread so it processes pending work immediately.
 static void cb_notify(void* opaque) {
     wakeup_write(static_cast<SlirpState*>(opaque)->wakeup_w);
 }
 
 // ── Poll thread ───────────────────────────────────────────────────────────────
 static void poll_thread_func(SlirpState* s) {
-    // pfds is rebuilt every iteration:
-    //   [0]     = wakeup pipe read end  (fixed)
-    //   [1..]   = sockets appended by slirp_pollfds_fill_socket
     std::vector<sys_pollfd> pfds;
 
     while (s->running) {
         uint32_t timeout_ms = 10;
 
-        // ── Step 1: Reset pfds to just the wakeup fd ─────────────────────
         pfds.clear();
         {
             sys_pollfd w{};
@@ -244,32 +230,21 @@ static void poll_thread_func(SlirpState* s) {
             pfds.push_back(w);
         }
 
-        // ── Step 2: Let libslirp APPEND its sockets ───────────────────────
-        // The fill callback appends a new entry to pfds and returns its index.
-        // libslirp stores that index and passes it back in get_revents.
-        // This exactly mirrors slirp4netns libslirp_add_poll / libslirp_get_revents.
         slirp_pollfds_fill_socket(s->slirp, &timeout_ms,
             [](slirp_os_socket sock, int slirp_ev, void* op) -> int {
                 auto* pfds = static_cast<std::vector<sys_pollfd>*>(op);
                 sys_pollfd p{};
                 p.fd     = (int)sock;
                 p.events = slirp_to_sys(slirp_ev);
-                int idx  = (int)pfds->size();   // index BEFORE push
+                int idx  = (int)pfds->size();
                 pfds->push_back(p);
                 return idx;
             }, &pfds);
 
-        // ── Step 3: Tighten timeout to nearest timer deadline ─────────────
         update_ra_timeout(timeout_ms, s);
 
-        // ── Step 4: poll() ────────────────────────────────────────────────
         int pollrc = sys_poll(pfds.data(), (int)pfds.size(), (int)timeout_ms);
 
-        // ── Step 5: Handle TX frames from the CPU thread ──────────────────
-        // Process wakeup + TX queue BEFORE slirp_pollfds_poll.
-        // When we feed frames to slirp_input we set had_tx so that
-        // slirp_pollfds_poll is called with select_error=true — matching the
-        // canonical slirp4netns pattern (pollout = -1 after slirp_input).
         bool had_tx = false;
         if (!pfds.empty() && (pfds[0].revents & POLLIN)) {
             wakeup_drain(s->wakeup_r);
@@ -287,11 +262,6 @@ static void poll_thread_func(SlirpState* s) {
             }
         }
 
-        // ── Step 6: Deliver poll results to libslirp ──────────────────────
-        // get_revents receives the index that fill_socket returned and looks
-        // up revents in pfds — same array, same indices.
-        // select_error = true when poll timed out/errored OR when we just
-        // fed TX frames (mirrors slirp4netns: pollout=-1 → (pollout<=0)=true).
         int select_error = (had_tx || pollrc <= 0) ? 1 : 0;
         slirp_pollfds_poll(s->slirp, select_error,
             [](int idx, void* op) -> int {
@@ -300,7 +270,6 @@ static void poll_thread_func(SlirpState* s) {
                 return sys_to_slirp((*pfds)[idx].revents);
             }, &pfds);
 
-        // ── Step 7: Fire expired timers ───────────────────────────────────
         check_ra_timeout(s);
     }
 }
@@ -322,18 +291,18 @@ void VirtioNet::init(const std::string& /*tap_name*/) {
     s->wakeup_r = wakeup_fds[0];
     s->wakeup_w = wakeup_fds[1];
 
-    SlirpCb cb{};
-    cb.send_packet            = cb_send_packet;
-    cb.guest_error            = cb_guest_error;
-    cb.clock_get_ns           = cb_clock_get_ns;
-    cb.timer_new              = cb_timer_new;
-    cb.timer_free             = cb_timer_free;
-    cb.timer_mod              = cb_timer_mod;
-    cb.register_poll_socket   = cb_register_poll_socket;
-    cb.unregister_poll_socket = cb_unregister_poll_socket;
-    cb.notify                 = cb_notify;
+    // Initialize the callback table IN the SlirpState struct, not on the stack.
+    // libslirp will store pointers to s->cb for the lifetime of the slirp instance.
+    s->cb.send_packet            = cb_send_packet;
+    s->cb.guest_error            = cb_guest_error;
+    s->cb.clock_get_ns           = cb_clock_get_ns;
+    s->cb.timer_new              = cb_timer_new;
+    s->cb.timer_free             = cb_timer_free;
+    s->cb.timer_mod              = cb_timer_mod;
+    s->cb.register_poll_socket   = cb_register_poll_socket;
+    s->cb.unregister_poll_socket = cb_unregister_poll_socket;
+    s->cb.notify                 = cb_notify;
 
-    // Follow slirp4netns: start at version 1, bump only for features used.
     SlirpConfig cfg{};
     memset(&cfg, 0, sizeof(cfg));
     cfg.version    = 1;
@@ -348,12 +317,12 @@ void VirtioNet::init(const std::string& /*tap_name*/) {
     cfg.if_mtu = 1500;
     cfg.if_mru = 1500;
 
-    // Bump version for the slirp_os_socket callbacks (libslirp >= 4.9.0).
 #if SLIRP_CONFIG_VERSION_MAX >= 6
     cfg.version = 6;
 #endif
 
-    s->slirp = slirp_new(&cfg, &cb, s);
+    // Pass &s->cb instead of a stack-local &cb.
+    s->slirp = slirp_new(&cfg, &s->cb, s);
     if (!s->slirp) {
         delete s;
         throw std::runtime_error("[virtio-net] slirp_new() failed");
@@ -369,9 +338,6 @@ void VirtioNet::init(const std::string& /*tap_name*/) {
     s->poll_thread = std::thread(poll_thread_func, s);
 }
 
-// ── platform_send ─────────────────────────────────────────────────────────────
-// Called from the CPU thread. Enqueue the frame and wake the poll thread.
-// Must never call slirp_input() directly — libslirp is not thread-safe.
 void VirtioNet::platform_send(const uint8_t* frame, uint32_t len) {
     if (!backend_) return;
     auto* s = static_cast<SlirpState*>(backend_);
