@@ -52,57 +52,18 @@ bool Bus::is_mmio(uint32_t addr) const {
 }
 
 uint8_t Bus::read8(uint32_t addr) {
-
-    if (addr >= UART::BASE && addr < UART::BASE + UART::SIZE) {
-        return uart_.read8(addr - UART::BASE);
-    }
-
-    if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
-        uint32_t offset = addr - Bus::DRAM_BASE;
-        return dram_[offset];
-    }
-
-    if (addr >= VirtioNet::BASE && addr < VirtioNet::BASE + VirtioNet::SIZE)
-        return virtio_net_.read8(addr - VirtioNet::BASE);
-    
-    throw BusAccessError(std::to_string(addr) + " is outside of mapped range");
+    //std::lock_guard<std::mutex> lock(mem_mutex_);
+    return read8_unlocked(addr);
 }
 
 uint16_t Bus::read16(uint32_t addr) {
-    if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
-        uint32_t offset = addr - Bus::DRAM_BASE;
-        uint32_t result;
-        std::memcpy(&result, &dram_[offset], 2);
-        return result;
-    }
-    
-    throw BusAccessError(std::to_string(addr) + " is outside of mapped range");
+    //std::lock_guard<std::mutex> lock(mem_mutex_);
+    return read16_unlocked(addr);
 }
 
 uint32_t Bus::read32(uint32_t addr) {
-
-    if (addr >= UART::BASE && addr < UART::BASE + UART::SIZE)
-        return uart_.read8(addr - UART::BASE);
-
-    if (addr >= Clint::BASE && addr < Clint::BASE + Clint::SIZE)
-        return sys_.clint.read32(addr - Clint::BASE);
-    if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
-        uint32_t offset = addr - Bus::DRAM_BASE;
-        uint32_t result;
-        std::memcpy(&result, &dram_[offset], 4);
-        return result;
-    }
-    if (addr >= PLIC::BASE && addr < PLIC::BASE + PLIC::SIZE) {
-        return sys_.plic.read32(addr - PLIC::BASE);
-    }
-
-    if (addr >= VirtioBlk::BASE && addr < VirtioBlk::BASE + VirtioBlk::SIZE)
-        return virtio_blk_.read32(addr - VirtioBlk::BASE);
-
-    if (addr >= VirtioNet::BASE && addr < VirtioNet::BASE + VirtioNet::SIZE)
-        return virtio_net_.read32(addr - VirtioNet::BASE);
-
-    throw BusAccessError(std::to_string(addr) + " is outside of mapped range");
+    //std::lock_guard<std::mutex> lock(mem_mutex_);
+    return read32_unlocked(addr);
 }
 
 uint8_t* Bus::phys_ptr(uint32_t phys_addr) {
@@ -113,43 +74,29 @@ uint8_t* Bus::phys_ptr(uint32_t phys_addr) {
 }
 
 void Bus::write8(uint32_t addr, uint8_t val) {
-    // std::lock_guard<std::mutex> lock(mem_mutex_);
-
-    if (addr >= UART::BASE && addr < UART::BASE + UART::SIZE) {
-        uart_.write8(addr - UART::BASE, val);
-        return;
-    }
-
-    if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
-        uint32_t offset = addr - Bus::DRAM_BASE;
-        dram_[offset] = val;
-
-        if (cpu_ptr_) {
-            cpu_ptr_->invalidateReservation(addr);
-            cpu_ptr_->icache_.invalidate_page(addr);
-            cpu_ptr_->clearDecodeCache();
-        }
-    }
+    //std::lock_guard<std::mutex> lock(mem_mutex_);
+    write8_unlocked(addr, val);
 }
 
 void Bus::write16(uint32_t addr, uint16_t val) {
-    // std::lock_guard<std::mutex> lock(mem_mutex_);
-
-    if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
-        uint32_t offset = addr - Bus::DRAM_BASE;
-        std::memcpy(&dram_[offset], &val, 2);
-
-        if (cpu_ptr_) {
-            cpu_ptr_->invalidateReservation(addr);
-            cpu_ptr_->icache_.invalidate_page(addr);
-            cpu_ptr_->clearDecodeCache();
-        }
-    }
+    //std::lock_guard<std::mutex> lock(mem_mutex_);
+    write16_unlocked(addr, val);
 }
 
 void Bus::write32(uint32_t addr, uint32_t val) {
-    // std::lock_guard<std::mutex> lock(mem_mutex_);
+    //std::lock_guard<std::mutex> lock(mem_mutex_);
+    write32_unlocked(addr, val);
+}
 
+uint32_t Bus::atomic_rmw_w(uint32_t addr, std::function<uint32_t(uint32_t)> operation) {
+    std::lock_guard<std::mutex> lock(mem_mutex_);
+    uint32_t old_val = read32_unlocked(addr);
+    uint32_t new_val = operation(old_val);
+    write32_unlocked(addr, new_val);
+    return old_val;
+}
+
+void Bus::write32_unlocked(uint32_t addr, uint32_t val) {
     if (addr == 0x80001000 && val != 0) {
         if (val == 1U) {
             std::cout << "PASS: SUCCESSFUL WRITE TO HOST\n";
@@ -179,22 +126,10 @@ void Bus::write32(uint32_t addr, uint32_t val) {
         virtio_net_.write32(addr - VirtioNet::BASE, val);
 }
 
-uint32_t Bus::atomic_rmw_w(uint32_t addr, std::function<uint32_t(uint32_t)> operation) {
-   std::lock_guard<std::mutex> lock(mem_mutex_);
-
-    uint32_t old_val = read32(addr);
-
-    uint32_t new_val = operation(old_val);
-
-    write32_unlocked(addr, new_val);        
-
-    return old_val;
-}
-
-void Bus::write32_unlocked(uint32_t addr, uint32_t val) {
+void Bus::write16_unlocked(uint32_t addr, uint16_t val) {
     if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
-        std::memcpy(&dram_[offset], &val, 4);
+        std::memcpy(&dram_[offset], &val, 2);
 
         if (cpu_ptr_) {
             cpu_ptr_->invalidateReservation(addr);
@@ -205,8 +140,15 @@ void Bus::write32_unlocked(uint32_t addr, uint32_t val) {
 }
 
 void Bus::write8_unlocked(uint32_t addr, uint8_t val) {
-    if (addr >= Bus::DRAM_BASE && addr < Bus::DRAM_BASE + Bus::DRAM_SIZE) {
-        dram_[addr - Bus::DRAM_BASE] = val;
+    if (addr >= UART::BASE && addr < UART::BASE + UART::SIZE) {
+        uart_.write8(addr - UART::BASE, val);
+        return;
+    }
+
+    if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
+        uint32_t offset = addr - Bus::DRAM_BASE;
+        dram_[offset] = val;
+
         if (cpu_ptr_) {
             cpu_ptr_->invalidateReservation(addr);
             cpu_ptr_->icache_.invalidate_page(addr);
@@ -215,16 +157,58 @@ void Bus::write8_unlocked(uint32_t addr, uint8_t val) {
     }
 }
 
-void Bus::write16_unlocked(uint32_t addr, uint16_t val) {
-    if (addr >= Bus::DRAM_BASE && addr < Bus::DRAM_BASE + Bus::DRAM_SIZE) {
-        uint32_t offset = addr - Bus::DRAM_BASE;
-        std::memcpy(&dram_[offset], &val, 2);
-        if (cpu_ptr_) {
-            cpu_ptr_->invalidateReservation(addr);
-            cpu_ptr_->icache_.invalidate_page(addr);
-            cpu_ptr_->clearDecodeCache();
-        }
+uint8_t Bus::read8_unlocked(uint32_t addr) {
+
+    if (addr >= UART::BASE && addr < UART::BASE + UART::SIZE) {
+        return uart_.read8(addr - UART::BASE);
     }
+
+    if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
+        uint32_t offset = addr - Bus::DRAM_BASE;
+        return dram_[offset];
+    }
+
+    if (addr >= VirtioNet::BASE && addr < VirtioNet::BASE + VirtioNet::SIZE)
+        return virtio_net_.read8(addr - VirtioNet::BASE);
+    
+    throw BusAccessError(std::to_string(addr) + " is outside of mapped range");
+}
+
+uint16_t Bus::read16_unlocked(uint32_t addr) {
+    if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
+        uint32_t offset = addr - Bus::DRAM_BASE;
+        uint32_t result;
+        std::memcpy(&result, &dram_[offset], 2);
+        return result;
+    }
+    
+    throw BusAccessError(std::to_string(addr) + " is outside of mapped range");
+}
+
+uint32_t Bus::read32_unlocked(uint32_t addr) {
+
+    if (addr >= UART::BASE && addr < UART::BASE + UART::SIZE)
+        return uart_.read8(addr - UART::BASE);
+
+    if (addr >= Clint::BASE && addr < Clint::BASE + Clint::SIZE)
+        return sys_.clint.read32(addr - Clint::BASE);
+    if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
+        uint32_t offset = addr - Bus::DRAM_BASE;
+        uint32_t result;
+        std::memcpy(&result, &dram_[offset], 4);
+        return result;
+    }
+    if (addr >= PLIC::BASE && addr < PLIC::BASE + PLIC::SIZE) {
+        return sys_.plic.read32(addr - PLIC::BASE);
+    }
+
+    if (addr >= VirtioBlk::BASE && addr < VirtioBlk::BASE + VirtioBlk::SIZE)
+        return virtio_blk_.read32(addr - VirtioBlk::BASE);
+
+    if (addr >= VirtioNet::BASE && addr < VirtioNet::BASE + VirtioNet::SIZE)
+        return virtio_net_.read32(addr - VirtioNet::BASE);
+
+    throw BusAccessError(std::to_string(addr) + " is outside of mapped range");
 }
 
 

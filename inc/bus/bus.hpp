@@ -69,6 +69,10 @@ class Bus {
         void write16_unlocked(uint32_t addr, uint16_t val);
         void write32_unlocked(uint32_t addr, uint32_t val);
 
+        uint32_t read32_unlocked(uint32_t addr);
+        uint16_t read16_unlocked(uint32_t addr);
+        uint8_t read8_unlocked(uint32_t addr);
+
         UART uart_;
     private:
 
