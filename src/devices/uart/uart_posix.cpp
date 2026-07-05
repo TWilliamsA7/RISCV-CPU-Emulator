@@ -36,12 +36,13 @@ void UART::set_raw_mode() {
     g_have_old_termios = true;
     s_instance = this;
     t = g_old_termios;
-    t.c_lflag &= ~(ICANON | ECHO);
+    t.c_lflag &= ~(ICANON | ECHO | ISIG); // add ISIG — disables Ctrl+C/Z signal generation
     t.c_cc[VMIN]  = 1;
     t.c_cc[VTIME] = 0;
     tcsetattr(STDIN_FILENO, TCSANOW, &t);
-    std::signal(SIGINT, signal_restore);
+    // Keep SIGTERM for clean shutdown from external kill command
     std::signal(SIGTERM, signal_restore);
+    // Remove SIGINT handler — Ctrl+C now goes to guest
 }
 
 void UART::restore_terminal() {
@@ -51,20 +52,42 @@ void UART::restore_terminal() {
 }
 
 bool UART::read_char(uint8_t& ch) {
-    fd_set fds;
-    FD_ZERO(&fds);
-    FD_SET(STDIN_FILENO, &fds);
+    uint8_t byte;
+    ssize_t n = read(STDIN_FILENO, &byte, 1);
+    if (n <= 0) return false;
 
-    struct timeval tv {};
-    tv.tv_sec = 0;
-    tv.tv_usec = 10000;
+    static bool escape_mode = false;
 
-    int ready = select(STDIN_FILENO + 1, &fds, nullptr, nullptr, &tv);
-    if (ready <= 0)
+    if (escape_mode) {
+        escape_mode = false;
+        if (byte == 'q' || byte == 'Q') {
+            // Ctrl+A then Q — quit emulator
+            restore_termios();
+            if (s_instance)
+                s_instance->sys_.cpu.halt();
+            return false;
+        } else if (byte == 0x01) {
+            // Ctrl+A twice — send a literal Ctrl+A to the guest
+            ch = 0x01;
+            return true;
+        } else {
+            // Unrecognized sequence — send both bytes to guest
+            // Send the Ctrl+A first, then fall through to send current byte
+            if (s_instance)
+                s_instance->rx_push(0x01);
+            ch = byte;
+            return true;
+        }
+    }
+
+    if (byte == 0x01) { // Ctrl+A
+        escape_mode = true;
         return false;
+    }
 
-    int n = read(STDIN_FILENO, &ch, 1);
-    return n == 1;
+    // Pass Ctrl+C and everything else straight to the guest
+    ch = byte;
+    return true;
 }
 
 #endif

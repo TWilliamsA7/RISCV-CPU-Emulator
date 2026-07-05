@@ -24,19 +24,15 @@ static void restore_console_mode() {
 }
 
 BOOL WINAPI UART::console_ctrl_handler(DWORD type) {
-    if (type == CTRL_C_EVENT || type == CTRL_BREAK_EVENT) {
-        if (s_instance)
-            s_instance->sys_.cpu.halt();
-        return TRUE; 
-    }
-    if (type == CTRL_CLOSE_EVENT || type == CTRL_LOGOFF_EVENT || type == CTRL_SHUTDOWN_EVENT) {
+    if (type == CTRL_CLOSE_EVENT ||
+        type == CTRL_LOGOFF_EVENT ||
+        type == CTRL_SHUTDOWN_EVENT) {
         restore_console_mode();
         if (s_instance)
-            s_instance->sys_.cpu.halt();;
-        
-        return FALSE; 
+            s_instance->sys_.cpu.halt();
+        return FALSE;
     }
-
+    // CTRL_C_EVENT and CTRL_BREAK_EVENT fall through to the guest
     return FALSE;
 }
 
@@ -72,20 +68,44 @@ bool UART::read_char(uint8_t& ch) {
 
     int c = _getch();
     if (c == EOF) return false;
-    
 
-    if (c == 3) {
-        if (s_instance)
-            s_instance->sys_.cpu.halt();
-        return false; 
+    static bool escape_mode = false;
+
+    if (escape_mode) {
+        escape_mode = false;
+        if (c == 'q' || c == 'Q') {
+            // Ctrl+A then Q — quit emulator
+            if (s_instance)
+                s_instance->sys_.cpu.halt();
+            return false;
+        } else if (c == 0x01) {
+            // Ctrl+A twice — send literal Ctrl+A to guest
+            ch = 0x01;
+            return true;
+        } else {
+            // Unrecognized — send both bytes to guest
+            if (s_instance)
+                s_instance->rx_push(0x01);
+            ch = (uint8_t)c;
+            return true;
+        }
     }
 
+    if (c == 0x01) { // Ctrl+A
+        escape_mode = true;
+        return false;
+    }
+
+    // Extended key codes (function keys etc) — discard second byte
     if (c == 0 || c == 0xE0) {
         _getch();
         return false;
     }
-    ch = static_cast<uint8_t>(c);
+
+    // Pass everything including Ctrl+C (0x03) straight to the guest
+    ch = (uint8_t)c;
     return true;
 }
+
 #endif
 
