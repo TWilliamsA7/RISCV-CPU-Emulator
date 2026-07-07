@@ -9,6 +9,7 @@
 #include "devices/uart.hpp"
 #include "devices/virtio_blk.hpp"
 #include "devices/virtio_net.hpp"
+#include "devices/framebuffer.hpp"
 #include <mutex>
 #include <functional>
 #include <string>
@@ -80,6 +81,7 @@ class Bus {
 
         friend class VirtioBlk;
         friend class VirtioNet;
+        friend class FrameBuffer;
 
         // Dynamic Random Access Memory
         std::vector<uint8_t> dram_;
@@ -89,6 +91,8 @@ class Bus {
         VirtioBlk virtio_blk_;
 
         VirtioNet virtio_net_;
+
+        FrameBuffer framebuffer_;
 
         std::mutex mem_mutex_;
 

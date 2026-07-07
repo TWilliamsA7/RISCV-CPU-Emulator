@@ -20,6 +20,7 @@ void Bus::init_devices(const std::string& disk_path, const std::string& tap_name
         virtio_blk_.init(disk_path);
     if (tap_name.size())
         virtio_net_.init(tap_name);
+    framebuffer_.init();
 }
 
 void Bus::register_cpu(CPU* cpu) { cpu_ptr_ = cpu; }
@@ -48,7 +49,8 @@ bool Bus::is_mmio(uint32_t addr) const {
            (addr >= Clint::BASE && addr < Clint::BASE + Clint::SIZE) ||
            (addr >= PLIC::BASE && addr < PLIC::BASE + PLIC::SIZE) ||
            (addr >= VirtioBlk::BASE && addr < VirtioBlk::BASE + VirtioBlk::SIZE) ||
-           (addr >= VirtioNet::BASE && addr < VirtioNet::BASE + VirtioNet::SIZE);
+           (addr >= VirtioNet::BASE && addr < VirtioNet::BASE + VirtioNet::SIZE) ||
+           (addr >= FrameBuffer::BASE && addr < FrameBuffer::BASE + FrameBuffer::SIZE);
 }
 
 uint8_t Bus::read8(uint32_t addr) {
@@ -124,6 +126,8 @@ void Bus::write32_unlocked(uint32_t addr, uint32_t val) {
         virtio_blk_.write32(addr - VirtioBlk::BASE, val);
     else if (addr >= VirtioNet::BASE && addr < VirtioNet::BASE + VirtioNet::SIZE)
         virtio_net_.write32(addr - VirtioNet::BASE, val);
+    else if (addr >= FrameBuffer::BASE && addr < FrameBuffer::BASE + FrameBuffer::SIZE)
+        framebuffer_.write32(addr - FrameBuffer::BASE, val);
 }
 
 void Bus::write16_unlocked(uint32_t addr, uint16_t val) {
@@ -145,6 +149,11 @@ void Bus::write8_unlocked(uint32_t addr, uint8_t val) {
         return;
     }
 
+    if (addr >= FrameBuffer::BASE && addr < FrameBuffer::BASE + FrameBuffer::SIZE) {
+        framebuffer_.write8(addr - FrameBuffer::BASE, val);
+        return;
+    }
+
     if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
         uint32_t offset = addr - Bus::DRAM_BASE;
         dram_[offset] = val;
@@ -161,6 +170,10 @@ uint8_t Bus::read8_unlocked(uint32_t addr) {
 
     if (addr >= UART::BASE && addr < UART::BASE + UART::SIZE) {
         return uart_.read8(addr - UART::BASE);
+    }
+
+    if (addr >= FrameBuffer::BASE && addr < FrameBuffer::BASE + FrameBuffer::SIZE) {
+        return framebuffer_.read8(addr - FrameBuffer::BASE);
     }
 
     if (addr >= Bus::DRAM_BASE && addr < DRAM_BASE + DRAM_SIZE) {
@@ -207,6 +220,10 @@ uint32_t Bus::read32_unlocked(uint32_t addr) {
 
     if (addr >= VirtioNet::BASE && addr < VirtioNet::BASE + VirtioNet::SIZE)
         return virtio_net_.read32(addr - VirtioNet::BASE);
+
+    if (addr >= FrameBuffer::BASE && addr < FrameBuffer::BASE + FrameBuffer::SIZE) {
+        return framebuffer_.read32(addr - FrameBuffer::BASE);
+    }
 
     throw BusAccessError(std::to_string(addr) + " is outside of mapped range");
 }
