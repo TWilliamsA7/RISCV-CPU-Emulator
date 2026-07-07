@@ -9,6 +9,8 @@ add_library(devices
     virtio_blk.cpp
     virtio_net/virtio_net.cpp
     virtio_net/virtio_net_slirp.cpp
+    framebuffer/framebuffer.cpp
+    framebuffer/framebuffer_sdl.cpp
 )
 
 target_include_directories(devices PUBLIC
