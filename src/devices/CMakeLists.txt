@@ -12,6 +12,7 @@ add_library(devices
     virtio_net/virtio_net_slirp.cpp
     framebuffer/framebuffer.cpp
     framebuffer/framebuffer_sdl.cpp
+    "input.cpp"
 )
 
 target_include_directories(devices PUBLIC

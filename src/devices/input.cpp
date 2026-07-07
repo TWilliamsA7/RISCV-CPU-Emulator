@@ -18,3 +18,4 @@ uint32_t InputDevice::read32(uint32_t offset) {
 
 void InputDevice::write32(uint32_t offset, uint32_t val) {
     // reserved — no op
+}

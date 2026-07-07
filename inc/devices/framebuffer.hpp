@@ -4,6 +4,7 @@
 #include <vector>
 #include <thread>
 #include <atomic>
+#include "devices/input.hpp"
 
 class FrameBuffer {
 public:
@@ -16,7 +17,7 @@ public:
     FrameBuffer();
     ~FrameBuffer();
 
-    void init(); // starts the render thread
+    void init(InputDevice* input); // starts the render thread
 
     uint8_t  read8(uint32_t offset) const;
     void     write8(uint32_t offset, uint8_t val);
@@ -28,6 +29,8 @@ private:
 
     std::thread       render_thread_;
     std::atomic<bool> running_{false};
+
+    InputDevice* input_;
 
     void render_loop();
 };
