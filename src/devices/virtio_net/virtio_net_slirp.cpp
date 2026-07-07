@@ -343,13 +343,6 @@ void VirtioNet::init(const std::string& /*tap_name*/) {
     s->outbound_addr.sin_family = AF_INET;
     s->outbound_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     s->outbound_addr.sin_port = 0;
-    cfg.outbound_addr = &s->outbound_addr;
-
-    // VERSION 3 FIELDS
-    cfg.disable_dns = 0;
-
-    // VERSION 4 FIELDS
-    cfg.disable_dhcp = 0;
 
     s->slirp = slirp_new(&cfg, &s->cb, s);
     if (!s->slirp) {
