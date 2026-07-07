@@ -1,6 +1,7 @@
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SLIRP REQUIRED slirp)
 pkg_check_modules(GLIB  REQUIRED glib-2.0)
+pkg_check_modules(SDL2 REQUIRED sdl2)
 
 add_library(devices
     uart/uart.cpp
@@ -17,11 +18,13 @@ target_include_directories(devices PUBLIC
     ${PROJECT_SOURCE_DIR}/inc
     ${SLIRP_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
+    ${SDL2_INCLUDE_DIRS}
 )
 
 target_link_libraries(devices PUBLIC
     ${SLIRP_LINK_LIBRARIES}
     ${GLIB_LINK_LIBRARIES}
+    ${SDL2_LINK_LIBRARIES}
 )
 
 if(WIN32)
