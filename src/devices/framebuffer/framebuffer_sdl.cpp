@@ -37,7 +37,7 @@ void FrameBuffer::render_loop() {
         return;
     }
 
-    SDL_Window* window = SDL_CreateWindow("DOOM",
+    SDL_Window* window = SDL_CreateWindow("RISC-V Emulator",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         WIDTH * 2, HEIGHT * 2, SDL_WINDOW_SHOWN);
     if (!window) {

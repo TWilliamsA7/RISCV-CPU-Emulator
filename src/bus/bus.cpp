@@ -20,7 +20,8 @@ void Bus::init_devices(const std::string& disk_path, const std::string& tap_name
         virtio_blk_.init(disk_path);
     if (tap_name.size())
         virtio_net_.init(tap_name);
-    framebuffer_.init(&input_);
+    if (sys_.config_.profile.open_sdl)
+        framebuffer_.init(&input_);
 }
 
 void Bus::register_cpu(CPU* cpu) { cpu_ptr_ = cpu; }
