@@ -107,6 +107,9 @@ Profile loadProfile(std::string profile_path) {
         if (config.contains("tap-name"))
             profile.tap_name = config["tap-name"];
 
+        if (config.contains("open-sdl"))
+            profile.open_sdl = config["open-sdl"];
+
     }
 
     return profile;

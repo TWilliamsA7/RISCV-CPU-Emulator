@@ -31,6 +31,7 @@ struct Profile {
     std::string opensbi_path;
     std::string tap_name; // TAP/WinTun adapter name
     bool verbose;
+    bool open_sdl;
 };
 
 Profile loadProfile(std::string profile_path);
