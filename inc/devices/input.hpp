@@ -6,7 +6,7 @@
 
 class InputDevice {
 public:
-    static constexpr uint32_t BASE = 0x10004000;
+    static constexpr uint32_t BASE = 0x10200000;
     static constexpr uint32_t SIZE = 0x10;
 
     static constexpr uint32_t REG_POP = 0x00; // read: pop next event
