@@ -197,20 +197,6 @@ RISCV_EMU_UART_INPUT=$'root\n' ./riscv_emulator profile.json
 
 ---
 
-## Testing & Verification
-
-- **CMake/CTest integration**: `BUILD_TESTS` is `ON` by default for UCRT64 presets (`OFF` for MSVC). Run via:
-
-```bash
-  ctest --preset vscode --output-on-failure
-```
-
-- **Host-exit convention**: Writing `1` to physical address `0x80000000 + 0x1000` (`0x80001000`) signals a passing test (`ProgramExit(0)`); any other non-zero value signals failure with that value as the exit code. This matches the standard convention used by `riscv-tests` / `riscv-compliance` style pass/fail harnesses — point `elf-path`/`binary-path` at a compiled test ELF and inspect the process exit code.
-- **Verbose instruction trace**: Set `"verbose": true` in the profile to emit per-instruction `PC / INST / disassembly / NPC` plus register/memory/CSR write diffs (`CPU::printTrace`) — useful for diffing against a golden trace (e.g., Spike) when bringing up new instructions or debugging trap sequencing.
-- **PMP debug instrumentation**: `CPU::pmp_check` currently contains a hardcoded diagnostic `printf` for address `0x80000410` and unmatched-entry logging in S/U mode — useful during PMP debugging but should be removed/gated before treating trace output as clean.
-
----
-
 ## Future Roadmap
 
 Based on current stubs and architectural notes in the codebase:
